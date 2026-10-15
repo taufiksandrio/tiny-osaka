@@ -1,0 +1,3 @@
+# Phase 1: request a UI plan before code
+
+Analisis dan rencanakan **hanya** homepage Tiny Osaka yang mobile-first dan bilingual, tanpa menulis kode dulu. Gunakan `docs/REQUIREMENTS.md`, `docs/CONTENT_AND_UX.md`, desain Japanese street-food ekspresif, dan data mock yang jelas sebagai placeholder. Prioritaskan satu CTA GoFood dan GrabFood yang menggunakan URL terverifikasi saja; jika URL belum tersedia, tampilkan UI disabled/placeholder yang tidak mengarah ke link palsu. Buat daftar komponen, semantik HTML, kebutuhan aksesibilitas, SEO, risiko CLS dan test Playwright. Jangan mulai implementasi sebelum saya setujui.
