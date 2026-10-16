@@ -9,7 +9,7 @@ const credentials = process.env.DATABASE_URL
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/server/db/schema.mjs",
+  schema: ["./src/server/db/schema.mjs", "./src/server/db/auth-schema.mjs"],
   out: "./drizzle",
   strict: true,
   verbose: false,

@@ -371,7 +371,7 @@ test("all twenty-eight tables are empty and guard definitions, ownership and six
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
     await verifyMediaProtection(client, "tiny_osaka_test_owner");
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 7);
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 8);
   } finally { await client.end(); }
 });
 

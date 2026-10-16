@@ -1575,3 +1575,27 @@ synthetic text/media placeholders; real content and hosting require later QA.
 Rollback: application files may be reverted or local fixture mode selected.
 Successful SQL changes require an inspected, approved reverse migration/restore;
 preserve applied migrations and history. No production operation is authorized.
+
+## Phase 3.1 login and local Owner setup
+
+Auth implementation, manual account provisioning and email limitations are
+documented in [docs/PHASE3_PLAN.md](docs/PHASE3_PLAN.md). After development
+migration0007, create your local account in the repository terminal:
+
+```powershell
+powershell.exe -NoProfile -File .\scripts\provision-account.ps1 -Role owner
+npm.cmd run dev
+```
+
+Open http://localhost:3000/admin/login. Use the configured origin exactly. The
+password is entered through a hidden terminal prompt, never chat or command-line
+arguments. No real account is pre-seeded. Optional Owner MFA is at/admin/security.
+This subphase provides protected entry; content editors come next. Real reset
+email is intentionally unavailable until an email provider/adapter is approved.
+
+Auth verification: npm.cmd run test:auth-db and npm.cmd run test:auth-e2e. The
+browser runner uses only synthetic test accounts and application credentials in
+child processes, removes its fixture IDs afterwards and checks auth guards.
+All database suites must run sequentially. Auth trace reports may contain
+synthetic credentials/recovery material; they are ignored private QA artifacts,
+not files to publish. Existing advisory/release gates remain open.

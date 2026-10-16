@@ -30,9 +30,13 @@
     "test:pages-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --test tests/integration/pages.test.mjs",
     "test:media-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --test tests/integration/media.test.mjs",
     "test:public-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --test tests/integration/public-read.test.mjs",
-    "test:published-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local scripts/run-published-qa.mjs"
+    "test:published-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local scripts/run-published-qa.mjs",
+    "test:auth-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --test tests/integration/auth.test.mjs",
+    "test:auth-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local scripts/run-auth-qa.mjs"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.10",
+    "better-auth": "1.7.10",
     "drizzle-orm": "0.45.4",
     "next": "16.4.1",
     "pg": "8.23.1",
