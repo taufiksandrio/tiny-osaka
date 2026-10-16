@@ -983,3 +983,18 @@ bundle secret check, dev/test migration no-op repeats, dev verifier and four
 connectivity cases. Auth runtime smoke passed; real account awaits operator input.
 Audit remains9 total,4 under omit=dev via optional peer; release gates remain
 open. Real email delivery and content editor are not claimed. See QA details.
+
+## ADR-026 - CMS password minimum six (approved2026-10-16)
+
+User explicitly requested and approved minimum6 characters for internal CMS
+Owner/Staff passwords. Maximum128 remains. This supersedes the original
+provisioning20 and library/reset12 minimums; the user accepts the greater
+guessability of shorter passwords. Scope is CMS credentials, not database
+credentials or auth secret. No dependency, migration or role policy change.
+Branch fix/cms-password-minimum is based on merged main8bd3831. Commit/push
+authorized after validation. Account creation is also explicitly authorized;
+identity remains runtime data, never committed, and password enters only a
+hidden terminal prompt. Optional email/display-name script parameters allow
+prefilling non-secret account details while keeping the password off arguments.
+Rollback application policy via commit revert; do not silently reset an already
+created account or delete data. Existing hashes work without rehash/migration.

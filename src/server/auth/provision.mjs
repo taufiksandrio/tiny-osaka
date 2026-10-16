@@ -5,9 +5,9 @@ import { hashPassword } from "better-auth/crypto";
 // Trusted local operator only; never import into a route handler.
 export const provisionAccount = async ({ client, email, password, role, name = "CMS account" }) => {
   if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-    typeof password !== "string" || password.length < 20 || password.length > 128 ||
+    typeof password !== "string" || password.length < 6 || password.length > 128 ||
     !["owner", "staff"].includes(role) || typeof name !== "string" || !name.trim() || name.length > 100) {
-    throw new Error("Invalid internal account input; use a valid email and a unique 20-128 character password.");
+    throw new Error("Invalid internal account input; use a valid email and a unique 6-128 character password.");
   }
   const { rows: [identity] } = await client.query("SELECT current_database() AS database,current_user AS role");
   if (!["test", "dev"].some(target => identity.database === `tiny_osaka_${target}` && identity.role === `tiny_osaka_${target}_owner`)) {

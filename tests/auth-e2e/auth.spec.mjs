@@ -53,8 +53,8 @@ test("reset UI is honest when real email adapter is absent", async ({ page }) =>
 test("reset and verification fragments keep tokens out of HTTP request URLs", async ({ page }) => {
   const urls = []; page.on("request", request => urls.push(request.url()));
   await page.goto("/admin/reset-password#token=synthetic-invalid-token");
-  await page.getByLabel("Password baru (minimal 12 karakter)", { exact: true }).fill(process.env.QA_AUTH_PASSWORD);
-  await page.getByLabel("Ulangi password baru").fill(process.env.QA_AUTH_PASSWORD);
+  await page.getByLabel("Password baru (minimal 6 karakter)", { exact: true }).fill("Q4!abc");
+  await page.getByLabel("Ulangi password baru").fill("Q4!abc");
   await page.getByRole("button", { name: "Simpan password baru" }).click();
   await expect(page.getByRole("status")).toContainText("Permintaan gagal");
   await page.goto("/admin/verify-email#token=synthetic-invalid-token");
