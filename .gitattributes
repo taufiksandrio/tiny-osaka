@@ -1,0 +1,2 @@
+# Reviewed migration hashes must keep identical bytes on Windows and Linux.
+drizzle/*.sql text eol=lf

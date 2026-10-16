@@ -1,3 +1,5 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { content } from "@/features/public-site/content";
 import SiteHeader from "@/features/public-site/components/SiteHeader";
@@ -10,8 +12,8 @@ export const generateMetadata = async ({ params }) => {
   const { locale } = await params;
   if (!Object.hasOwn(content, locale)) notFound();
   return {
-    title: content[locale].metadata.title,
-    description: content[locale].metadata.description,
+    title: usesPublishedContent() ? "Tiny Osaka" : content[locale].metadata.title,
+    description: usesPublishedContent() ? "Tiny Osaka" : content[locale].metadata.description,
     robots: { index: false, follow: false },
   };
 };
@@ -19,13 +21,13 @@ export const generateMetadata = async ({ params }) => {
 const LocaleLayout = async ({ children, params }) => {
   const { locale } = await params;
   if (!Object.hasOwn(content, locale)) notFound();
-  const copy = content[locale];
+  const copy = usesPublishedContent() ? { ...content[locale], footerNote: "Tiny Osaka", footerPreview: locale === "id" ? "Informasi dari konten terbit." : "Information from published content." } : content[locale];
 
   return (
     <html lang={locale}>
       <body>
         <a className="skip-link" href="#main-content">{copy.skip}</a>
-        <div className="preview-banner">{copy.preview}</div>
+        {!usesPublishedContent() && <div className="preview-banner">{copy.preview}</div>}
         <SiteHeader locale={locale} copy={copy} />
         {children}
         <SiteFooter locale={locale} copy={copy} />

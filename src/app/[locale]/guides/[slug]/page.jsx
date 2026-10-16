@@ -1,3 +1,5 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPageContent } from "@/features/public-site/page-content";
@@ -10,10 +12,11 @@ const getGuide = (slug) => {
   return guide;
 };
 
-export const generateStaticParams = () => sampleGuides.map(({ slug }) => ({ slug }));
+export const generateStaticParams = () => usesPublishedContent() ? [] : sampleGuides.map(({ slug }) => ({ slug }));
 
 export const generateMetadata = async ({ params }) => {
   const { locale, slug } = await params;
+  if (usesPublishedContent()) return publishedMetadata("guide-" + slug, locale);
   const copy = getPageContent(locale);
   const guide = getGuide(slug);
   return { title: `${copy.guides.titlePrefix} ${guide.title} — ${copy.preview} | Tiny Osaka`, description: copy.guides.articleNote };
@@ -21,6 +24,7 @@ export const generateMetadata = async ({ params }) => {
 
 const GuidePage = async ({ params }) => {
   const { locale, slug } = await params;
+  if (usesPublishedContent()) return <PublishedPage pageKey={"guide-" + slug} locale={locale} />;
   const copy = getPageContent(locale);
   const guide = getGuide(slug);
   return (
