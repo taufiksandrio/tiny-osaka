@@ -40,7 +40,7 @@ powershell.exe -NoProfile -File .\scripts\provision-account.ps1 -Role owner
 npm.cmd run dev
 ```
 
-The terminal asks for email, display name and a unique password20-128 characters
+The terminal asks for email, display name and a unique password of 6-128 characters
 with confirmation. Never send passwords through chat. Existing accounts are not
 overwritten. Restart an already-running dev server, then open
 http://localhost:3000/admin/login (same origin as BETTER_AUTH_URL).

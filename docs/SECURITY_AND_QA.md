@@ -614,3 +614,37 @@ behavior. Preserve private secret/config and any subsequently provisioned users.
 After committed migration, removing auth schema/grants/data requires an inspected
 and explicitly approved reverse migration/restore. Keep SQL/history intact;
 Git revert alone does not reverse SQL. No deployment or destructive action.
+
+## CMS password minimum adjustment - 2026-10-16 (ADR-026)
+
+User approved minimum6/max128 for CMS Owner/Staff passwords. Branch
+fix/cms-password-minimum starts from merged main8bd3831. Modified auth library
+configuration, trusted provisioning validator/PowerShell prompt, reset form,
+auth integration/browser cases and active policy documentation. No dependency,
+SQL, database credential, secret, role or session configuration was changed.
+PowerShell can prefill email/display name while password still enters through
+Read-Host -AsSecureString with confirmation, UTF8 stdin and library hashing.
+No real identity or password is included in repository documentation.
+
+Actual validation: npm.cmd run lint passed; npm.cmd run build passed; full unit
+suite107 passed; npm.cmd run test:auth-db12 passed; npm.cmd run test:auth-e2e18
+passed (six cases each desktop/mobile390/small320). Boundary case verifies
+provisioning rejects5, creates a synthetic six-character credential and logs in;
+verified synthetic reset rejects5 without spending the token, accepts6, revokes
+the old session and allows only the new password. Browser reset submits six
+characters and reaches token validation. All synthetic fixtures were cleaned.
+
+PowerShell provisioning parser passed. Browser bundle scan22 assets found no
+loaded private DB URLs/passwords or auth secret. Full public/database regression,
+Lighthouse and dependency audit were not repeated for this narrow auth policy
+change; unchanged dependency advisories remain documented and open.
+
+Security: six-character passwords are more guessable; user explicitly chose the
+new policy after the risk was stated. Existing hashing, rate limits, optional
+Owner MFA, session enforcement and noindex private CMS routes still apply.
+Real email delivery remains unavailable without the approved sender adapter.
+
+Rollback via revert of this application's policy commit; preserve any newly
+created account and existing password hashes. This does not reset/delete accounts
+or require SQL rollback. Account deletion or forced password changes need separate
+explicit scope/approval.

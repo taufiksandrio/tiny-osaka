@@ -1599,3 +1599,6 @@ child processes, removes its fixture IDs afterwards and checks auth guards.
 All database suites must run sequentially. Auth trace reports may contain
 synthetic credentials/recovery material; they are ignored private QA artifacts,
 not files to publish. Existing advisory/release gates remain open.
+
+CMS Owner/Staff passwords now require 6-128 characters (user-approved change).
+Provisioning, password change/reset and the reset form share this minimum.

@@ -3,6 +3,8 @@ import test from "node:test";
 import { createOTP } from "@better-auth/utils/otp";
 import { base32 } from "@better-auth/utils/base32";
 import { createAuthService } from "../../src/server/auth/service.mjs";
+import { provisionAccount } from "../../src/server/auth/provision.mjs";
+import { randomUUID } from "node:crypto";
 import { createAuthFixture, callAuth, cookieJar } from "../fixtures/auth.mjs";
 
 test("local auth integration: real library sessions, reset, MFA and privilege boundary", async t => {
@@ -130,6 +132,25 @@ test("local auth integration: real library sessions, reset, MFA and privilege bo
       const response = await callAuth(secure, "/sign-in/email", { email: owner.email, password: currentPassword });
       assert.equal(response.status, 200);
       assert.ok(response.headers.getSetCookie().some(cookie => cookie.startsWith("__Secure-") && /; Secure/i.test(cookie) && /HttpOnly/i.test(cookie)));
+    });
+    await fixture.expireLimits();
+    await t.test("password minimum: five rejected, six accepted by provisioning, login and reset", async () => {
+      const email = `qa-password-${randomUUID()}@example.invalid`;
+      const input = { client: fixture.owner, email, role: "staff", name: "QA password boundary" };
+      await assert.rejects(provisionAccount({ ...input, password: "A1!bc" }), /Invalid internal account input/);
+      const created = await provisionAccount({ ...input, password: "Q4!abc" });
+      fixture.accounts.push({ ...created, email });
+      const jar = cookieJar();
+      assert.equal((await callAuth(fixture, "/sign-in/email", { email, password: "Q4!abc" }, jar)).status, 200);
+      await fixture.owner.query("UPDATE cms_auth.users SET email_verified=true WHERE id=$1", [created.id]);
+      await callAuth(fixture, "/request-password-reset", { email });
+      const token = new URLSearchParams(new URL(fixture.emails.at(-1).url).hash.slice(1)).get("token");
+      assert.ok(token);
+      assert.equal((await callAuth(fixture, "/reset-password", { token, newPassword: "A1!bc" })).status, 400);
+      assert.equal((await callAuth(fixture, "/reset-password", { token, newPassword: "R5!abc" })).status, 200);
+      assert.equal(await (await callAuth(fixture, "/get-session", undefined, jar)).json(), null);
+      assert.equal((await callAuth(fixture, "/sign-in/email", { email, password: "R5!abc" })).status, 200);
+      assert.equal((await callAuth(fixture, "/sign-in/email", { email, password: "Q4!abc" })).status, 401);
     });
   } finally { await fixture.cleanup(); }
 });

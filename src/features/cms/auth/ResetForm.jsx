@@ -25,8 +25,8 @@ const ResetForm = () => {
   };
   return <form className="auth-form" onSubmit={submit}>
     {token ? <>
-      <label htmlFor="new-password">Password baru (minimal 12 karakter)</label><input id="new-password" name="password" type="password" minLength={12} maxLength={128} required autoComplete="new-password" />
-      <label htmlFor="confirm-password">Ulangi password baru</label><input id="confirm-password" name="confirm" type="password" minLength={12} maxLength={128} required autoComplete="new-password" />
+      <label htmlFor="new-password">Password baru (minimal 6 karakter)</label><input id="new-password" name="password" type="password" minLength={6} maxLength={128} required autoComplete="new-password" />
+      <label htmlFor="confirm-password">Ulangi password baru</label><input id="confirm-password" name="confirm" type="password" minLength={6} maxLength={128} required autoComplete="new-password" />
     </> : <><p>Pengiriman email belum dikonfigurasi pada development ini. Reset melalui email akan tersedia setelah penyedia email disiapkan.</p>
       <label htmlFor="reset-email">Email akun</label><input id="reset-email" name="email" type="email" maxLength={254} required autoComplete="email" /></>}
     <p role="status" aria-live="polite">{message}</p>

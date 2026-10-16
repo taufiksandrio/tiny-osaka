@@ -51,7 +51,7 @@ export const createAuthService = ({ pool, env = process.env, sendEmail } = {}) =
     appName: "Tiny Osaka CMS", secret: config.secret, baseURL: config.baseURL, basePath: "/api/auth",
     trustedOrigins: [config.baseURL], telemetry: { enabled: false }, logger: { disabled: true },
     database: drizzleAdapter(db, { provider: "pg", schema, transaction: true }),
-    emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 12, maxPasswordLength: 128,
+    emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 6, maxPasswordLength: 128,
       resetPasswordTokenExpiresIn: 900, revokeSessionsOnPasswordReset: true,
       sendResetPassword: typeof sendEmail === "function" ? async ({ user, token }) => deliver("reset", user, `${config.baseURL}/admin/reset-password#token=${encodeURIComponent(token)}`) : undefined,
       onPasswordReset: async ({ user }) => audit("password_reset", user.id),
