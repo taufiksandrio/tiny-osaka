@@ -530,3 +530,87 @@ Browser body contained no database URL/password/login, raw authentication error
 or example menu fallback. No data was written; temporary server/browser closed.
 Final lint/build also passed after matching the error component arrow-function
 convention (no behavior change).
+
+## Phase 3.1 authentication acceptance - 2026-10-16 (ADR-025)
+
+Implemented on feat/phase3-1-auth based on main d323c80, under explicit package
+approval and standing authorization to commit/push each completed Phase3 subphase.
+Modified files include src/server/auth/*, src/server/db/auth-schema.mjs, admin
+and auth routes, cms/auth components, migration0007/snapshot/journal, migration
+plans/runners/verifier, auth provisioning/setup/QA/bundle scripts, package files,
+env template, CSS, unit/integration/browser tests and documentation. Existing
+0000-0006 SQL/history and public table access restrictions were preserved.
+
+Actual commands/results:
+
+- npm.cmd run lint: passed, zero warnings.
+- npm.cmd run build: passed for public routes, protected admin and Node auth API.
+- node --conditions=react-server --test tests/unit/*.test.mjs:107 passed.
+- node --conditions=react-server --env-file=.env.local --env-file=.env.test-migrator.local --env-file=.env.test.local --test --test-concurrency=1 tests/integration/*.test.mjs:154 passed (143 previous +11 auth including suite wrapper).
+- npm.cmd run test:auth-e2e:18 passed, six on each desktop/mobile390/small320.
+- npm.cmd run test:e2e:222 public fixture cases passed.
+- npm.cmd run test:published-e2e:72 published +6 empty-state cases passed.
+- Total browser acceptance318, no failed/skipped/flaky cases in final reports.
+- node with private local DB/auth envs, scripts/check-public-bundle.mjs:22 assets checked; no loaded DB URL/password or auth secret found.
+- scripts/setup-auth.ps1: generated private ignored .env.auth.local with random secret and owner-only ACL; did not print the secret. Both auth PowerShell scripts passed parser syntax checks.
+- Runtime development smoke: private config loaded, anonymous session rejected; no real account provisioned.
+- npm.cmd run db:migrate:test:0007 applied; repeat no changes. An initial incomplete manifest caused final verification to fail; the transaction rolled back. The manifest was corrected before successful application. Applied SQL was not rewritten.
+- npm.cmd run db:migrate:dev:0007 applied only after functional QA; repeat no changes.
+- node --env-file=.env.dev-migrator.local --env-file=.env.local scripts/verify-dev-db.mjs: passed, including auth guards/grants.
+- npm.cmd run test:db-connection: four passed again after dev migration.
+- npm.cmd audit: exit1, existing9 affected-package entries (5 high/4 moderate).
+- npm.cmd audit --omit=dev: exit1, existing4 moderate entries now reachable through Better Auth's optional Drizzle Kit peer.
+- npm.cmd audit --omit=dev --omit=optional: passed, zero findings; diagnostic of optional peer exposure only, not an approved deployment workaround. No force fixes, removal or downgrade applied.
+- Lighthouse not rerun for this auth subphase; Phase2 performance results are historical and are not claimed as new measurements.
+
+Security acceptance: registration/social/user mutation/account-linking endpoints
+are not allowlisted. Every protected CMS page reads fresh server session and
+read-only membership; request-supplied role is ignored. Staff cannot open Owner
+security page or enable MFA through a forged API request. Sign-in uses library
+password verification; role/disabled changes are checked per request. Cookies
+are HttpOnly/SameSite=Lax and Secure under HTTPS (tested); local HTTP config is
+loopback-only. Remote host/proxy/TLS review remains required before deployment.
+
+Absolute expiry24h, immutable session identity and atomic server activity gate
+with1h idle expiry are tested. Cookie cache and rolling refresh are disabled.
+Successful logout and reset revoke sessions. Durable bounded HMAC-key counters
+protect routes/accounts; concurrent login attempts yield exactly five allowed
+password attempts and one429, and a new service instance preserves the limit.
+Untrusted forwarded IP headers are not used; local library per-path fallback is
+shared. Future proxy-aware distributed limits require release review.
+
+Origin checks cover state-changing requests, callbacks stay in CMS on configured
+origin, body input is bounded to8KiB while streaming, errors are generic. Session
+tokens are kept in HttpOnly cookies, removed from JSON. MFA uses library TOTP/
+encrypted recovery data; Owner enrollment, later challenge, rejection of bypass
+trustDevice flag and single-use recovery codes are covered. Verification/login
+audit identifies opaque subjects and excludes email/password/token/secret.
+
+Reset has uniform eligible/unknown responses, enabled+verified-email gating,
+15-minute single-use tokens, expired/replayed-token rejection and session
+revocation. Real delivery is absent: runtime reset/send-verification returns503;
+UI states this. Tests inject memory mail capture and verify actual library reset
+and email ownership flows. Reset/verification links keep tokens in URL fragments;
+browser tests assert no token enters a request URL. Verification is translated to
+library GET only internally; browser uses same-origin POST. No SMTP, real email,
+merchant, production or telemetry operation was performed.
+
+Test fixtures require empty isolated auth tables, hold test advisory lock and
+track new users. New audit/limit/verification IDs from the exclusively owned run
+are collected for exact-ID cleanup, with no truncate/reset/drop. Cleanup locks
+auth tables, temporarily disables audit USER guard inside one transaction,
+deletes owned IDs/users, restores guards and verifies before commit. Final test
+DB is empty. Development ends with no real accounts; operator creates them next.
+Both DBs have28 public +9 auth tables, eight reviewed migration history entries,
+original public protection and three new auth guard functions/triggers intact.
+
+Residual limits: real email sender not configured, initial operator account not
+yet entered, editor/workflow writes and physical media/scheduler remain later
+subphases. Existing advisories and staging/release gates remain open. The full
+security test suite does not constitute a production penetration test.
+
+Rollback: revert this subphase's application commit to restore prior application
+behavior. Preserve private secret/config and any subsequently provisioned users.
+After committed migration, removing auth schema/grants/data requires an inspected
+and explicitly approved reverse migration/restore. Keep SQL/history intact;
+Git revert alone does not reverse SQL. No deployment or destructive action.

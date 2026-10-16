@@ -69,7 +69,7 @@ test("Drizzle Kit loads the MJS configuration without database credentials", () 
     import config from "./drizzle.config.mjs";
     assert.equal(config.dialect, "postgresql");
     assert.equal(config.dbCredentials, undefined);
-    await import(config.schema);
+    for (const file of config.schema) await import(file);
   `], { encoding: "utf8", env, timeout: 10000 });
   assert.equal(result.status, 0, "Drizzle configuration import failed.");
 });

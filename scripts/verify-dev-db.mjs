@@ -1,3 +1,4 @@
+import { verifyAuthProtection } from "./lib/auth-protection.mjs";
 import assert from "node:assert/strict";
 import pg from "pg";
 import { connectDevOwner } from "./lib/dev-db.mjs";
@@ -30,7 +31,7 @@ try {
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='drizzle' ORDER BY c.relname
   `);
-  assert.equal(validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner }), 7);
+  assert.equal(validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner }), 8);
   const { rows: foreignKeys } = await owner.query(`
     SELECT c.confupdtype, c.confdeltype FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
@@ -46,6 +47,7 @@ try {
   await verifyPageProtection(owner, "tiny_osaka_dev_owner");
   await verifyMediaProtection(owner, "tiny_osaka_dev_owner");
   await verifyPublicReadProtection(owner, "tiny_osaka_dev_owner");
+  await verifyAuthProtection(owner, "tiny_osaka_dev_owner");
   await owner.query("ROLLBACK");
 
   const config = getDatabaseConfig();
@@ -74,7 +76,7 @@ try {
     assert.equal(access.allowed, false);
   }
   await app.query("ROLLBACK");
-  console.log("dev: verified 28 empty owner-owned tables, reviewed 0000-0006 history, 30 RESTRICT FKs and runtime privilege isolation (read-only).");
+  console.log("dev: verified 28 empty owner-owned tables, reviewed 0000-0007 history, 30 RESTRICT FKs and runtime privilege isolation (read-only).");
 } catch {
   console.error("Dev verification failed; no raw errors or credentials logged.");
   process.exitCode = 1;

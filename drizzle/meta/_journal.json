@@ -50,6 +50,13 @@
       "when": 1792132965724,
       "tag": "0006_public_read_path",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792135912129,
+      "tag": "0007_auth_foundation",
+      "breakpoints": true
     }
   ]
 }

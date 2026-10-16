@@ -103,3 +103,22 @@ returned exit 1: the existing nine affected-package entries (five high in the
 braces/micromatch/fast-glob/Next ESLint chain, four moderate in the Drizzle Kit
 esbuild chain). No audit fix --force, override or suggested major downgrade was
 applied. Release remains blocked on a reviewed dependency resolution.
+
+## Phase 3.1 authentication dependency review (2026-10-16)
+
+Approved exact dependencies: better-auth1.7.10 and @better-auth/drizzle-adapter
+1.7.10, both MIT. Registry peer ranges match the existing Next16/React19, pg8 and
+DrizzleORM0.45.4/Kit0.31.11. No auth CLI, mail SDK, QR library or additional
+frontend HTTP dependency was installed. Use library password/session/MFA crypto.
+
+Fresh full npm audit returned exit1 with the existing nine affected-package
+entries (5 high ESLint chain,4 moderate Drizzle Kit/esbuild chain).
+npm audit --omit=dev now returns exit1 with those4 moderate entries because
+Better Auth declares Drizzle Kit as an optional peer; npm marks the already
+installed dev tool chain devOptional. This is a change in runtime audit exposure
+and must not be reported as a clean --omit=dev audit.
+npm audit --omit=dev --omit=optional returned zero findings. That additional
+result diagnoses the optional peer chain; it is not a production installation
+policy or an approval to bypass the standard audit. No package was omitted,
+removed, downgraded or force-fixed. Deployment installation policy and existing
+advisory resolution remain separate reviewed release work.

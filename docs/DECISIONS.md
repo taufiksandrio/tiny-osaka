@@ -947,3 +947,39 @@ browser bundle check and migration/verifier/no-op checks passed. Lighthouse fina
 mobile: home99/menu98/product90; accessibility100, best practices100, SEO60
 (noindex). Both local DBs empty, history0000-0006 intact. Full dev audit remains
 9 affected-package entries, release gates open. Full evidence: SECURITY_AND_QA.md.
+
+## ADR-025 - Phase 3.1 authentication (approved 2026-10-16)
+
+User approved Better Auth1.7.10 and Drizzle adapter1.7.10 (MIT), new auth schema/
+limited grants, login/admin/security/reset UI,24h absolute+1h idle sessions,
+internal provisioning, rate limits, CSRF, append-only audit and optional Owner MFA.
+Branch feat/phase3-1-auth is based on merged main d323c80. User's standing
+per-subphase branch/commit/push instruction authorizes Git completion after QA.
+No merge, deployment, production or merchant/email operation is authorized.
+
+Auth.js Credentials was considered: it requires more custom password/reset
+persistence logic. Better Auth provides the credential/reset/MFA primitives;
+its rolling session default does not by itself satisfy the approved absolute
+and idle limits. We disable refresh/cache and enforce those limits in the server
+gate with database clock/atomic activity updates, plus a24h SQL expiry constraint
+and immutable session identity trigger.
+
+Nine cms_auth tables are separate from the28 public tables. Runtime roles have
+only needed auth grants, roles read-only and audit INSERT(user_id,event) only.
+User/account creation is a trusted local CLI; hashing is library-owned. No public
+signup, social login, account linking or client role update route is allowed.
+
+Token links use fragments and browser POST bodies; Better Auth verify-email GET
+is translated internally, without a token-bearing HTTP URL. Secure cookie is
+enforced for HTTPS; local HTTP is loopback-only. Config rejects remote origins.
+A private generated auth secret file is ignored and owner-ACL restricted.
+
+Real email provider remains unselected. Runtime sender is absent and fails
+closed; only tests use memory mail capture. No real account or verified-email
+claim is fabricated. Editor/workflow integration remains the next approved task.
+
+ADR-025 acceptance:107 unit,154 integration and318 E2E passed, with lint/build,
+bundle secret check, dev/test migration no-op repeats, dev verifier and four
+connectivity cases. Auth runtime smoke passed; real account awaits operator input.
+Audit remains9 total,4 under omit=dev via optional peer; release gates remain
+open. Real email delivery and content editor are not claimed. See QA details.

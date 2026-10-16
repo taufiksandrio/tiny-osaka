@@ -55,9 +55,9 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
   }
 });
 
-test("accepts reviewed media baseline and public read final state", () => {
-  assert.equal(validateDevMigrationState(state(6)), 6);
+test("accepts reviewed public baseline and auth final state", () => {
   assert.equal(validateDevMigrationState(state(7)), 7);
+  assert.equal(validateDevMigrationState(state(8)), 8);
 });
 
 test("rejects absent, reordered, partial or modified migration history", () => {
@@ -66,7 +66,7 @@ test("rejects absent, reordered, partial or modified migration history", () => {
     s => { s.history[1].created_at = "1"; }, s => { s.history.push(s.history[1]); },
     s => { s.history = [s.history[1]]; }, s => { s.history.pop(); s.history.pop(); },
   ]) {
-    const s = state(7); mutate(s);
+    const s = state(8); mutate(s);
     reject(() => validateDevMigrationState(s));
   }
 });
@@ -80,7 +80,7 @@ test("rejects ownership, relation kind and unexpected/missing objects", () => {
     s => { s.metadataOwner = "tiny_osaka_test_owner"; },
     s => { s.objects[0].owner = "tiny_osaka_test_owner"; },
   ]) {
-    const s = state(7); mutate(s);
+    const s = state(8); mutate(s);
     reject(() => validateDevMigrationState(s));
   }
 });

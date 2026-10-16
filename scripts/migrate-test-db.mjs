@@ -1,3 +1,4 @@
+import { verifyAuthProtection } from "./lib/auth-protection.mjs";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { applyReviewedMigration } from "./lib/apply-reviewed-migration.mjs";
@@ -32,7 +33,8 @@ const checkHistory = async (client) => {
   if (state >= 3) await verifyCatalogProtection(client, "tiny_osaka_test_owner", state);
   if (state >= 5) await verifyPageProtection(client, "tiny_osaka_test_owner");
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner");
-  if (state === 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner");
+  if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner");
+  await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7 });
   return state;
 };
 
@@ -45,16 +47,16 @@ try {
   // Preserve the original test lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210982)");
   const initialState = await checkHistory(client);
-  if (initialState === 7) {
-    console.log("test: reviewed 0000-0006 already applied; no changes made.");
+  if (initialState === 8) {
+    console.log("test: reviewed 0000-0007 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 7) throw new TestMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 8) throw new TestMigrationPlanError("Migration final state verification failed.");
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new TestMigrationPlanError("Migration starting state changed.");
     });
-    console.log("test: applied 0006_public_read_path; 28 tables owned by tiny_osaka_test_owner.");
+    console.log("test: applied 0007_auth_foundation; 28 public and 9 auth tables owned by tiny_osaka_test_owner.");
   }
 } catch (error) {
   console.error(error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError

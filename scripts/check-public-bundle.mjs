@@ -4,8 +4,9 @@ import path from "node:path";
 
 const secrets = [];
 for (const [key, value] of Object.entries(process.env)) {
-  if (!/DATABASE_URL$/.test(key) || !value) continue;
+  if (!/(DATABASE_URL$|BETTER_AUTH_SECRET$)/.test(key) || !value) continue;
   secrets.push(value);
+  if (key === "BETTER_AUTH_SECRET") continue;
   const password = decodeURIComponent(new URL(value).password);
   if (password.length >= 8) secrets.push(password);
 }
@@ -23,4 +24,4 @@ const scan = async directory => {
   }
 };
 await scan(".next/static");
-console.log(`Public bundle check passed: ${checked} assets, no loaded database URLs/passwords.`);
+console.log(`Public bundle check passed: ${checked} assets, no loaded database URLs/passwords or auth secret.`);
