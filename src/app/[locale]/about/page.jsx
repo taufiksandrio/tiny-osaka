@@ -1,11 +1,14 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { getPageContent, getPageMetadata } from "@/features/public-site/page-content";
 import PageIntro from "@/features/public-site/components/PageIntro";
 
-export const generateMetadata = async ({ params }) => getPageMetadata((await params).locale, "about");
+export const generateMetadata = async ({ params }) => usesPublishedContent() ? publishedMetadata("about", (await params).locale) : getPageMetadata((await params).locale, "about");
 
 const AboutPage = async ({ params }) => {
   const { locale } = await params;
+  if (usesPublishedContent()) return <PublishedPage pageKey="about" locale={locale} />;
   const copy = getPageContent(locale);
   return (
     <main id="main-content" tabIndex={-1}>

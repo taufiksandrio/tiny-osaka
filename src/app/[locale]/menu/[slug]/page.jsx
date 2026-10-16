@@ -1,3 +1,5 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedProduct, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { content } from "@/features/public-site/content";
@@ -13,10 +15,11 @@ const getSample = (slug) => {
   return item;
 };
 
-export const generateStaticParams = () => sampleMenu.map(({ slug }) => ({ slug }));
+export const generateStaticParams = () => usesPublishedContent() ? [] : sampleMenu.map(({ slug }) => ({ slug }));
 
 export const generateMetadata = async ({ params }) => {
   const { locale, slug } = await params;
+  if (usesPublishedContent()) return publishedMetadata("menu", locale, slug);
   const copy = getPageContent(locale);
   const item = getSample(slug);
   return { title: `${content[locale].itemLabel} ${item.number} — ${copy.pages.menu.label} | Tiny Osaka`, description: item.details[locale] };
@@ -24,6 +27,7 @@ export const generateMetadata = async ({ params }) => {
 
 const ProductPage = async ({ params }) => {
   const { locale, slug } = await params;
+  if (usesPublishedContent()) return <PublishedProduct locale={locale} slug={slug} />;
   const copy = getPageContent(locale);
   const siteCopy = content[locale];
   const item = getSample(slug);

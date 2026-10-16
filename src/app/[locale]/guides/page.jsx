@@ -1,12 +1,15 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { getPageContent, getPageMetadata } from "@/features/public-site/page-content";
 import { sampleGuides } from "@/features/public-site/fixtures/guides";
 import PageIntro from "@/features/public-site/components/PageIntro";
 
-export const generateMetadata = async ({ params }) => getPageMetadata((await params).locale, "guides");
+export const generateMetadata = async ({ params }) => usesPublishedContent() ? publishedMetadata("guides", (await params).locale) : getPageMetadata((await params).locale, "guides");
 
 const GuidesPage = async ({ params }) => {
   const { locale } = await params;
+  if (usesPublishedContent()) return <PublishedPage pageKey="guides" locale={locale} />;
   const copy = getPageContent(locale);
   return (
     <main id="main-content" tabIndex={-1}>

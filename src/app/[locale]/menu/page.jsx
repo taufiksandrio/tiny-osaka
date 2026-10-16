@@ -1,3 +1,5 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import { content } from "@/features/public-site/content";
 import { getPageContent, getPageMetadata } from "@/features/public-site/page-content";
 import { sampleMenu } from "@/features/public-site/fixtures/menu";
@@ -5,10 +7,11 @@ import PageIntro from "@/features/public-site/components/PageIntro";
 import MenuCard from "@/features/public-site/components/MenuCard";
 import OrderingNotice from "@/features/public-site/components/OrderingNotice";
 
-export const generateMetadata = async ({ params }) => getPageMetadata((await params).locale, "menu");
+export const generateMetadata = async ({ params }) => usesPublishedContent() ? publishedMetadata("menu", (await params).locale) : getPageMetadata((await params).locale, "menu");
 
 const MenuPage = async ({ params }) => {
   const { locale } = await params;
+  if (usesPublishedContent()) return <PublishedPage pageKey="menu" locale={locale} />;
   const copy = getPageContent(locale);
   return (
     <main id="main-content" tabIndex={-1}>

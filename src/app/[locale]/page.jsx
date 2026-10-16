@@ -1,3 +1,5 @@
+import { usesPublishedContent } from "@/server/public/data.mjs";
+import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/features/public-site/content";
@@ -5,8 +7,11 @@ import { sampleMenu } from "@/features/public-site/fixtures/menu";
 import MenuCard from "@/features/public-site/components/MenuCard";
 import OrderingNotice from "@/features/public-site/components/OrderingNotice";
 
+export const generateMetadata = async ({ params }) => usesPublishedContent() ? publishedMetadata("home", (await params).locale) : {};
+
 const HomePage = async ({ params }) => {
   const { locale } = await params;
+  if (usesPublishedContent()) return <PublishedPage pageKey="home" locale={locale} />;
   if (!Object.hasOwn(content, locale)) notFound();
   const copy = content[locale];
 

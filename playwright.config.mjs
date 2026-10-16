@@ -13,7 +13,7 @@ export default defineConfig({
     ["html", { open: "never" }],
     ["json", { outputFile: "test-results/results.json" }],
   ],
-  outputDir: "test-results",
+  outputDir: "test-results/fixtures",
   use: {
     baseURL: "http://127.0.0.1:3030",
     browserName: "chromium",
@@ -31,6 +31,6 @@ export default defineConfig({
     url: "http://127.0.0.1:3030/id",
     reuseExistingServer: false,
     timeout: 60000,
-    env: { NEXT_TELEMETRY_DISABLED: "1" },
+    env: { NEXT_TELEMETRY_DISABLED: "1", PUBLIC_CONTENT_SOURCE: "fixture", PUBLIC_DATABASE_TARGET: "dev" },
   },
 });
