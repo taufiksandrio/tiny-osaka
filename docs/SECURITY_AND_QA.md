@@ -1096,3 +1096,76 @@ configuration, content and applied 0010/0011 SQL, journal/snapshots, manifests a
 protection verifiers. Do not delete applied migrations or revert the entire Git
 change blindly. Any database privilege reversal requires a separately reviewed
 forward migration. Merge/deployment still require separate authorization.
+
+## Phase 3.5 scheduled publishing — local QA (2026-10-17)
+
+Branch `feat/phase3-5-scheduled-publishing`, based on the Phase 3.4 media branch
+while PR12 remains open. The new PR must target that branch, then be retargeted
+to main after the prerequisite merges. No merge or deployment is performed.
+
+Executed successfully:
+
+- `npm run lint` and `npm run build` (Next.js 16.4.1).
+- `node --conditions=react-server --test tests/unit/*.test.mjs`: 118 passed.
+- `node --conditions=react-server --env-file=.env.local
+  --env-file=.env.test-migrator.local --env-file=.env.test.local
+  --env-file=.env.cms.local --test --test-concurrency=1
+  tests/integration/*.test.mjs`: 191 passed, zero failed/skipped.
+- `npm run test:publishing-e2e`: 12 passed across desktop, 390px and 320px,
+  with axe accessibility, overflow checks and inspected queue screenshots.
+- `npm run test:e2e`: 222 public fixture cases passed.
+- `npm run test:cms-pages-e2e`: 18 passed; `npm run test:cms-catalog-e2e`:
+  12 passed; `npm run test:cms-media-e2e`: 6 passed; `npm run test:auth-e2e`:
+  18 passed. The equivalent direct Node runner commands loaded the same explicit
+  isolated environment files.
+- `npm run test:published-e2e` (equivalent direct Node runner): 72 published
+  content cases and 6 empty-database cases passed on the repeated full run.
+- `npm run db:migrate:test` and `npm run db:migrate:dev`: reviewed 0012/0013
+  applied locally; repeat invocations made no changes. Dev content counts were
+  preserved under locks. Final history: 14 entries, 30 public and 9 auth tables.
+- `node --env-file=.env.local --env-file=.env.auth.local
+  --env-file=.env.cms.local --env-file=.env.test.local
+  scripts/check-public-bundle.mjs`: 32 public assets scanned; no loaded database
+  URL/password or auth secret found.
+- `npm audit --json`: 9 existing advisories, 5 high and 4 moderate. These remain
+  release blockers; no dependency upgrade/audit-fix was included.
+
+New integration coverage uses real synthetic authenticated Owner/Staff accounts
+and isolated CMS connections: anonymous/Staff/forged-role denial, exact approved
+version/hash, malformed/past/out-of-range times, duplicate targets, optimistic
+cancellation/audit, future-job denial, due page/catalog publication, manual and
+archive cancellation, disabled Owner, changed live baseline, rollback/retry and
+third-attempt failure, immutable job/audit denials, and two concurrent workers
+publishing only once. Retry fault injection is confined to a rolled-back test
+owner transaction; no development worker is started. Browser cases cover both
+page/catalog forms, queue/history, revision links, cancellation and CSRF.
+
+Initial QA findings were corrected: a membership FOR SHARE read needed forbidden
+auth UPDATE permission (removed the lock; grants stayed read-only), three new
+foreign keys needed ON UPDATE RESTRICT (forward migration0013), a test assumed
+created_at order inside one transaction, raw SQL timestamps needed Date parsing,
+and shadcn card titles needed semantic headings. No prior applied SQL was edited.
+The first sandboxed build could not read private .env.local; the verified build
+was rerun with authorized local access. A legacy CMS browser case hit its 30s
+timeout during concurrent suites; the full CMS suite passed when rerun sequentially.
+One published-content navigation initially failed with Chromium ERR_NO_BUFFER_SPACE;
+the repeated full suite passed all 78 cases without changing its configuration.
+Final queue review also prioritizes
+all active jobs ahead of capped history and serializes timestamps as ISO UTC before
+sending them to browsers; the focused integration rerun passed all 12 cases.
+The final shadcn scheduling browser rerun passed all 12 cases on the final build.
+Final browser total: 366 passed across the seven suites, with retries disabled.
+
+Security/SEO: Owner identity and enabled membership are checked server-side;
+exact Origin, JSON body limits and strict input fields are enforced. Public
+read grants, existing sessions and approval/hash/media rules remain intact.
+Admin queue inherits noindex; scheduled content does not enter public pages or
+SEO outputs before the atomic approved publication. No Restaurant schema added.
+
+Not executed: staging QA, Lighthouse/CWV, production migration/deployment,
+Railway linking/cloud operations, live merchant calls, real email, FFmpeg/video
+execution, real development content publication or background-service setup.
+Worker supervision and external alert delivery remain operational follow-ups.
+Pending jobs require an explicitly started worker. Rollback instructions:
+PHASE3_PLAN.md and OPERATIONS.md; stop worker, restore application, retain all
+applied migrations/history, jobs/events, content, media and private configuration.

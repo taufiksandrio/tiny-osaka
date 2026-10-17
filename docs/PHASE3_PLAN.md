@@ -233,3 +233,52 @@ UPDATE privilege. Forward migration 0011 removes only that redundant lock from
 the immutable-poster read. All mutation guards remain; no UPDATE grant on assets
 is added. Prior applied SQL and history stay unchanged. Runtime pools are shared
 per process across route bundles to respect the existing connection limits.
+
+## Subphase 3.5: durable scheduled publication
+
+Approved on 2026-10-17, branch `feat/phase3-5-scheduled-publishing`.
+Owner schedules an exact approved page/catalog version and content hash. Staff
+can read the queue but cannot schedule/cancel through forged API requests.
+Shadcn forms use an explicitly labeled WIB wall clock; storage is UTC.
+`/admin/publications` shows active jobs first, then recent history (100 total), safe failure reasons, retries,
+revision links and optimistic Owner cancellation. The screen refreshes every
+30 seconds while open. Closing the browser does not cancel a job.
+
+Scheduling is an overlay on the approved revision, not an edit of its frozen
+status/hash/approval. The root remains approved until successful publication.
+One pending job per target; changing a due date requires cancel then schedule.
+Due time must be future and at most 365 days away. The job seals the live pointer
+at scheduling; a later publication makes that job obsolete. Manual publication
+cancels pending jobs for that target, including an idempotent publish of its live
+revision. Archiving cancels only that revision's pending job. Prior public content
+remains until publication commits successfully.
+
+Worker rechecks the original scheduling Owner's enabled DB membership, exact
+approved revision and live baseline. It reuses existing hash/receipt/approval
+workflows, rather than inventing a system Owner. Publication, job completion and
+audit share one transaction. A shared advisory lock precedes target/root locks
+on scheduler, worker, manual publish and archive. Concurrent workers cannot
+double-publish; a crash rolls back or commits the entire result. Transient
+persistence failures get at most three attempts, delayed 30 then 60 seconds.
+Unavailable Owner/revision or changed live publication fails terminally. A DB
+outage before job update leaves the durable job pending for a later invocation.
+
+Migration 0012 adds jobs/events, frozen identity/append-only audit guards and
+least-privilege CMS grants. QA found missing ON UPDATE RESTRICT on the three new
+foreign keys; forward migration 0013 corrects them without rewriting 0012.
+Reviewed runners accept history states 12, 13 and 14 with exact hashes/ownership.
+Dev migration preserves content counts under locks. No auth write grant, public
+table read, dependency, Railway action, production migration or deployment.
+
+Foreground worker commands are documented in OPERATIONS.md. No actual development
+jobs are run and no service/cron/Task Scheduler is registered in this phase;
+tests execute the worker only against synthetic isolated test fixtures. A future
+approved operational setup must keep it running and monitor delays/failures.
+Email delivery/domain and FFmpeg installation remain separate unresolved tasks.
+
+Rollback: stop the worker, then restore the previous application commit and
+rebuild while retaining migrations 0012/0013, snapshots, verifiers and database
+history. Retain jobs/events and existing content/media/configuration. Pending
+jobs stay inert while the worker is stopped. Reconcile or cancel pending jobs
+before restarting it. Removing tables/grants requires a separately reviewed
+reverse migration; never rewrite an applied SQL file or delete migration history.

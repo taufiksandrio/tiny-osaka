@@ -10,7 +10,7 @@ const artifacts = () => ({ journal: JSON.parse(readFileSync("drizzle/meta/_journ
 const state = (length) => ({
   metadataOwner: "tiny_osaka_test_owner",
   history: reviewedMigrations.slice(0, length).map(row => ({ hash: row.hash, created_at: String(row.when) })),
-  objects: (allTables).map(name => ({ name, kind: "r", owner: "tiny_osaka_test_owner" })),
+  objects: (length >= 13 ? allTables : allTables.filter(name => !["publication_jobs", "publication_events"].includes(name))).map(name => ({ name, kind: "r", owner: "tiny_osaka_test_owner" })),
   relations: ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"]
     .map((name, idx) => ({ name, kind: ["r", "S", "i"][idx], owner: "tiny_osaka_test_owner" })),
 });
@@ -61,7 +61,7 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
 
 test("accepts reviewed catalog baseline and media final state", () => {
   assert.equal(validateTestMigrationState(state(12)), 12);
-  assert.equal(validateTestMigrationState(state(10)), 10);
+  assert.equal(validateTestMigrationState(state(14)), 14);
 });
 
 test("rejects absent, reordered, partial or modified migration history", () => {
@@ -70,7 +70,7 @@ test("rejects absent, reordered, partial or modified migration history", () => {
     s => { s.history[1].created_at = "1"; }, s => { s.history.push(s.history[1]); },
     s => { s.history = [s.history[1]]; }, s => { s.history.pop(); s.history.pop(); },
   ]) {
-    const s = state(10); mutate(s);
+    const s = state(12); mutate(s);
     reject(() => validateTestMigrationState(s));
   }
 });
@@ -82,7 +82,7 @@ test("rejects ownership, relation kind and unexpected/missing objects", () => {
     s => { s.relations[0].owner = "postgres"; }, s => { s.relations[1].kind = "r"; },
     s => { s.relations.pop(); }, s => { s.metadataOwner = "postgres"; },
   ]) {
-    const s = state(10); mutate(s);
+    const s = state(12); mutate(s);
     reject(() => validateTestMigrationState(s));
   }
 });

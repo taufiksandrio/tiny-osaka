@@ -1,4 +1,5 @@
 "use client";
+import { SchedulePanel } from "../publishing/Publications";
 import { useEffect, useState } from "react";
 import { CatalogContext, catalogRequest } from "./client";
 import { CatalogForm, orderField } from "./CatalogForm";
@@ -83,6 +84,7 @@ const CatalogEditor = ({ initial, role }) => {
           fields={[{ name: "slug", label: "Slug produk" }, { name: "categoryId", label: "Kategori produk", options: [{ value: "", label: "Pilih kategori" }, ...graph.categories.map(row => ({ value: row.id, label: row.slug }))] }, orderField]} /> : <p className="text-sm text-muted-foreground">Tambahkan kategori sebelum membuat produk.</p>}
       </CardContent></Card>
     </div>
+    <SchedulePanel domain="catalog" revision={revision} role={role} disabled={busy || unsaved} />
     <CatalogActions graph={graph} role={role} busy={busy} disabled={unsaved} onBusy={setBusy} onChange={next => { setGraph(next); setChanges({}); setReadiness(null); }} onMessage={setMessage} />
   </div></CatalogContext.Provider>;
 };

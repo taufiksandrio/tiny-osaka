@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true } = {}) => {
+export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true, publishing = true } = {}) => {
   const cms = owner.replace("_owner", "_cms"), app = owner.replace("_owner", "_app");
   const role = (await client.query("SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,rolcanlogin,rolconnlimit,(SELECT count(*)::int FROM pg_auth_members WHERE member=r.oid) AS memberships FROM pg_roles r WHERE rolname=$1", [cms])).rows[0];
   assert.ok(role, "Provision isolated CMS role first.");
@@ -19,6 +19,7 @@ export const verifyCmsProtection = async (client, owner, { absent = false, catal
     assert.deepEqual([...constraint.matchAll(/'([^']+)'/g)].map(match => match[1]).sort(), ["create", "save", "clone", "submit", "approve", "reject", "publish", "archive"].sort());
   }
   if (media) { inserts.push("media_assets", "media_events"); updates.push("page_media_refs", "catalog_media_refs"); }
+  if (publishing) { reads.push("publication_jobs", "publication_events"); inserts.push("publication_jobs", "publication_events"); updates.push("publication_jobs"); }
   const tables = (await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows;
   for (const { tablename } of tables) {
     for (const [privilege, allowed] of [["SELECT", reads], ["INSERT", inserts], ["UPDATE", updates], ["DELETE", media ? ["page_media_refs", "catalog_media_refs"] : []], ["TRUNCATE", []], ["TRIGGER", []], ["REFERENCES", []]]) {

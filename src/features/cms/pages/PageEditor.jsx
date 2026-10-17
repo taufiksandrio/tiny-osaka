@@ -1,4 +1,5 @@
 "use client";
+import { SchedulePanel } from "../publishing/Publications";
 import { useEffect, useState } from "react";
 import { pageTemplateFields, pageDefinitions } from "@/server/pages/templates.mjs";
 import RichTextEditor from "./RichTextEditor";
@@ -113,6 +114,7 @@ const PageEditor = ({ initial, role }) => {
         else { setRevision(previous => ({ ...previous, version })); setMessage("Revisi berubah lagi. Salin perubahan sebelum memuat ulang."); }
       }}
       onDirty={(key, value) => setMediaDirty(previous => ({ ...previous, [key]: value }))} />
+    <SchedulePanel domain="page" revision={revision} role={role} disabled={busy || unsaved} />
     <RevisionActions revision={revision} role={role} disabled={busy || unsaved} onMessage={setMessage} onBusy={setBusy}
       onChange={row => setRevision(previous => ({ ...previous, ...row, isLive: row.status === "published" || previous.isLive }))} />
   </div>;

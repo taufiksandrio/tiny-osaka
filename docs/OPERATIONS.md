@@ -11,6 +11,40 @@ Target < Rp250,000/month, not guaranteed. Propose compact Linux VPS + Node.js Ne
 ## Jobs
 Durable scheduled publishing, retry queue and observability. Record job state in DB, run via cron/worker with locking; idempotent jobs; alert when scheduled publication is late or sync failed. Avoid duplicate job dispatch after restart.
 
+Phase 3.5 implements a foreground local dev/test worker; it is not automatically
+started by Next.js. Scheduled jobs remain pending until it is explicitly run.
+After separately authorizing execution against local development content:
+
+```powershell
+npm run publishing:once
+npm run publishing:watch
+```
+
+Both load ignored `.env.cms.local`, use the isolated local CMS role (one DB
+connection) and reject cloud/production URLs. `--once` consumes at most 25 due
+jobs; `--watch` repeats bounded batches every 5 seconds. Ctrl+C stops the worker.
+No browser session or migrator/admin credential is used. No public worker HTTP
+endpoint exists. Never expose a worker trigger to the internet.
+
+Synthetic test-only execution may use explicit environment files:
+
+```powershell
+$env:PUBLIC_DATABASE_TARGET = 'test'
+node --conditions=react-server --env-file=.env.cms.local scripts/publication-worker.mjs --once
+Remove-Item Env:PUBLIC_DATABASE_TARGET
+```
+
+Use only after test fixtures are cleaned; do not mix concurrent QA runs. Test
+and dev credentials must remain in private local files. Do not log environment
+values. The CLI emits job ID/version/status, attempt count, next time and safe
+failure code; database exceptions are redacted. Monitor nonzero process exits,
+terminal failed jobs, and `status='scheduled' AND next_attempt_at < now()` delayed
+jobs through the authenticated queue or trusted read-only operator query. Failed
+jobs require investigation and a new Owner schedule; no infinite retry/reset UI.
+There is no configured external alert channel yet. Review late jobs after downtime
+before restarting a worker. Service/cron registration, production credentials,
+monitoring delivery and any Railway linking/deployment require separate approval.
+
 ## Backup
 
 Phase 3.4 local media lives under `.media/dev` (development) and `.media/test`

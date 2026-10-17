@@ -133,7 +133,7 @@ test("catalog has no persistent test fixtures and all tables have the NOLOGIN ow
     }
     const { rows } = await client.query(`SELECT pg_get_userbyid(c.relowner) AS owner FROM pg_class c
       JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'`);
-    assert.equal(rows.length, 28);
+    assert.equal(rows.length, 30);
     assert.ok(rows.every(row => row.owner === "tiny_osaka_test_owner"));
   } finally { await client.end(); }
 });
