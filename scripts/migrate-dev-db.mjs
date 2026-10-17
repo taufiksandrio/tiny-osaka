@@ -1,3 +1,4 @@
+import { verifyCmsProtection } from "./lib/cms-protection.mjs";
 import { verifyAuthProtection } from "./lib/auth-protection.mjs";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -35,6 +36,7 @@ const checkHistory = async (client) => {
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_dev_owner");
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_dev_owner");
   await verifyAuthProtection(client, "tiny_osaka_dev_owner", { absent: state === 7 });
+  await verifyCmsProtection(client, "tiny_osaka_dev_owner", { absent: state === 8 });
   return state;
 };
 
@@ -47,12 +49,12 @@ try {
   // Preserve the original dev lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210983)");
   const initialState = await checkHistory(client);
-  if (initialState === 8) {
-    console.log("dev: reviewed 0000-0007 already applied; no changes made.");
+  if (initialState === 9) {
+    console.log("dev: reviewed 0000-0008 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 8) throw new DevMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 9) throw new DevMigrationPlanError("Migration final state verification failed.");
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new DevMigrationPlanError("Migration starting state changed.");
       await client.query("LOCK TABLE " + allTables.map(table => "public." + table).join(",") + " IN ACCESS EXCLUSIVE MODE");
@@ -61,7 +63,7 @@ try {
         if (row.populated) throw new DevMigrationPlanError("Refusing dev migration: content is not empty; inspect data before proceeding.");
       }
     });
-    console.log("dev: applied 0007_auth_foundation; 28 public and 9 auth tables owned by tiny_osaka_dev_owner.");
+    console.log("dev: applied 0008_cms_pages_access; 28 public and 9 auth tables owned by tiny_osaka_dev_owner.");
   }
 } catch (error) {
   console.error(error instanceof DevDatabaseGuardError || error instanceof DevMigrationPlanError

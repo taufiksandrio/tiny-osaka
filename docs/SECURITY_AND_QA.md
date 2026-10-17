@@ -648,3 +648,83 @@ Rollback via revert of this application's policy commit; preserve any newly
 created account and existing password hashes. This does not reset/delete accounts
 or require SQL rollback. Account deletion or forced password changes need separate
 explicit scope/approval.
+
+## Phase 3.2 CMS page acceptance - 2026-10-17 (ADR-027)
+
+Branch feat/phase3-2-cms-pages is based on main b1753db. Changed modules: admin
+page/revision routes, authenticated CMS JSON routes, CMS request/database/service
+composition, structured editor/preview/actions, scoped styles, page conflict
+mapping, audit action constraint/schema, migration0008/snapshot/journal, local
+role provisioning, migration guards/verifier, tests and operational documentation.
+No added dependency/version or package-lock change. Development content/accounts
+were not seeded/changed by QA. The user ran local CMS role provisioning via the
+hidden administrator password prompt; random CMS credentials stay private/ignored.
+
+Actual commands and results:
+
+- npm.cmd ci --ignore-scripts --no-audit --no-fund: passed; restored missing local
+  packages using the unchanged lockfile. Existing ESLint peer warnings and optional
+  cleanup EPERM warning were emitted; build/lint subsequently worked.
+- npm.cmd run db:migrate:test and npm.cmd run db:migrate:dev:0008 applied to
+  local databases only. Repeats passed as no-ops. Original0000-0007 SQL preserved.
+- npm.cmd run lint: passed with zero warnings on the final source.
+- npm.cmd run build: passed; public/admin routes and CMS HTTP handlers compiled.
+- node --conditions=react-server --test tests/unit/*.test.mjs:111 passed.
+- node --conditions=react-server --env-file=.env.local
+  --env-file=.env.test-migrator.local --env-file=.env.test.local
+  --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/*.test.mjs:
+  163 passed. Local ignored report: test-results/integration-phase3-2.tap.
+- npm.cmd run test:cms-pages-db: final9 passed. Eight overlap the full integration
+  run; an added two-connection CMS transaction test confirms one winner, one
+  REVISION_CONFLICT, version increment once and no losing-save audit row.
+- npm.cmd run test:cms-pages-e2e:15 passed, five each desktop/mobile390/small320.
+- npm.cmd run test:auth-e2e:18 passed, six each viewport.
+- npm.cmd run test:e2e:222 public fixture cases passed.
+- npm.cmd run test:published-e2e:72 published and6 empty-state cases passed.
+- Browser total333; final reports have no failed/skipped/flaky cases and retries0.
+- node --env-file=.env.dev-migrator.local --env-file=.env.local
+  scripts/verify-dev-db.mjs: passed;28 empty public tables, history0000-0008,
+  30 RESTRICT FKs, auth/CMS guards and public privilege isolation checked.
+- node --env-file=.env.local --env-file=.env.cms.local --env-file=.env.auth.local
+  scripts/check-public-bundle.mjs:24 assets passed; no loaded private URL/password
+  or auth secret found in browser assets.
+- setup-cms.ps1 PowerShell parser check: passed. git diff --check: passed.
+- Snapshot review: only page_workflow_events constraint changes from0007;
+  prevId chain is correct. Private envs and QA artifacts are Git-ignored.
+- Final read-only test verifier:28 public and9 auth tables empty; CMS/auth grants
+  verified after all fixtures. Staged SQL bytes match the applied migration hash.
+  Staged diff secret scan against configured private values: passed.
+- npm.cmd audit --json: exit1, existing9 affected-package entries,5 high/4 moderate.
+- npm.cmd audit --omit=dev --json: exit1, existing4 moderate optional-peer-chain
+  entries. No automatic fix, removal, downgrade or release exception applied.
+- Lighthouse/staging/production QA not run; earlier measurements are historical.
+
+Corrected initial failures: the migration verifier originally requested an invalid
+column DELETE privilege, and the new manifest entry was initially missing because
+of CRLF matching. Failed migration transactions rolled back before successful
+application; applied SQL was not rewritten. Full integration initially failed
+three old assertions expecting eight history rows; updated to the reviewed nine.
+Browser tests initially used the wrong login label. Prefilled editor textarea
+labels then exposed a real selector/accessibility issue, corrected with explicit
+label/id relationships. One login exceeded the default5s expectation while a
+second browser suite ran; final CMS acceptance used15s login expectations and ran
+on its own, without retries or reduced test coverage.
+
+Security acceptance: anonymous/read/write denial, trusted Origin and bounded JSON,
+forged Staff Owner actions, unknown input/role fields, actual expired idle session,
+server membership override, frozen approval/hash, stale and simultaneous saves,
+literal script-like text, immutable live content, clone without approval, Owner
+rejection/publication/archive, atomic draft audits and role grants are covered.
+Existing auth regression covers24h absolute expiry/MFA/reset/session revocation.
+Public reads remain published-only; page/SEO previews remain noindex and no business
+structured data is introduced. Media bytes/storage and scheduling remain deferred.
+
+Test runners pass only application/auth/CMS credentials to browser/server children,
+never migrator/admin credentials. Synthetic content/account IDs are cleaned under
+test-only guards, with trigger protection restored before commit. Trace artifacts
+may contain synthetic credentials; they remain ignored and must not be published.
+
+Rollback: revert the application commit while protecting private configuration,
+accounts/content and SQL history. Grant/role/constraint reversal requires a separate
+inspected approved reverse migration. No merge, deploy, merchant or real email
+operation is claimed; dependency findings still block release readiness.

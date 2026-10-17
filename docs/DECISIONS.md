@@ -998,3 +998,25 @@ hidden terminal prompt. Optional email/display-name script parameters allow
 prefilling non-secret account details while keeping the password off arguments.
 Rollback application policy via commit revert; do not silently reset an already
 created account or delete data. Existing hashes work without rehash/migration.
+
+## ADR-027 - Phase 3.2 fixed-template CMS pages (approved 2026-10-17)
+
+User approved page editor, bilingual structured rich text, preview and exact
+revision review/approval/publication/archive on feat/phase3-2-cms-pages. Base main
+b1753db includes ADR-026. Existing Next/React/Better Auth/Drizzle versions remain
+locked; no editor dependency is installed. A native structured editor preserves
+the approved bounded document contract. A raw HTML editor would require a separate
+parser/sanitizer and additional validation; it is not selected.
+
+Dedicated local dev/test CMS database logins isolate page writes from public/auth
+credentials and migrator privileges. User ran the administrator provisioning
+script, which generated private random passwords; migration0008 grants only page
+workflow access and read-only membership/media metadata. Public readers retain
+published-only function access and no table grants. Server session/RBAC/Origin
+validation and exact version/hash checks govern HTTP requests. Create/save/clone
+audit rows commit atomically with the page mutation. No account, merchant, cloud,
+production or email operation is included. Scheduling/catalog/media UI follow
+in separately approved subphases. Existing release advisory blockers remain.
+
+Rollback preserves applied SQL/history and private credentials. See
+PHASE3_PLAN.md and SECURITY_AND_QA.md for boundaries and actual verification.

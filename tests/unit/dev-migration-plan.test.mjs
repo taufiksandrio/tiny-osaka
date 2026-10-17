@@ -34,6 +34,7 @@ test("rejects altered SQL hashes, timestamps, order and extra/missing files", ()
     a => { a.files[4].hash = "untrusted-secret"; },
     a => { a.files[5].hash = "untrusted-secret"; },
     a => { a.files[6].hash = "untrusted-secret"; },
+    a => { a.files[8].hash = "untrusted-secret"; },
     a => { a.files[1].folderMillis++; },
     a => { a.files.reverse(); }, a => { a.files.pop(); }, a => { a.files.push(a.files[1]); },
   ]) {
@@ -55,8 +56,8 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
   }
 });
 
-test("accepts reviewed public baseline and auth final state", () => {
-  assert.equal(validateDevMigrationState(state(7)), 7);
+test("accepts reviewed auth baseline and CMS page final state", () => {
+  assert.equal(validateDevMigrationState(state(9)), 9);
   assert.equal(validateDevMigrationState(state(8)), 8);
 });
 
@@ -66,7 +67,7 @@ test("rejects absent, reordered, partial or modified migration history", () => {
     s => { s.history[1].created_at = "1"; }, s => { s.history.push(s.history[1]); },
     s => { s.history = [s.history[1]]; }, s => { s.history.pop(); s.history.pop(); },
   ]) {
-    const s = state(8); mutate(s);
+    const s = state(9); mutate(s);
     reject(() => validateDevMigrationState(s));
   }
 });
@@ -80,7 +81,7 @@ test("rejects ownership, relation kind and unexpected/missing objects", () => {
     s => { s.metadataOwner = "tiny_osaka_test_owner"; },
     s => { s.objects[0].owner = "tiny_osaka_test_owner"; },
   ]) {
-    const s = state(8); mutate(s);
+    const s = state(9); mutate(s);
     reject(() => validateDevMigrationState(s));
   }
 });

@@ -6,7 +6,7 @@ const AdminPage = async () => {
   const actor = await requireAdmin();
   return <main className="auth-panel container" id="main-content" tabIndex={-1}>
     <h1>Beranda CMS</h1><p>Selamat datang, {actor.name}.</p><p>Peran: {actor.role === "owner" ? "Owner" : "Staff"}</p>
-    <p>Pengelolaan konten belum tersedia.</p>
+    <p><Link href="/admin/pages">Kelola halaman website</Link></p>
     {actor.role === "owner" && <p><Link href="/admin/security">Keamanan akun dan MFA</Link></p>}
     {!actor.emailVerified && <p>Email akun belum diverifikasi. Reset email memerlukan verifikasi kepemilikan email dan konfigurasi pengiriman.</p>}
     <LogoutButton />

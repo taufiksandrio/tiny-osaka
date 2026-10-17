@@ -7,6 +7,7 @@ import { loadRevisionMedia } from "../media/references.mjs";
 
 export const pagePersistence = error => {
   if (error instanceof PageContentError) throw error;
+  if (["40001", "40P01"].includes(error.code ?? error.cause?.code)) pageFail("REVISION_CONFLICT", "Revision changed concurrently; reload before retry.");
   pageFail("PERSISTENCE_FAILED", "Page operation failed; no driver details exposed.");
 };
 export const loadPageGraph = async (tx, revision) => {

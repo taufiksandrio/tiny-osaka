@@ -84,3 +84,61 @@ Subphase3.1 implementation and local functional acceptance complete:107 unit,
 applied to both local databases; repeats are no-op and guards/grants verified.
 Real Owner setup awaits terminal input; real email sending and release advisory
 resolution remain pending. See SECURITY_AND_QA.md for exact command results.
+
+## Subphase 3.2: fixed-template page editor and approval
+
+Approved by user on 2026-10-17. Branch: feat/phase3-2-cms-pages, based on
+origin/main b1753db, which includes the six-character CMS password decision.
+Standing per-subphase commit/push permission applies after verification.
+
+Scope: /admin/pages, bilingual fixed-template page editing, bounded structured
+rich text, content preview, exact-version draft save/clone/submit, Owner-only
+approve/reject/publish/archive. Frozen revisions require a new draft; cloning
+never inherits approval. Live content persists until an approved replacement.
+Scheduling, catalog UI, media uploads, email delivery and merchant integration
+are later subphases. Admin/public preview remain noindex.
+
+No added dependency or version change. The editor uses native labelled form
+controls and the existing bounded JSON document contract, rather than HTML
+contentEditable or raw HTML parsing. Paragraph/heading/list blocks and individual
+text spans preserve marks, order and allowlisted internal links. Preview displays
+field content; the public page composition remains owned by its fixed template.
+
+CMS mutations require real server-authenticated sessions, trusted Origin and
+JSON, bounded streamed bodies, exact input fields and database membership recheck.
+Each operation uses a repeatable-read transaction; stale versions/conflicting
+writes are refused. Draft create/save/clone audit writes are atomic with content.
+Existing workflow transitions already record actor, revision and action.
+
+Public/auth runtime credentials are unchanged. scripts/setup-cms.ps1 provisions
+separate dev/test CMS LOGIN roles using an administrator password entered only in
+the operator terminal. Random CMS passwords are written into owner-ACL restricted,
+ignored .env.cms.local. Runtime never receives migrator/admin credentials. CMS
+roles can access only page workflow tables, read immutable media metadata, clone
+page media references, and read role membership. They cannot change accounts,
+roles, catalog, media assets or database/schema objects, delete rows, or truncate.
+Application Owner/Staff RBAC is enforced by the server workflow, not by distinct
+PostgreSQL login roles for each application user.
+
+Migration0008 extends allowed page audit actions and grants the separate CMS
+capabilities. Existing migration files/history, frozen-content triggers and
+published-only public readers are preserved. Setup completed by the user;
+migration applied only to local dev/test databases.
+
+Manual use: restart npm.cmd run dev, sign in through /admin/login and choose
+Kelola halaman website. Select a page, create a draft and save each locale.
+Complete both locales before submit; Owner reviews the frozen candidate before
+approval/publication. Concurrent stale saves retain local unsaved text and ask
+the editor to copy it before reloading. The revision list shows the latest100.
+
+Rollback: revert the application subphase commit while preserving .env.cms.local,
+accounts, content and applied SQL/history. Revoking CMS grants, deleting roles
+or reversing the audit constraint needs an inspected approved reverse migration;
+do not delete an applied migration or reset passwords to roll back UI behavior.
+
+Subphase3.2 local functional acceptance complete: lint/build,111 unit,163 full
+integration regression,9 final focused CMS integration, and333 browser checks
+passed. The focused CMS run includes an additional real two-connection race test
+added after the full regression; eight CMS cases overlap that full run. Migration
+repeats are no-op; public secret scan passed. Existing dependency advisories remain
+release blockers. Exact commands and initial corrected failures: SECURITY_AND_QA.md.
