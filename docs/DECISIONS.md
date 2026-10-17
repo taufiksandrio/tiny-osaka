@@ -1159,3 +1159,16 @@ cloud service, external binary installation, destructive asset action, publicati
 or deployment is included. Sharp 0.35.5 becomes a pinned direct dependency for
 full image inspection and approved logo derivatives. Original source assets stay
 untouched. See PHASE3_PLAN.md and BRAND_ASSETS.md for implementation boundaries.
+
+## ADR-033 — durable Owner-authorized scheduled publishing (2026-10-17)
+
+User approved Phase 3.5 scheduling for exact approved page/catalog revisions,
+shadcn UI, WIB input/display, UTC storage, isolated local migration/QA and a local
+foreground worker. Reuse the persisted real Owner authorization, then recheck
+enabled Owner membership and exact approval at execution. No fabricated Owner,
+public run endpoint or browser-session dependency. Jobs overlay frozen approved
+revisions; manual publication cancels obsolete schedules. Persist live baseline,
+bounded retries and atomic audit under consistent publication locks. Details and
+rollback are in PHASE3_PLAN.md and OPERATIONS.md. No automatic worker startup,
+Railway mutation, deployment, real email or FFmpeg installation is authorized.
+Standing verified commit/push workflow applies; merge/deploy remain separate.

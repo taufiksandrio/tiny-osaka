@@ -38,7 +38,11 @@
     "test:cms-catalog-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/cms-catalog.test.mjs",
     "test:cms-catalog-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-catalog-qa.mjs",
     "test:cms-media-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/cms-media.test.mjs",
-    "test:cms-media-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-media-qa.mjs"
+    "test:cms-media-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-media-qa.mjs",
+    "publishing:once": "node --conditions=react-server --env-file=.env.cms.local scripts/publication-worker.mjs --once",
+    "publishing:watch": "node --conditions=react-server --env-file=.env.cms.local scripts/publication-worker.mjs --watch",
+    "test:publishing-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/publishing.test.mjs",
+    "test:publishing-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-publishing-qa.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.10",

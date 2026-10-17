@@ -25,6 +25,10 @@ export const reviewedMigrations = Object.freeze([
     hash: "f3190657dac792572dbaa38fab48dcaf0ececeac7a9d8c8e537b4711c40ad956" }),
   Object.freeze({ tag: "0011_media_poster_read", when: 1792212600000,
     hash: "bbe0e9ba1926850c601e99063a1f8d4fe7a4fd3fa76f4db7810c41a367bdd14f" }),
+  Object.freeze({ tag: "0012_scheduled_publishing", when: 1792216200000,
+    hash: "1f3909c8dcd91ed5a77ea3a3a3481495f96e8d3ae694599e65115fb2ce794072" }),
+  Object.freeze({ tag: "0013_publication_identity_restrict", when: 1792216260000,
+    hash: "92c63a272f8192c2eebaf221325c0c67cd674eac82c8f5f82a223582096500e9" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -32,13 +36,13 @@ export const pricingTables = Object.freeze([...foundationTables, "product_varian
   "modifier_groups", "modifier_group_translations", "modifier_options", "modifier_option_translations"].sort());
 export const workflowTables = Object.freeze([...pricingTables, "catalog_submissions", "catalog_approvals", "catalog_publication", "catalog_workflow_events"].sort());
 export const contentTables = Object.freeze([...workflowTables, "pages", "page_revisions", "page_translations", "page_submissions", "page_approvals", "page_publications", "page_workflow_events"].sort());
-export const allTables = Object.freeze([...contentTables, "media_assets", "media_events", "catalog_media_refs", "page_media_refs"].sort());
+export const allTables = Object.freeze([...contentTables, "publication_jobs", "publication_events", "media_assets", "media_events", "catalog_media_refs", "page_media_refs"].sort());
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new TestMigrationPlanError("Refusing test migration: files, history or objects differ from the reviewed 0000-0011 plan."); };
+const refuse = () => { throw new TestMigrationPlanError("Refusing test migration: files, history or objects differ from the reviewed 0000-0013 plan."); };
 
 export const validateTestMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 12 || !Array.isArray(files) || files.length !== 12) refuse();
+    journal.entries?.length !== 14 || !Array.isArray(files) || files.length !== 14) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -51,12 +55,12 @@ export const validateTestMigrationFiles = (journal, files) => {
 // Only reviewed catalog/media states (including the forward intermediate) are allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateTestMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![10, 11, 12].includes(history.length) ||
+  if (!Array.isArray(history) || ![12, 13, 14].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_test_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();
   }
-  const tables = allTables;
+  const tables = history.length >= 13 ? allTables : allTables.filter(name => !["publication_jobs", "publication_events"].includes(name));
   if (JSON.stringify(objects.map(row => row.name)) !== JSON.stringify(tables) ||
     objects.some(row => row.owner !== "tiny_osaka_test_owner" || row.kind !== "r") ||
     JSON.stringify(relations.map(row => row.name)) !== JSON.stringify(metadataNames) ||

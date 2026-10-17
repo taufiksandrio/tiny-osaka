@@ -1,3 +1,4 @@
+import { verifyPublishingProtection } from "./lib/publishing-protection.mjs";
 import { verifyCmsProtection } from "./lib/cms-protection.mjs";
 import { verifyAuthProtection } from "./lib/auth-protection.mjs";
 import { readFileSync } from "node:fs";
@@ -36,7 +37,8 @@ const checkHistory = async (client) => {
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner", { posterRead: state >= 12 });
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner", { media: state >= 11 });
   await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7 });
-  await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10, media: state >= 11 });
+  await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13 });
+  if (state >= 13) await verifyPublishingProtection(client, "tiny_osaka_test_owner", { identityRestrict: state >= 14 });
   return state;
 };
 
@@ -49,16 +51,16 @@ try {
   // Preserve the original test lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210982)");
   const initialState = await checkHistory(client);
-  if (initialState === 12) {
-    console.log("test: reviewed 0000-0011 already applied; no changes made.");
+  if (initialState === 14) {
+    console.log("test: reviewed 0000-0013 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 12) throw new TestMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 14) throw new TestMigrationPlanError("Migration final state verification failed.");
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new TestMigrationPlanError("Migration starting state changed.");
     });
-    console.log("test: applied reviewed 0010/0011 media changes; 28 public and 9 auth tables owned by tiny_osaka_test_owner.");
+    console.log("test: applied reviewed 0012/0013 scheduled publishing; 30 public and 9 auth tables owned by tiny_osaka_test_owner.");
   }
 } catch (error) {
   console.error(error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError

@@ -12,6 +12,7 @@ import { verifyPublicReadProtection } from "../../scripts/lib/public-read-protec
 import { pageDefinitions } from "../../src/server/pages/templates.mjs";
 import { fields, rich } from "./page-content.mjs";
 import { inspectedImage } from "./media.mjs";
+import { verifyPublishingProtection } from "../../scripts/lib/publishing-protection.mjs";
 import { createMediaAssets } from "../../src/server/media/assets.mjs";
 import { createMediaReferences } from "../../src/server/media/references.mjs";
 
@@ -83,6 +84,8 @@ export const cleanupPublicFixture = async (client, tracked) => {
   try {
     await client.query(`LOCK TABLE ${allTables.map(table => "public." + table).join(",")} IN ACCESS EXCLUSIVE MODE`);
     for (const table of allTables) await client.query(`ALTER TABLE public.${table} DISABLE TRIGGER USER`);
+    await client.query("DELETE FROM public.publication_events WHERE job_id IN (SELECT id FROM public.publication_jobs WHERE page_revision_id=ANY($1::uuid[]) OR catalog_revision_id=ANY($2::uuid[]))", [tracked.pageRevisions, tracked.revisions]);
+    await client.query("DELETE FROM public.publication_jobs WHERE page_revision_id=ANY($1::uuid[]) OR catalog_revision_id=ANY($2::uuid[])", [tracked.pageRevisions, tracked.revisions]);
     for (const table of ["catalog_media_refs", "catalog_publication", "catalog_workflow_events", "catalog_approvals", "catalog_submissions",
       "modifier_option_translations", "modifier_options", "modifier_group_translations", "modifier_groups", "variant_translations",
       "product_variants", "product_translations", "product_entries", "category_translations", "category_entries"]) {
@@ -103,6 +106,7 @@ export const cleanupPublicFixture = async (client, tracked) => {
     const owner = "tiny_osaka_test_owner";
     await verifyCatalogProtection(client, owner); await verifyPageProtection(client, owner);
     await verifyMediaProtection(client, owner); await verifyPublicReadProtection(client, owner);
+    await verifyPublishingProtection(client, owner);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
 };

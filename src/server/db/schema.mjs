@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  uniqueIndex,
   integer,
   jsonb,
   pgTable,
@@ -440,4 +441,43 @@ export const mediaEvents = pgTable("media_events", {
 }, table => [
   check("media_events_action", sql`${table.action} = 'register'`),
   check("media_events_actor", sql`length(btrim(${table.actorId})) BETWEEN 1 AND 200`),
+]);
+
+export const publicationJobs = pgTable("publication_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  pageRevisionId: uuid("page_revision_id"), catalogRevisionId: uuid("catalog_revision_id"),
+  target: text("target").notNull(), revisionVersion: integer("revision_version").notNull(),
+  contentHash: text("content_hash").notNull(), expectedLiveRevisionId: uuid("expected_live_revision_id"),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+  createdBy: text("created_by").notNull(), status: text("status").notNull().default("scheduled"),
+  attempts: integer("attempts").notNull().default(0), version: integer("version").notNull().default(1),
+  lastCode: text("last_code"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  foreignKey({ name: "publication_jobs_page_revision_id_fkey", columns: [table.pageRevisionId], foreignColumns: [pageRevisions.id] }).onDelete("restrict").onUpdate("restrict"),
+  foreignKey({ name: "publication_jobs_catalog_revision_id_fkey", columns: [table.catalogRevisionId], foreignColumns: [catalogRevisions.id] }).onDelete("restrict").onUpdate("restrict"),
+  check("publication_jobs_revision_version_check", sql`${table.revisionVersion}>0`),
+  check("publication_jobs_content_hash_check", sql`${table.contentHash} ~ '^[0-9a-f]{64}$'`),
+  check("publication_jobs_created_by_check", sql`length(${table.createdBy}) BETWEEN 1 AND 200`),
+  check("publication_jobs_status_check", sql`${table.status} IN ('scheduled','succeeded','cancelled','failed')`),
+  check("publication_jobs_attempts_check", sql`${table.attempts} BETWEEN 0 AND 3`),
+  check("publication_jobs_version_check", sql`${table.version}>0`),
+  check("publication_jobs_last_code_check", sql`${table.lastCode} IN ('MANUAL_PUBLICATION','REVISION_UNAVAILABLE','OWNER_UNAVAILABLE','PUBLICATION_CHANGED','PUBLISH_FAILED','CANCELLED','RETRY')`),
+  check("publication_jobs_check", sql`(${table.pageRevisionId} IS NOT NULL)::integer+(${table.catalogRevisionId} IS NOT NULL)::integer=1`),
+  uniqueIndex("publication_jobs_active_target").on(table.target).where(sql`${table.status}='scheduled'`),
+  index("publication_jobs_due").on(table.nextAttemptAt, table.id).where(sql`${table.status}='scheduled'`),
+]);
+export const publicationEvents = pgTable("publication_events", {
+  id: uuid("id").defaultRandom().primaryKey(), jobId: uuid("job_id").notNull(),
+  jobVersion: integer("job_version").notNull(), action: text("action").notNull(),
+  actorId: text("actor_id").notNull(), source: text("source").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  foreignKey({ name: "publication_events_job_id_fkey", columns: [table.jobId], foreignColumns: [publicationJobs.id] }).onDelete("restrict").onUpdate("restrict"),
+  unique("publication_events_job_id_job_version_key").on(table.jobId, table.jobVersion),
+  check("publication_events_job_version_check", sql`${table.jobVersion}>0`),
+  check("publication_events_action_check", sql`${table.action} IN ('schedule','cancel','succeeded','retry','failed')`),
+  check("publication_events_actor_id_check", sql`length(${table.actorId}) BETWEEN 1 AND 200`),
+  check("publication_events_source_check", sql`${table.source} IN ('cms','worker')`),
 ]);

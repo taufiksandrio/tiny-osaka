@@ -1,3 +1,4 @@
+import { createPublishing } from "../publishing/service.mjs";
 import "server-only";
 import { loadEnvFile } from "node:process";
 import pg from "pg";
@@ -23,10 +24,12 @@ const getServices = () => {
       globalThis[poolKey] = pool;
     }
     const context = { db: drizzle(pool), authenticate: headers => getAuthService().authenticate(headers) };
-    services = { pages: createCmsPages(context), catalog: createCmsCatalog(context), media: createCmsMedia(context) };
+    services = { publishing: createPublishing(context), pages: createCmsPages(context), catalog: createCmsCatalog(context), media: createCmsMedia(context) };
   }
   return services;
 };
 export const getCmsPages = () => getServices().pages;
 export const getCmsCatalog = () => getServices().catalog;
 export const getCmsMedia = () => getServices().media;
+
+export const getPublishing = () => getServices().publishing;
