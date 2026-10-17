@@ -11,7 +11,7 @@ export const PUT = async (request, { params }) => {
   return cmsRoute(request, async (api, input) => {
     if (input.pageKey !== pageKey) cmsFail("INVALID_INPUT");
     const result = await api.saveCurrent(request.headers, input);
-    revalidatePath("/id", "layout");
+    revalidatePath("/", "layout");
     return result;
   });
 };

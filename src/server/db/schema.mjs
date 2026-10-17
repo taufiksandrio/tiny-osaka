@@ -268,8 +268,22 @@ export const catalogWorkflowEvents = pgTable("catalog_workflow_events", {
   actorId: text("actor_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [
-  check("catalog_workflow_events_action", sql`${table.action} IN ('create','save','clone','submit','approve','reject','publish','archive')`),
+  check("catalog_workflow_events_action", sql`${table.action} IN ('create','save','clone','submit','approve','reject','publish','archive','delete')`),
   check("catalog_workflow_events_actor", sql`length(btrim(${table.actorId})) BETWEEN 1 AND 200`),
+]);
+
+// Append-only trace of hard deletes (ADR-037). Written only by public.catalog_purge_product();
+// deliberately no FK to revisions because purged snapshots no longer exist.
+export const catalogDeletionLog = pgTable("catalog_deletion_log", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+  actorId: text("actor_id").notNull(),
+  productSlug: text("product_slug").notNull(),
+  productName: text("product_name").notNull(),
+}, table => [
+  check("catalog_deletion_log_actor", sql`length(btrim(${table.actorId})) BETWEEN 1 AND 200`),
+  check("catalog_deletion_log_slug", sql`${table.productSlug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+  check("catalog_deletion_log_name", sql`length(${table.productName}) BETWEEN 1 AND 240`),
 ]);
 
 // Code-owned page identities. No editor-controlled routes or template switching.

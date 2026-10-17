@@ -5,7 +5,7 @@ import { getPageDefinition } from "../pages/templates.mjs";
 import { createPageDraft, clonePageDraft, loadPageGraph } from "../pages/drafts.mjs";
 import { hashPageContent } from "../pages/content-hash.mjs";
 import { validPageUuid, validatePageReadiness } from "../pages/validation.mjs";
-import { publishingLock, cancelPending } from "../publishing/locks.mjs";
+import { publishingLock } from "../publishing/locks.mjs";
 import { cmsFail, exactInput } from "./request-policy.mjs";
 
 export const currentPageRoot = async (tx, pageKey) => {
@@ -56,7 +56,6 @@ export const saveCurrentPage = async (tx, actor, input, api) => {
   await tx.update(s.pageRevisions).set({ status: "published" }).where(eq(s.pageRevisions.id, saved.id));
   await tx.insert(s.pagePublications).values({ pageKey: input.pageKey, revisionId: saved.id, contentHash })
     .onConflictDoUpdate({ target: s.pagePublications.pageKey, set: { revisionId: saved.id, contentHash, publishedAt: sql`now()` } });
-  await cancelPending(tx, `page:${input.pageKey}`, actor.subject);
   await tx.insert(s.pageWorkflowEvents).values(["submit", "approve", "publish"].map(action => ({ revisionId: saved.id, action, actorId: actor.subject })));
   return readCurrentPage(tx, input.pageKey, api);
 };

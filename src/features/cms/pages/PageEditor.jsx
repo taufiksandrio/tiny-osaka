@@ -46,7 +46,7 @@ const PageEditor = ({ initial }) => {
       <Button type="button" variant="outline" onClick={() => setPreview(!preview)}>{preview ? "Kembali ke editor" : "Pratinjau konten"}</Button>
       {revision.pageKey === "home" && <Button variant="outline" disabled={busy} onClick={() => { setFields(previous => ({ ...homeDraft.id, ...Object.fromEntries(Object.entries(previous).filter(([, value]) => typeof value === "string" ? value.trim() : textOf(value).trim())) })); setDirty(true); setMessage("Konten home dimuat. Periksa lalu simpan."); }}>Isi dari konten home tersedia</Button>}
     </CardContent></Card>
-    {preview ? <PagePreview spec={spec} fields={fields} locale="id" labels={labels} unsaved={unsaved} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <div className="grid gap-6">
+    {preview ? <PagePreview spec={spec} fields={fields} labels={labels} unsaved={unsaved} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <div className="grid gap-6">
       <Card className="shadow-none"><CardHeader><h2>Konten halaman</h2></CardHeader><CardContent><fieldset disabled={busy} className="grid gap-6">
         <div className="cms-form-field"><Label htmlFor="page-title">Judul * (wajib)</Label><Input id="page-title" required maxLength={240} value={fields.title ?? ""} onChange={event => change("title", event.target.value)} /></div>
         <div className="cms-form-field"><Label htmlFor="page-summary">Ringkasan (opsional)</Label><Textarea id="page-summary" maxLength={2000} value={fields.summary ?? ""} onChange={event => change("summary", event.target.value)} /></div>

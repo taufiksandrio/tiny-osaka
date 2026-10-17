@@ -4,9 +4,13 @@ export class CmsRequestError extends Error {
 export const cmsFail = (code, status = 400) => { throw new CmsRequestError(code, status); };
 export const cmsJson = (value, status = 200) => Response.json(value, { status,
   headers: { "Cache-Control": "no-store", "Pragma": "no-cache", "X-Content-Type-Options": "nosniff" } });
-export const readCmsInput = async (request, origin) => {
+// Bodyless mutations (DELETE) use this alone; JSON mutations get it through readCmsInput.
+export const verifyCmsOrigin = (request, origin) => {
   if (request.headers.get("origin") !== origin ||
     ![null, "same-origin", "none"].includes(request.headers.get("sec-fetch-site"))) cmsFail("CSRF_REJECTED", 403);
+};
+export const readCmsInput = async (request, origin) => {
+  verifyCmsOrigin(request, origin);
   if (request.headers.get("content-type")?.split(";", 1)[0].trim() !== "application/json") cmsFail("INVALID_INPUT", 415);
   if (Number(request.headers.get("content-length")) > 80000) cmsFail("INPUT_TOO_LARGE", 413);
   const reader = request.body?.getReader();

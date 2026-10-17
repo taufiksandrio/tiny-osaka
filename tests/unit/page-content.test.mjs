@@ -18,6 +18,8 @@ test("nine fixed page identities map to existing routes and immutable template d
     "guide-takoyaki", "guide-okonomiyaki", "guide-burger"].sort());
   for (const page of Object.values(pageDefinitions)) {
     assert.ok(Object.isFrozen(page));
+    assert.ok(isInternalPageLink(page.path || "/"));
+    // Links saved before ADR-038 keep validating so snapshots can still be cloned.
     assert.ok(isInternalPageLink("/id" + page.path)); assert.ok(isInternalPageLink("/en" + page.path));
   }
   for (const key of ["unknown", "__proto__", "constructor", 1, null]) assert.equal(getPageDefinition(key), null);
@@ -81,7 +83,7 @@ test("rich document rejects arbitrary HTML/media nodes, nested structures and un
 test("link allowlist refuses external/protocol-relative/encoded/query and unsupported paths", () => {
   for (const href of ["javascript:alert(1)", "data:text/html,x", "https://example.com", "//example.com",
     "/id/menu?x=1", "/id/%6denu", "/id/../en/menu", "/id/menu#x", "/jp/menu", "/id/menu/sample-01",
-    " /id/menu", "/id/menu/", "/id\\menu"]) {
+    " /id/menu", "/id/menu/", "/id\\menu", "/menu?x=1", "/menu/", "/menu#x", " /menu", "/menu/sample-01", "/%6denu", "/../menu", "/\\menu"]) {
     assert.equal(isInternalPageLink(href), false);
     const f = fields(); f.body.blocks[0].content[0].href = href;
     badContent(() => validatePageFields("about", "id", f));

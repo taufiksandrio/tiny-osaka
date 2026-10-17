@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
-const PublishedMedia = ({ media, locale }) => {
+const PublishedMedia = ({ media }) => {
   const [consent, setConsent] = useState(false);
   const [missing, setMissing] = useState(false);
   const [posterMissing, setPosterMissing] = useState(false);
@@ -19,9 +19,9 @@ const PublishedMedia = ({ media, locale }) => {
         {youtube && media.poster && !posterMissing && <Image src={`/media/${media.poster.id}`} alt="" width={media.poster.width} height={media.poster.height}
           unoptimized className="h-auto max-h-80 w-full object-contain" onError={() => setPosterMissing(true)} />}
         <p>{media.alt}</p>
-        {youtube ? <><p>{locale === "id" ? "Memutar video akan menghubungkan ke YouTube." : "Playing connects to YouTube."}</p>
-          <Button onClick={() => setConsent(true)}>{locale === "id" ? "Muat video YouTube" : "Load YouTube video"}</Button></> :
-          <p>{locale === "id" ? "Media belum tersedia." : "Media is not available yet."}</p>}
+        {youtube ? <><p>Memutar video akan menghubungkan ke YouTube.</p>
+          <Button onClick={() => setConsent(true)}>Muat video YouTube</Button></> :
+          <p>Media belum tersedia.</p>}
       </div>}
     </div>
     {media.caption && <figcaption>{media.caption}</figcaption>}

@@ -1,29 +1,25 @@
-import { test, expect, locales, publicPaths } from "./fixtures";
+import { test, expect, publicPaths } from "./fixtures";
 
-for (const locale of locales) {
+{
   for (const path of publicPaths) {
-    test(`${locale}${path || "/"}: server content and localized metadata`, async ({ page, request }) => {
-      const url = `/${locale}${path}`;
+    test(`${path || "/"}: server content and localized metadata`, async ({ page, request }) => {
+      const url = path || "/";
       const response = await request.get(url);
       expect(response.status()).toBe(200);
       const html = await response.text();
-      expect(html).toContain(`lang="${locale}"`);
+      expect(html).toContain(`lang="id"`);
       expect(html).toMatch(/<h1\b/);
       expect(html).toContain('name="robots" content="noindex, nofollow"');
       expect(html).not.toContain('type="application/ld+json"');
 
       await page.goto(url);
-      await expect(page.locator("html")).toHaveAttribute("lang", locale);
-      await expect(page).toHaveTitle(locale === "id"
-        ? /Pratinjau beranda|Temukan ruang|Slot menu|Sedikit tentang|Kenali,|Panduan|Ruang untuk|Bandung, lewat/
-        : /Homepage preview|Make room|Menu slot|Meet Tiny Osaka|Get to know|Guide to|A place for|Bandung, through/);
-      await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", locale === "id"
-        ? /Pratinjau|Contoh|di Bandung|Ruang untuk panduan|Template editorial|Halaman pratinjau/
-        : /An English preview|A preview|The first|The second|The third|in Bandung|A space|An editorial|A page preview/);
+      await expect(page.locator("html")).toHaveAttribute("lang", "id");
+      await expect(page).toHaveTitle(/Pratinjau beranda|Temukan ruang|Slot menu|Sedikit tentang|Kenali,|Panduan|Ruang untuk|Bandung, lewat/);
+      await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Pratinjau|Contoh|di Bandung|Ruang untuk panduan|Template editorial|Halaman pratinjau/);
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect(page.locator(".preview-banner")).toContainText(locale === "id" ? "PRATINJAU" : "PREVIEW");
+      await expect(page.locator(".preview-banner")).toContainText("PRATINJAU");
 
       const links = await page.locator("a[href]").evaluateAll((anchors) => anchors.map((anchor) => anchor.href));
       for (const href of new Set(links)) {
@@ -38,10 +34,10 @@ for (const locale of locales) {
     });
   }
 
-  test(`${locale}: every page has a distinct localized title`, async ({ request }) => {
+  test(`every page has a distinct localized title`, async ({ request }) => {
     const titles = [];
     for (const path of publicPaths) {
-      const response = await request.get(`/${locale}${path}`);
+      const response = await request.get(path || "/");
       const title = (await response.text()).match(/<title>(.*?)<\/title>/)?.[1];
       expect(title).toBeTruthy();
       titles.push(title);
@@ -50,14 +46,13 @@ for (const locale of locales) {
   });
 }
 
-test("root redirects temporarily to Indonesian", async ({ request }) => {
+test("root is served directly without redirect", async ({ request }) => {
   const response = await request.get("/", { maxRedirects: 0 });
-  expect(response.status()).toBe(307);
-  expect(response.headers().location).toBe("/id");
+  expect(response.status()).toBe(200);
 });
 
 test("unknown locales, pages and fixture slugs return 404", async ({ request }) => {
-  for (const path of ["/fr", "/fr/menu", "/fr/menu/sample-01", "/id/missing", "/id/menu/missing", "/en/menu/missing", "/id/guides/missing", "/en/guides/missing"]) {
+  for (const path of ["/fr", "/fr/menu", "/fr/menu/sample-01", "/missing", "/menu/missing", "/en/menu/missing", "/guides/missing", "/en/guides/missing"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(404);
     expect(await response.text(), path).toMatch(/name="robots" content="noindex/);

@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { pageDefinitions } from "@/server/pages/templates.mjs";
-const links = ["", ...["id"].flatMap(locale => Object.values(pageDefinitions).map(page => "/" + locale + page.path))];
+import { pageDefinitions, publicPagePath } from "@/server/pages/templates.mjs";
+const links = ["", ...Object.values(pageDefinitions).map(publicPagePath)];
 const SpanEditor = ({ spans, onChange, label, disabled, children }) => {
   const prefix = useId();
   return <div className="grid min-w-0 gap-6">

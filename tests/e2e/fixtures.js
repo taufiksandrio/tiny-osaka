@@ -6,7 +6,6 @@ export const publicPaths = [
   "/about", "/guides", "/guides/takoyaki", "/guides/okonomiyaki",
   "/guides/burger", "/promos", "/location",
 ];
-export const locales = ["id"];
 
 export const test = base.extend({
   networkGuard: [async ({ context, baseURL }, runTest, testInfo) => {

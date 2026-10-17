@@ -1,4 +1,4 @@
-import { publishingLock, cancelPending } from "../publishing/locks.mjs";
+import { publishingLock } from "../publishing/locks.mjs";
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -19,7 +19,7 @@ const validateInput = (input, action) => {
 
 // Only trusted server composition may inject a resolver. No HTTP handler accepts
 // actor/role input. Without a real identity provider every action fails closed.
-export const createCatalogWorkflow = ({ db, resolveActor, scheduledJobId = null } = {}) => {
+export const createCatalogWorkflow = ({ db, resolveActor } = {}) => {
   const run = async (action, input) => {
     let actor;
     try { actor = typeof resolveActor === "function" ? await resolveActor() : null; }
@@ -66,7 +66,6 @@ export const createCatalogWorkflow = ({ db, resolveActor, scheduledJobId = null 
             const [approval] = await tx.select().from(s.catalogApprovals).where(eq(s.catalogApprovals.revisionId, revision.id));
             if (approval?.contentHash !== contentHash) fail("APPROVAL_REQUIRED", "Exact revision approval required.");
             if (live?.revisionId === revision.id) {
-              await cancelPending(tx, "catalog", actor.subject, { exceptId: scheduledJobId });
               return { revisionId: revision.id, version: revision.version, contentHash, status: "published" };
             }
             // A historical publication must be cloned and reviewed again.
@@ -77,8 +76,6 @@ export const createCatalogWorkflow = ({ db, resolveActor, scheduledJobId = null 
         await tx.update(s.catalogRevisions).set({ status, contentHash }).where(eq(s.catalogRevisions.id, revision.id));
         if (action === "publish") await tx.insert(s.catalogPublication).values({ id: 1, revisionId: revision.id, contentHash })
           .onConflictDoUpdate({ target: s.catalogPublication.id, set: { revisionId: revision.id, contentHash, publishedAt: sql`now()` } });
-        if (["publish", "archive"].includes(action)) await cancelPending(tx, "catalog", actor.subject,
-          action === "publish" ? { exceptId: scheduledJobId } : { revisionId: revision.id, code: "REVISION_UNAVAILABLE" });
         await tx.insert(s.catalogWorkflowEvents).values({ revisionId: revision.id, action, actorId: actor.subject });
         return { revisionId: revision.id, version: revision.version, contentHash, status };
       });

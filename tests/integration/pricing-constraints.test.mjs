@@ -5,7 +5,7 @@ import pg from "pg";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { connectTestOwner } from "../../scripts/lib/test-db.mjs";
-import { pricingTables, allTables } from "../../scripts/lib/test-migration-plan.mjs";
+import { pricingTables, tablesForState } from "../../scripts/lib/test-migration-plan.mjs";
 import { getDatabaseConfig } from "../../src/server/db/config.mjs";
 import { productVariants, modifierGroups, modifierOptions } from "../../src/server/db/schema.mjs";
 import { calculatePrice, CatalogPricingError, validatePricingProduct } from "../../src/server/catalog/pricing.mjs";
@@ -198,7 +198,8 @@ test("all thirty tables remain empty, owner-owned, with thirty-three RESTRICT FK
       assert.equal(row.count, 0);
     }
     const { rows: tables } = await client.query("SELECT c.relname AS name, pg_get_userbyid(c.relowner) AS owner FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' ORDER BY c.relname");
-    assert.deepEqual(tables.map(row => row.name), allTables);
+    const { rows: [applied] } = await client.query("SELECT count(*)::integer AS total FROM drizzle.__drizzle_migrations");
+    assert.deepEqual(tables.map(row => row.name), tablesForState(applied.total));
     assert.ok(tables.every(row => row.owner === "tiny_osaka_test_owner"));
     const { rows: fks } = await client.query("SELECT confupdtype,confdeltype FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='public' AND c.contype='f'");
     assert.equal(fks.length, 33);

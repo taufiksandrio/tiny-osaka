@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "node node_modules/next/dist/bin/next start --hostname=127.0.0.1 --port=3031",
-    url: "http://127.0.0.1:3031/id",
+    url: "http://127.0.0.1:3031/",
     reuseExistingServer: false,
     timeout: 60000,
   },

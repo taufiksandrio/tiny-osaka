@@ -9,25 +9,27 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 });
 test.afterEach(async ({ page }) => expect(runtimeErrors.get(page)).toEqual([]));
-for (const locale of ["id"]) {
-  test(`${locale} empty database shows no examples and returns detail 404`, async ({ page, request }) => {
+// QA fixtures tag their synthetic content with the stored "id" translation; this is not a URL segment.
+const tag = "id";
+{
+  test(`empty database shows no examples and returns detail 404`, async ({ page, request }) => {
     expect(process.env.QA_PUBLIC_EMPTY).toBe("1");
-    await page.goto(`/${locale}/menu`);
-    await expect(page.locator("main")).toContainText(locale === "id" ? "Menu belum diterbitkan." : "The menu has not been published yet.");
+    await page.goto("/menu");
+    await expect(page.locator("main")).toContainText("Menu belum diterbitkan.");
     await expect(page.locator(".preview-banner")).toHaveCount(0);
     expect(await page.locator("main").textContent()).not.toMatch(/QA Product|sample-01/);
-    expect((await request.get(`/${locale}/menu/${process.env.QA_PUBLIC_SLUG}`)).status()).toBe(404);
-    expect((await request.get(`/${locale}/guides/takoyaki`)).status()).toBe(404);
+    expect((await request.get(`/menu/${process.env.QA_PUBLIC_SLUG}`)).status()).toBe(404);
+    expect((await request.get(`/guides/takoyaki`)).status()).toBe(404);
   });
   for (const key of ["home", "about", "menu", "guides", "promos", "location", "guide-takoyaki", "guide-okonomiyaki", "guide-burger"]) {
     const suffix = key === "home" ? "" : key.startsWith("guide-") ? "/guides/" + key.slice(6) : "/" + key;
-    test(`${locale} published ${key} SSR, accessibility and mobile layout`, async ({ page, request }) => {
-      const response = await request.get(`/${locale}${suffix}`);
+    test(`published ${key} SSR, accessibility and mobile layout`, async ({ page, request }) => {
+      const response = await request.get(suffix || "/");
       expect(response.status()).toBe(200);
-      expect(await response.text()).toContain(`QA ${key} ${locale}`);
-      await page.goto(`/${locale}${suffix}`);
-      await expect(page.locator("h1")).toHaveText(`QA ${key} ${locale}`);
-      await expect(page).toHaveTitle(`QA ${key} ${locale}`);
+      expect(await response.text()).toContain(`QA ${key} ${tag}`);
+      await page.goto(suffix || "/");
+      await expect(page.locator("h1")).toHaveText(`QA ${key} ${tag}`);
+      await expect(page).toHaveTitle(`QA ${key} ${tag}`);
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
       await expect(page.locator(".preview-banner")).toHaveCount(0);
       await expect(page.locator("main script")).toHaveCount(0);
@@ -36,7 +38,7 @@ for (const locale of ["id"]) {
         const hero = page.locator(".home-art-image"); await expect(hero).toBeVisible();
         await expect.poll(() => hero.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
         await expect(page.locator(".home-art figcaption")).toHaveText("Takoyaki Shio Negi · Tiny Osaka");
-        await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", `/${locale}/menu`);
+        await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", "/menu");
         const icon = await request.get("/icon.png"); expect(icon.status()).toBe(200); expect(icon.headers()["content-type"]).toContain("image/png");
         await expect(hero).toHaveAttribute("src", "/images/02a - Takoyaki Shio Negi.jpeg");
         expect(await hero.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([1600, 1200]);
@@ -50,27 +52,27 @@ for (const locale of ["id"]) {
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     });
   }
-  test(`${locale} published product prices and modifier requirements`, async ({ page }) => {
-    await page.goto(`/${locale}/menu/${process.env.QA_PUBLIC_SLUG}`);
-    await expect(page.locator("h1")).toHaveText(`QA Product ${locale}`);
-    await expect(page.getByRole("status")).toContainText(locale === "id" ? "Lengkapi" : "Complete");
-    await page.getByRole("checkbox").check();
-    await expect(page.getByRole("status")).toContainText(locale === "id" ? "400.000" : "400,000");
-    await page.getByRole("checkbox").uncheck();
-    await expect(page.getByRole("status")).toContainText(locale === "id" ? "Lengkapi" : "Complete");
-    await expect(page.getByRole("img", { name: locale === "id" ? "QA gambar" : "QA image" })).toBeVisible();
+  test(`published product shows single price without modifier UI`, async ({ page }) => {
+    await page.goto(`/menu/${process.env.QA_PUBLIC_SLUG}`);
+    await expect(page.locator("h1")).toHaveText(`QA Product ${tag}`);
+    await expect(page.locator("main")).toContainText(/Rp\s?250\.000/);
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await expect(page.getByRole("img", { name: "QA gambar" })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
-  test(`${locale} unknown product and guide stay unpublished`, async ({ request }) => {
-    expect((await request.get(`/${locale}/menu/sample-01`)).status()).toBe(404);
-    expect((await request.get(`/${locale}/guides/unknown`)).status()).toBe(404);
+  test(`unknown product and guide stay unpublished`, async ({ request }) => {
+    expect((await request.get(`/menu/sample-01`)).status()).toBe(404);
+    expect((await request.get(`/guides/unknown`)).status()).toBe(404);
     expect((await request.get("/fr/menu")).status()).toBe(404);
+    expect((await request.get("/en/menu", { maxRedirects: 0 })).status()).toBe(404);
   });
-  test(`${locale} YouTube only loads after consent`, async ({ page }) => {
-    await page.goto(`/${locale}/about`);
+  test(`YouTube only loads after consent`, async ({ page }) => {
+    await page.goto("/about");
     await expect(page.locator("iframe")).toHaveCount(0);
-    await page.getByRole("button", { name: locale === "id" ? "Muat video YouTube" : "Load YouTube video" }).click();
+    await page.getByRole("button", { name: "Muat video YouTube" }).click();
     await expect(page.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/Abc_123-xyz");
   });
 }

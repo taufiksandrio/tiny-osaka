@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import { reviewedMigrations, allTables, validateDevMigrationFiles,
+import { reviewedMigrations, tablesForState, validateDevMigrationFiles,
   validateDevMigrationState, DevMigrationPlanError } from "../../scripts/lib/dev-migration-plan.mjs";
 
 const artifacts = () => ({ journal: JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")),
@@ -10,7 +10,7 @@ const artifacts = () => ({ journal: JSON.parse(readFileSync("drizzle/meta/_journ
 const state = (length) => ({
   metadataOwner: "tiny_osaka_dev_owner",
   history: reviewedMigrations.slice(0, length).map(row => ({ hash: row.hash, created_at: String(row.when) })),
-  objects: (length >= 13 ? allTables : allTables.filter(name => !["publication_jobs", "publication_events"].includes(name))).map(name => ({ name, kind: "r", owner: "tiny_osaka_dev_owner" })),
+  objects: tablesForState(length).map(name => ({ name, kind: "r", owner: "tiny_osaka_dev_owner" })),
   relations: ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"]
     .map((name, idx) => ({ name, kind: ["r", "S", "i"][idx], owner: "tiny_osaka_dev_owner" })),
 });
@@ -38,6 +38,7 @@ test("rejects altered SQL hashes, timestamps, order and extra/missing files", ()
     a => { a.files[9].hash = "untrusted-secret"; },
     a => { a.files[10].hash = "untrusted-secret"; },
     a => { a.files[11].hash = "untrusted-secret"; },
+    a => { a.files[14].hash = "untrusted-secret"; },
     a => { a.files[1].folderMillis++; },
     a => { a.files.reverse(); }, a => { a.files.pop(); }, a => { a.files.push(a.files[1]); },
   ]) {
@@ -62,6 +63,7 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
 test("accepts reviewed catalog baseline and media final state", () => {
   assert.equal(validateDevMigrationState(state(12)), 12);
   assert.equal(validateDevMigrationState(state(14)), 14);
+  assert.equal(validateDevMigrationState(state(15)), 15);
 });
 
 test("rejects absent, reordered, partial or modified migration history", () => {
