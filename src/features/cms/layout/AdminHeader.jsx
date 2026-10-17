@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSepar
 import LogoutButton from "@/features/cms/auth/LogoutButton";
 const AdminHeader = ({ actor, onOpenNav, navTriggerRef }) => {
   const pathname = usePathname();
-  const section = pathname.startsWith("/admin/pages") ? "Halaman website" : pathname.startsWith("/admin/security") ? "Keamanan" : "Dashboard";
+  const section = pathname.startsWith("/admin/catalog") ? "Katalog menu" : pathname.startsWith("/admin/pages") ? "Halaman website" : pathname.startsWith("/admin/security") ? "Keamanan" : "Dashboard";
   return <header className="sticky top-0 z-30 flex min-h-18 items-center justify-between gap-3 border-b border-border bg-card/95 px-4 backdrop-blur sm:px-8">
     <div className="flex min-w-0 items-center gap-3">
       <Button ref={navTriggerRef} variant="outline" size="icon" className="lg:hidden" aria-label="Buka navigasi" onClick={onOpenNav}><Menu aria-hidden="true" /></Button>

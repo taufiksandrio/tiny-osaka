@@ -884,3 +884,85 @@ Auth-only/public suites, fresh dependency audit, Lighthouse and staging/producti
 were not rerun for this spacing-only follow-up. Previously documented dependency
 advisories remain unresolved. Rollback: revert this follow-up commit and rebuild;
 preserve private configuration and content. No merge/deployment was performed.
+
+## Phase3.3 catalog CMS and preview acceptance — 2026-10-17 (ADR-030)
+
+Approved branch feat/phase3-3-cms-catalog starts from main2b8b4cb (merged PR8).
+Files: catalog admin/API routes; CMS catalog service/HTTP adapter/shared runtime;
+catalog editor/forms/actions/preview and synthetic fixtures/browser runner/config;
+PagePreview/PageEditor; navigation/header/dashboard; scoped admin CSS; schema audit
+check; forward0009 SQL/snapshot/journal; migration manifests/runners/CMS verifier;
+migration unit and existing history assertions; package scripts and documentation.
+No dependency version, lockfile, old SQL, auth policy or public component changes.
+
+Implemented acceptance:
+
+- Staff creates/clones drafts and edits localized category/product/variant/group/
+  option content, placement, sort, integer prices and selection constraints.
+- Server rechecks database membership; exact input/body/route scope and versions
+  are enforced. Draft writer/audit operations are atomic. Concurrent draft writes
+  yield one winner and one safe conflict with no losing audit/version consumption.
+- Owner-only exact-hash approve/reject/publish/archive; frozen changes denied,
+  cloning clears approval, and live catalog persists until approved replacement.
+- Independent forms retain pending text across other saves and preview toggles.
+  Readiness/actions wait until all forms save. Existing-field overlays appear in
+  draft preview; new identities appear after successful creation.
+- shadcn cards show localized content, variant/modifier simulation and validated
+  total; invalid choices produce no numeric total. Literal script-like text is
+  escaped. Image placeholders and unverified merchant-price status are explicit.
+- Page previews group headline/content/SEO in responsive Cards. Label/control
+  and action spacing from PR8 remains. Admin/public previews stay noindex.
+
+Commands actually executed and final outcomes:
+
+- npm.cmd run lint: passed, zero warnings (including final migration runner).
+- npm.cmd run build: passed; admin/catalog and three catalog API routes included.
+- node --conditions=react-server --test tests/unit/*.test.mjs:111 passed.
+  Local report: test-results/phase3-3-unit.tap.
+- npm.cmd run test:cms-catalog-db:9 passed before the full regression.
+- node --conditions=react-server --env-file=.env.local
+  --env-file=.env.test-migrator.local --env-file=.env.test.local
+  --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/*.test.mjs:
+  173 passed, including the9 focused catalog cases; no double-counting. Includes
+  auth, media, pages, catalog/publication, pricing/modifiers, grants and published
+  readers. Only the connection tests read dev metadata; mutations use test only.
+  Local report: test-results/phase3-3-integration.tap.
+- npm.cmd run test:cms-catalog-e2e:12 passed (4 per viewport).
+- npm.cmd run test:cms-pages-e2e:18 passed (6 per viewport).
+- npm.cmd run test:auth-e2e:18 passed (6 per viewport).
+- npm.cmd run test:e2e:222 public bilingual cases passed.
+- Browser total270, desktop1440/mobile390/small320. Final JSON reports contain zero
+  unexpected/skipped/flaky cases, retries0. No application acceptance test failed.
+- node --env-file=.env.local --env-file=.env.cms.local --env-file=.env.auth.local
+  scripts/check-public-bundle.mjs:28 assets passed; no loaded database URL/password
+  or auth secret in browser output.
+- npm.cmd run db:migrate:test: applied0009 atomically, then repeated as no-op.
+- npm.cmd run db:migrate:dev: applied0009 after browser QA, then repeated as no-op.
+  Dev content was locked and every public table's row count matched before/after.
+  Existing credentials/accounts/content and old migration history were preserved.
+- Read-only final checks:10 reviewed migrations and exact CMS privilege isolation
+  in both databases;28 public and9 auth test tables empty after fixture cleanup.
+- npm.cmd audit --json: existing9 affected-package entries (5high/4moderate).
+- npm.cmd audit --omit=dev --json: existing4moderate optional-peer entries.
+  Private reports: test-results/phase3-3-audit.json and production-audit.json.
+  PowerShell initially encoded redirection as UTF-16; report parsing was corrected
+  to UTF-8. No dependency fix, omission, downgrade or waiver was applied.
+- git diff --check: passed; final source/schema/privilege/test/doc diffs reviewed.
+- Staged diff secret scan, snapshot-only audit-check comparison and staged SQL
+  hash verification passed before commit; no private configuration was staged.
+
+Visual review: desktop/mobile catalog preview screenshots inspected; synthetic
+content demonstrates variant25000 + modifier5000 =30000 IDR. These are test values,
+not restaurant facts. Reports/traces remain ignored and must not be published;
+traces can contain synthetic credentials. QA server children get application/test
+CMS credentials only, never migrator/admin access.
+
+Remaining limits: physical media upload/serving, scheduling, deletion UI, live
+merchant verification/sync, real email and production configuration are deferred.
+Dependency advisories still block release readiness. Lighthouse, staging and
+production checks were not run. No merge, deployment or merchant call performed.
+
+Rollback application/UI files and rebuild while retaining0009 SQL/metadata,
+migration manifests/verifiers, applied history, private configuration and content.
+Do not blindly revert/remove the applied migration. Restoring the prior grants
+requires a separately inspected approved reverse migration.

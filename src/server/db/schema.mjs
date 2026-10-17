@@ -267,7 +267,7 @@ export const catalogWorkflowEvents = pgTable("catalog_workflow_events", {
   actorId: text("actor_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => [
-  check("catalog_workflow_events_action", sql`${table.action} IN ('submit','approve','reject','publish','archive')`),
+  check("catalog_workflow_events_action", sql`${table.action} IN ('create','save','clone','submit','approve','reject','publish','archive')`),
   check("catalog_workflow_events_actor", sql`length(btrim(${table.actorId})) BETWEEN 1 AND 200`),
 ]);
 

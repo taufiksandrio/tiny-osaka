@@ -35,6 +35,7 @@ test("rejects altered SQL hashes, timestamps, order and extra/missing files", ()
     a => { a.files[5].hash = "untrusted-secret"; },
     a => { a.files[6].hash = "untrusted-secret"; },
     a => { a.files[8].hash = "untrusted-secret"; },
+    a => { a.files[9].hash = "untrusted-secret"; },
     a => { a.files[1].folderMillis++; },
     a => { a.files.reverse(); }, a => { a.files.pop(); }, a => { a.files.push(a.files[1]); },
   ]) {
@@ -56,9 +57,9 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
   }
 });
 
-test("accepts reviewed auth baseline and CMS page final state", () => {
+test("accepts reviewed CMS page baseline and catalog final state", () => {
   assert.equal(validateTestMigrationState(state(9)), 9);
-  assert.equal(validateTestMigrationState(state(8)), 8);
+  assert.equal(validateTestMigrationState(state(10)), 10);
 });
 
 test("rejects absent, reordered, partial or modified migration history", () => {

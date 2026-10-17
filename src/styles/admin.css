@@ -94,6 +94,12 @@
 .admin-root .cms-preview section { margin-block: 1.5rem; }
 .admin-root .cms-preview p { white-space: pre-wrap; }
 .admin-root .cms-preview a { color: var(--primary); text-decoration: underline; }
+.admin-root .cms-page-preview p { white-space: pre-wrap; }
+.admin-root .cms-preview-body { overflow-wrap: anywhere; }
+.admin-root .cms-preview-body > * + * { margin-top: 1rem; }
+.admin-root .cms-preview-body a { color: var(--primary); text-decoration: underline; }
+.admin-root .cms-preview-body ul { list-style: disc; padding-left: 1.5rem; }
+.admin-root .cms-preview-body ol { list-style: decimal; padding-left: 1.5rem; }
 .admin-root [data-slot="alert-dialog-content"], .admin-root [data-slot="sheet-content"] { line-height: 1.6; }
 .admin-root .admin-table { white-space: normal; }
 .admin-root .admin-table td { vertical-align: middle; }

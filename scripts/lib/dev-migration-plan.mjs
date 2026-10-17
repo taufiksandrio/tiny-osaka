@@ -19,6 +19,8 @@ export const reviewedMigrations = Object.freeze([
     hash: "0d7d4b2d676aa6246c1ae43c70f7b51da4c229abda141714ebec017ed67f537c" }),
   Object.freeze({ tag: "0008_cms_pages_access", when: 1792200000000,
     hash: "58d3eccd13fb7a677e55f1bd93ace040beed1b6f46b14c39cee4b8ff171ca573" }),
+  Object.freeze({ tag: "0009_cms_catalog_access", when: 1792206000000,
+    hash: "c4f74b9e47b7bce5326ffca6c23bd7d32d35404b2c21877513c1c104c3ed1cb6" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -28,11 +30,11 @@ export const workflowTables = Object.freeze([...pricingTables, "catalog_submissi
 export const contentTables = Object.freeze([...workflowTables, "pages", "page_revisions", "page_translations", "page_submissions", "page_approvals", "page_publications", "page_workflow_events"].sort());
 export const allTables = Object.freeze([...contentTables, "media_assets", "media_events", "catalog_media_refs", "page_media_refs"].sort());
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0008 plan."); };
+const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0009 plan."); };
 
 export const validateDevMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 9 || !Array.isArray(files) || files.length !== 9) refuse();
+    journal.entries?.length !== 10 || !Array.isArray(files) || files.length !== 10) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -42,10 +44,10 @@ export const validateDevMigrationFiles = (journal, files) => {
   }
 };
 
-// Only the reviewed auth baseline or fully applied CMS page state is allowed.
+// Only the reviewed CMS page baseline or fully applied CMS catalog state is allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateDevMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![8, 9].includes(history.length) ||
+  if (!Array.isArray(history) || ![9, 10].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_dev_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();
