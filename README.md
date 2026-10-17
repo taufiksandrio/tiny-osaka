@@ -1679,3 +1679,21 @@ against synthetic test data. Runtime children never receive migrator credentials
 Migrators require an already reviewed0008 baseline; they are not empty-database
 bootstrap tools. See PHASE3_PLAN.md for boundaries and SECURITY_AND_QA.md for
 executed verification, remaining release blockers and rollback.
+
+## Home draft and visual identity
+
+The home design now uses an original Osaka-inspired illustration and lantern
+mark, with responsive shadcn content sections. The hero is visibly labeled as
+illustration, not a photograph of Tiny Osaka food or premises. Asset provenance
+is recorded in docs/BRAND_ASSETS.md.
+
+To prepare content, sign in at http://localhost:3000/admin/login and open
+**Halaman website → home → a draft → Muat draf konten home**. Blank ID/EN fields
+are filled from reviewed facts; existing content is preserved. Review the preview,
+save each language, then use the normal review/Owner approval/publication actions.
+The preset never saves, approves, or publishes automatically. The public reader
+continues to show only published content; no draft/sample fallback was introduced.
+
+Logo/favicon updates apply as code assets. No migration or dependency install is
+needed. To roll back the visuals, revert the home/brand application assets and
+rebuild; preserve CMS revisions, account data and SQL history.

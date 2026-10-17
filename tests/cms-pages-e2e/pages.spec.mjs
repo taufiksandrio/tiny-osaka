@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { fields } from "../fixtures/page-content.mjs";
+import { homeDraft } from "../../src/features/public-site/home-draft.mjs";
 const origin = "http://127.0.0.1:3033";
 const login = async (page, role) => {
   await page.goto("/admin/login");
@@ -63,6 +64,7 @@ test("shadcn dashboard navigation, account menu and mobile focus are accessible"
   await page.screenshot({ path: testInfo.outputPath("pages.png"), fullPage: true });
 });
 test("Staff edits draft with safe preview, accessible fields and incomplete-review validation", async ({ page }, testInfo) => {
+  test.setTimeout(60000);
   await login(page, "staff"); await page.getByRole("link", { name: "Kelola halaman website" }).click();
   await page.getByRole("link", { name: "about", exact: true }).click();
   await page.getByRole("button", { name: "Buat draft baru" }).click();
@@ -134,6 +136,34 @@ test("Staff edits draft with safe preview, accessible fields and incomplete-revi
   await expect(page.getByRole("alertdialog", { includeHidden: true })).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const home = await write(page, "", { pageKey: "home" });
+  await page.goto(`/admin/pages/home/${home.id}`);
+  await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Judul belum diisi", exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Kembali ke editor", exact: true }).click();
+  await page.getByLabel("Judul", { exact: true }).fill("QA owner title preserved");
+  await page.getByRole("button", { name: "Muat draf konten home", exact: true }).click();
+  await expect(page.getByLabel("Judul", { exact: true })).toHaveValue("QA owner title preserved");
+  await page.getByLabel("Bahasa konten", { exact: true }).selectOption("en");
+  await expect(page.getByLabel("Judul", { exact: true })).toHaveValue(homeDraft.en.title);
+  await page.getByRole("button", { name: "Simpan draft Inggris", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("tersimpan");
+  await expect(page.getByRole("button", { name: "Kirim untuk review", exact: true })).toBeDisabled();
+  await page.getByLabel("Bahasa konten", { exact: true }).selectOption("id");
+  await page.getByRole("button", { name: "Simpan draft Indonesia", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("tersimpan");
+  await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
+  const art = page.locator(".home-art-image");
+  await expect(art).toBeVisible(); await expect.poll(() => art.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expect(page.locator(".home-art figcaption")).toContainText("bukan foto produk");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("home-preview.png"), fullPage: true });
+  await page.getByLabel("Bahasa konten", { exact: true }).selectOption("en");
+  await expect(page.locator(".home-headline")).toHaveText(homeDraft.en.title);
+  await page.screenshot({ path: testInfo.outputPath("home-preview-en.png"), fullPage: true });
+  const publicHome = await page.request.get("/id"); expect(await publicHome.text()).not.toContain("QA owner title preserved");
 });
 test("Staff submits, Owner approves/publishes, clone keeps live content and approval separate", async ({ page, browser }, testInfo) => {
   await login(page, "staff"); const row = await complete(page);

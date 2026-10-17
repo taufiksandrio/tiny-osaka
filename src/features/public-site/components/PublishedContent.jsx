@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { publicCatalog, publicPage } from "@/server/public/data.mjs";
-import { pageDefinitions, isInternalPageLink, isPageLocale } from "@/server/pages/templates.mjs";
+import { pageDefinitions, isPageLocale } from "@/server/pages/templates.mjs";
 import { formatPrice, pricingProduct, minimumPrice } from "@/server/public/view-models.mjs";
 import { content } from "../content";
 import OrderingNotice from "./OrderingNotice";
 import ProductChoices from "./ProductChoices";
 import PublishedMedia from "./PublishedMedia";
+import HomeContent from "./HomeContent";
+import Rich from "./PublicRichText";
 
 const labels = {
   id: { home: "Tiny Osaka", about: "Tentang", menu: "Menu", guides: "Panduan", promos: "Promo", location: "Lokasi dan layanan",
@@ -17,22 +19,6 @@ const labels = {
 const orderingCopy = locale => ({ ...content[locale],
   orderTitle: locale === "id" ? "Pemesanan melalui platform resmi" : "Ordering through official platforms",
   orderBody: locale === "id" ? "Tautan pemesanan akan tersedia setelah diverifikasi." : "Ordering links will be available after verification.",
-});
-const Inline = ({ spans }) => spans.map((span, index) => {
-  let node = span.text;
-  if (span.marks?.includes("bold")) node = <strong>{node}</strong>;
-  if (span.marks?.includes("italic")) node = <em>{node}</em>;
-  if (span.href && isInternalPageLink(span.href)) node = <Link href={span.href}>{node}</Link>;
-  return <span key={index}>{node}</span>;
-});
-const Rich = ({ document }) => document?.blocks.map((block, index) => {
-  if (block.type === "paragraph") return <p key={index}><Inline spans={block.content} /></p>;
-  if (block.type === "heading") {
-    const Heading = block.level === 2 ? "h2" : "h3";
-    return <Heading key={index}><Inline spans={block.content} /></Heading>;
-  }
-  const List = block.ordered ? "ol" : "ul";
-  return <List key={index}>{block.items.map((item, i) => <li key={i}><Inline spans={item} /></li>)}</List>;
 });
 const Media = ({ items = [], locale }) => items.map(media => <PublishedMedia key={media.id} media={media} locale={locale} />);
 
@@ -66,6 +52,9 @@ export const PublishedPage = async ({ pageKey, locale }) => {
   const fields = page?.fields;
   const catalog = ["home", "menu"].includes(pageKey) ? await publicCatalog(locale) : null;
   const guides = pageKey === "guides" ? (await Promise.all(Object.keys(pageDefinitions).filter(key => key.startsWith("guide-")).map(key => publicPage(key, locale)))).filter(Boolean) : [];
+  if (pageKey === "home" && fields) return <HomeContent fields={fields} locale={locale}
+    catalogContent={catalog?.products.length ? <CatalogCards catalog={catalog} locale={locale} /> : undefined}
+    mediaContent={<Media items={page?.media} locale={locale} />} orderingContent={<OrderingNotice copy={orderingCopy(locale)} />} />;
   return <main id="main-content" tabIndex={-1}>
     <section className="page-section container published-content">
       {fields?.eyebrow && <p className="eyebrow">{fields.eyebrow}</p>}
@@ -73,13 +62,7 @@ export const PublishedPage = async ({ pageKey, locale }) => {
       <p>{fields?.summary || labels[locale].empty}</p>
       <Rich document={fields?.body} />
       <Media items={page?.media} locale={locale} />
-      {pageKey === "home" && fields && <>
-        <div className="hero-actions"><Link className="button button-red" href={`/${locale}/menu`}>{fields.primaryCtaLabel}</Link>
-          <Link className="text-link" href={`/${locale}/about`}>{fields.secondaryCtaLabel}</Link></div>
-        <h2>{fields.menuTitle}</h2><p>{fields.menuIntro}</p>
-      </>}
       {["home", "menu"].includes(pageKey) && <CatalogCards catalog={catalog} locale={locale} />}
-      {pageKey === "home" && fields && <><h2>{fields.aboutTitle}</h2><Rich document={fields.aboutBody} /></>}
       {pageKey === "about" && fields && <><h2>{fields.storyHeading}</h2><Rich document={fields.storyBody} />
         <h2>{fields.serviceHeading}</h2><Rich document={fields.serviceBody} /></>}
       {pageKey === "location" && fields && <dl className="info-list">{["city", "service", "hours", "coverage"].map(key =>

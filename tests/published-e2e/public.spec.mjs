@@ -31,6 +31,16 @@ for (const locale of ["id", "en"]) {
       await expect(page.locator(".preview-banner")).toHaveCount(0);
       await expect(page.locator("main script")).toHaveCount(0);
       await expect(page.locator("main")).toContainText(`<script>literal only</script>`);
+      if (key === "home") {
+        const hero = page.locator(".home-art-image"); await expect(hero).toBeVisible();
+        await expect.poll(() => hero.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+        await expect(page.locator(".home-art figcaption")).toContainText(locale === "id" ? "bukan foto produk" : "not a photograph");
+        await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", `/${locale}/menu`);
+        const icon = await request.get("/icon.svg"); expect(await icon.text()).not.toContain(">TO<");
+        const optimized = await request.get("/_next/image?url=%2Fimages%2Fosaka-editorial.png&w=640&q=75", { headers: { accept: "image/webp" } });
+        expect(optimized.status()).toBe(200); expect(optimized.headers()["content-type"]).toContain("image/webp");
+        expect((await optimized.body()).byteLength).toBeLessThan(300000);
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     });

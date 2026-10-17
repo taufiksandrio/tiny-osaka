@@ -966,3 +966,73 @@ Rollback application/UI files and rebuild while retaining0009 SQL/metadata,
 migration manifests/verifiers, applied history, private configuration and content.
 Do not blindly revert/remove the applied migration. Restoring the prior grants
 requires a separately inspected approved reverse migration.
+
+## Home content and visual identity acceptance — 2026-10-17 (ADR-031)
+
+Approved branch feat/home-content-brand starts from main7e494a8, after merged
+Phase3.3. Scope: editorial home preset/fill helper; CMS load/preview; shared safe
+public rich text; published home shadcn composition/theme; header/footer/CMS mark
+and favicon; generated illustration; tests and asset/decision/usage documentation.
+No dependency, migration, auth/API policy or local business-data mutation.
+
+Read-only local inspection found empty home drafts, no catalog products/media,
+and no authentic photographs/original logo in the repo. Text uses only approved
+facts: Tiny Osaka, Japanese street food, delivery-only, Bandung, Indonesia.
+No price/ingredient/promotion/address/hour/merchant URL was fabricated. The
+original built-in imagegen illustration is visibly labeled in ID/EN and has alt
+text, width/height, responsive sizes and next/image optimized delivery. The SVG
+lantern mark is original code artwork; favicon/header/footer/CMS use one design.
+Provenance and image SHA256: BRAND_ASSETS.md.
+
+Acceptance: preset fills blank fields in both languages without overwriting
+existing text. Save/review/Owner publication uses the existing versioned API;
+loading never writes or publishes automatically. Both dirty languages must save
+before review. Home preview supports empty fields, displays illustration and SEO,
+and preserves unsaved/current content. Public home reads only published fields/
+catalog; missing home publication never falls back to the editorial preset.
+Published SSR, text escaping/internal links, noindex and empty/404 states remain.
+
+Commands actually executed and final outcomes:
+
+- npm.cmd run lint: passed, zero warnings.
+- npm.cmd run build: passed on final home/preview code.
+- node --conditions=react-server --test tests/unit/*.test.mjs:113 passed.
+  The2 home tests were rerun successfully after correcting single-line titles.
+- npm.cmd run test:cms-pages-db:9 passed.
+- npm.cmd run test:public-db:1 passed; related integration total10.
+- npm.cmd run test:cms-pages-e2e:18 passed,6 per viewport. Covers blank Home preview,
+  explicit load, preservation of existing title, both-language dirty/save, natural
+  image load, illustration caption, actual ID/EN design preview and no draft leak.
+- npm.cmd run test:published-e2e:72 published +6 empty cases passed. Includes new
+  home SSR/illustration/CTA/favicon checks and WebP640px response under300000 bytes.
+- npm.cmd run test:auth-e2e:18 passed,6 per viewport.
+- npm.cmd run test:e2e:222 public fixture navigation/accessibility cases passed.
+- Final browser total336; desktop1440/mobile390/small320, zero skipped/unexpected/
+  flaky cases and retries0 in final JSON reports. Repeated runs are not added.
+- node --env-file=.env.local --env-file=.env.cms.local --env-file=.env.auth.local
+  scripts/check-public-bundle.mjs:29 assets passed, no loaded private database
+  URL/password or auth secret in browser output.
+- Read-only test cleanup/protection check:28 public and9 auth tables empty;
+  CMS grants/guards intact. No local dev content was inserted or published.
+- SVG comparison passed after normalizing Windows CRLF/LF; favicon/mark match.
+- git diff --check: passed; final code/asset/diff review completed.
+- Staged diff secret scan, generated-image SHA256 and scoped-file checks passed;
+  no private environment, trace, lockfile or migration change was staged.
+
+Initial failure corrected: the first Home browser test found newline characters
+in editorial titles incompatible with single-line Input display. Titles were
+changed to normal sentences; responsive heading wrapping remains code-owned.
+Focused home unit tests, build and all CMS viewport cases were rerun. Blank-draft
+fallback labels and unstyled rich-text links were checked in the final build.
+Desktop/mobile Home preview screenshots were inspected; ignored traces can
+contain synthetic credentials and must not be published.
+
+Security/SEO: no Owner impersonation, RBAC/session/CSRF bypass, automatic approval,
+new structured data or indexing change. No new package/install or fresh audit;
+previous ADR-030 dependency findings remain unresolved release blockers. Physical
+media uploads, authentic photos, verified merchant links, Lighthouse, staging and
+production are not claimed. No merge, deployment or merchant call performed.
+
+Rollback this application/asset commit together and rebuild; retain CMS revisions,
+private configuration and SQL history. Saved preset content is an ordinary CMS
+revision and follows normal review/publication; never delete live data to undo UI.

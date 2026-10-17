@@ -1114,3 +1114,38 @@ upload, scheduler, public schema or production operation is included.
 
 See PHASE3_PLAN.md for scope/rollback and SECURITY_AND_QA.md for executed results.
 Standing verified subphase commit/push workflow applies; merge/deploy stay separate.
+
+## ADR-031 — Home editorial draft, illustration and lantern identity (2026-10-17)
+
+User approved bilingual home content based on existing facts, a clearly labeled
+original illustration while authentic photos are unavailable, and a matching new
+logo/favicon. Branch feat/home-content-brand starts from merged main7e494a8.
+This is a content/brand follow-up, not Phase3.4 media upload/storage implementation.
+
+Read-only local inspection found empty home drafts, no catalog products and no
+media; repo contained only the TO placeholder icon. Editorial copy therefore uses
+only Tiny Osaka, Japanese street food, delivery-only and Bandung/Indonesia from
+approved requirements. No ingredients, availability, price, address, hours, award,
+promotion or merchant link is invented. Asset provenance: BRAND_ASSETS.md.
+
+The built-in imagegen tool produced an original Osaka-inspired editorial PNG.
+It carries localized illustration captions/alt text, never claims product or
+premises photography, and uses next/image responsive optimization/dimensions.
+An original code-drawn lantern SVG replaces TO in header/footer/CMS/favicon.
+User approval explicitly authorizes this new proposed identity in place of the
+placeholder; no authentic supplied brand asset was silently replaced.
+
+Home composition reuses shadcn Card/Button/Badge, scoped theme tokens, server
+published data and safe rich text. No homepage draft or sample data substitutes
+for missing published content. Existing published catalog content is reused.
+
+The CMS Home editor offers an explicit load-draft button that fills blank fields
+in both languages while preserving existing text. It marks both dirty and uses
+normal authenticated save/version/review/Owner publication. The agent does not
+impersonate an Owner, seed local business data, approve or publish a revision.
+Preview shows the new design plus SEO before publication, including empty states.
+
+No dependency, migration, session/RBAC, merchant or production change. Rollback
+application/assets together while retaining CMS content and existing SQL history;
+already saved editorial content remains a normal revision requiring normal review.
+Standing branch/commit/push workflow applies; merge/deployment remain separate.
