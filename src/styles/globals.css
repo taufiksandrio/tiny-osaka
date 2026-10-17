@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./admin.css";
+@import "./home.css";
 
 @theme {
   --color-osaka-cream: #faf5eb;

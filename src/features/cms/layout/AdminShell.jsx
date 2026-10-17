@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import AdminHeader from "./AdminHeader";
 import AdminNav from "./AdminNav";
 const Brand = () => <Link href="/admin" className="flex items-center gap-3">
-  <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">TO</span>
+  <Image src="/brand/tiny-osaka-mark.svg" alt="" width={40} height={40} className="size-10 shrink-0" />
   <span className="grid"><span className="text-base font-bold tracking-tight">Tiny Osaka</span><span className="text-xs text-muted-foreground">Content workspace</span></span>
 </Link>;
 const AdminShell = ({ actor, children }) => {

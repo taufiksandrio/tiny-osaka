@@ -1,11 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 const SiteHeader = ({ locale, copy }) => (
   <header className="site-header" id="top">
     <div className="container header-inner">
       <Link className="wordmark" href={`/${locale}`}>
-        <span className="brand-stamp" aria-hidden="true">TO</span>
+        <Image src="/brand/tiny-osaka-mark.svg" alt="" width={48} height={48} className="site-brand-mark" />
         <span>TINY<br />OSAKA<span className="brand-dot">.</span></span>
       </Link>
       <nav className="main-nav" aria-label={copy.navLabel}>

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Eye, Save, LoaderCircle, Languages, LockKeyhole } from "lucide-react";
 import RevisionStatus from "./RevisionStatus";
+import { fillHomeDraft } from "@/features/public-site/home-draft.mjs";
 const labels = { eyebrow: "Pengantar", title: "Judul", summary: "Ringkasan", seoTitle: "Judul SEO", seoDescription: "Deskripsi SEO", body: "Isi",
   menuTitle: "Judul menu", menuIntro: "Pengantar menu", aboutTitle: "Judul tentang", aboutBody: "Isi tentang", primaryCtaLabel: "Label tombol utama",
   secondaryCtaLabel: "Label tombol kedua", storyHeading: "Judul cerita", storyBody: "Isi cerita", serviceHeading: "Judul layanan", serviceBody: "Isi layanan",
@@ -61,6 +62,13 @@ const PageEditor = ({ initial, role }) => {
         <Badge variant="outline">Versi: {revision.version}</Badge>{revision.isLive && <span className="text-sm text-primary">Sedang tampil di publik</span>}</div>
       <CardDescription>Konten Indonesia dan Inggris wajib lengkap sebelum dikirim untuk review. Simpan setiap bahasa secara terpisah.</CardDescription>
     </CardHeader><CardContent className="space-y-4">
+      {revision.pageKey === "home" && revision.status === "draft" && <div className="rounded-lg border p-4 space-y-3">
+        <p className="text-sm">Draf home ID/EN tersedia berdasarkan informasi Tiny Osaka yang sudah tercatat. Isian yang sudah terisi tetap dipertahankan.</p>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => {
+          setFields(previous => fillHomeDraft(previous)); setDirty({ id: true, en: true });
+          setMessage("Draf home dimuat. Tinjau isian, simpan kedua bahasa, lalu ajukan untuk review.");
+        }}>Muat draf konten home</Button>
+      </div>}
       {revision.status !== "draft" && <p className="flex items-start gap-2 rounded-lg bg-secondary p-3 text-sm"><LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Revisi ini dibekukan. Buat draft dari revisi ini untuk mengubah konten.</p>}
       <div className="flex flex-wrap items-end justify-between gap-4"><div className="cms-form-field"><Label htmlFor="content-locale">Bahasa konten</Label>
         <NativeSelect id="content-locale" value={locale} disabled={busy} onChange={event => setLocale(event.target.value)}>
@@ -73,7 +81,7 @@ const PageEditor = ({ initial, role }) => {
       </Badge>)}</div>
       <p role="status" aria-live="polite" className="text-sm font-medium">{message || (unsaved ? "Ada perubahan belum disimpan." : "")}</p>
     </CardContent></Card>
-    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} /> : <form onSubmit={save} lang={locale}>
+    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} pageKey={revision.pageKey} /> : <form onSubmit={save} lang={locale}>
       <fieldset disabled={busy || revision.status !== "draft"} className="cms-fields"><legend className="sr-only">Konten {locale === "id" ? "Indonesia" : "Inggris"}</legend>
         <div className="grid gap-6">{groups.map(group => <Card key={group.key} className="gap-5 shadow-none">
           <CardHeader><h2>{group.title}</h2><CardDescription>{group.description}</CardDescription></CardHeader>
