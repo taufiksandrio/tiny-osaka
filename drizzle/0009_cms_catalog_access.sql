@@ -1,0 +1,19 @@
+ALTER TABLE public.catalog_workflow_events DROP CONSTRAINT catalog_workflow_events_action;
+ALTER TABLE public.catalog_workflow_events ADD CONSTRAINT catalog_workflow_events_action CHECK (action IN ('create','save','clone','submit','approve','reject','publish','archive'));
+--> statement-breakpoint
+DO $$
+DECLARE cms_name text;
+BEGIN
+  IF current_user='tiny_osaka_test_owner' THEN cms_name := 'tiny_osaka_test_cms';
+  ELSIF current_user='tiny_osaka_dev_owner' THEN cms_name := 'tiny_osaka_dev_cms';
+  ELSE RAISE EXCEPTION 'Unexpected CMS migration owner'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=cms_name AND rolcanlogin AND NOT rolsuper
+    AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls AND NOT rolinherit)
+    OR EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member WHERE r.rolname=cms_name) THEN
+    RAISE EXCEPTION 'Provision isolated CMS role first';
+  END IF;
+  EXECUTE format('GRANT SELECT ON public.catalog_revisions,public.categories,public.products,public.category_entries,public.product_entries,public.category_translations,public.product_translations,public.product_variants,public.variant_translations,public.modifier_groups,public.modifier_group_translations,public.modifier_options,public.modifier_option_translations,public.catalog_submissions,public.catalog_approvals,public.catalog_publication,public.catalog_workflow_events,public.catalog_media_refs TO %I',cms_name);
+  EXECUTE format('GRANT INSERT ON public.catalog_revisions,public.categories,public.products,public.category_entries,public.product_entries,public.category_translations,public.product_translations,public.product_variants,public.variant_translations,public.modifier_groups,public.modifier_group_translations,public.modifier_options,public.modifier_option_translations,public.catalog_submissions,public.catalog_approvals,public.catalog_publication,public.catalog_workflow_events,public.catalog_media_refs TO %I',cms_name);
+  EXECUTE format('GRANT UPDATE ON public.catalog_revisions,public.category_entries,public.product_entries,public.category_translations,public.product_translations,public.product_variants,public.variant_translations,public.modifier_groups,public.modifier_group_translations,public.modifier_options,public.modifier_option_translations,public.catalog_publication TO %I',cms_name);
+END;
+$$;

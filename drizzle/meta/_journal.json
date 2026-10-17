@@ -64,6 +64,13 @@
       "when": 1792200000000,
       "tag": "0008_cms_pages_access",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792206000000,
+      "tag": "0009_cms_catalog_access",
+      "breakpoints": true
     }
   ]
 }

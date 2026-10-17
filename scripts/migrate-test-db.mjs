@@ -36,7 +36,7 @@ const checkHistory = async (client) => {
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner");
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner");
   await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7 });
-  await verifyCmsProtection(client, "tiny_osaka_test_owner", { absent: state === 8 });
+  await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10 });
   return state;
 };
 
@@ -49,16 +49,16 @@ try {
   // Preserve the original test lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210982)");
   const initialState = await checkHistory(client);
-  if (initialState === 9) {
-    console.log("test: reviewed 0000-0008 already applied; no changes made.");
+  if (initialState === 10) {
+    console.log("test: reviewed 0000-0009 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 9) throw new TestMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 10) throw new TestMigrationPlanError("Migration final state verification failed.");
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new TestMigrationPlanError("Migration starting state changed.");
     });
-    console.log("test: applied 0008_cms_pages_access; 28 public and 9 auth tables owned by tiny_osaka_test_owner.");
+    console.log("test: applied 0009_cms_catalog_access; 28 public and 9 auth tables owned by tiny_osaka_test_owner.");
   }
 } catch (error) {
   console.error(error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError

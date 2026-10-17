@@ -36,11 +36,11 @@ const checkHistory = async (client) => {
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_dev_owner");
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_dev_owner");
   await verifyAuthProtection(client, "tiny_osaka_dev_owner", { absent: state === 7 });
-  await verifyCmsProtection(client, "tiny_osaka_dev_owner", { absent: state === 8 });
+  await verifyCmsProtection(client, "tiny_osaka_dev_owner", { catalog: state >= 10 });
   return state;
 };
 
-let client;
+let client, contentCounts;
 try {
   const journal = JSON.parse(readFileSync(`${folder}/meta/_journal.json`, "utf8"));
   const files = readMigrationFiles({ migrationsFolder: folder });
@@ -49,21 +49,28 @@ try {
   // Preserve the original dev lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210983)");
   const initialState = await checkHistory(client);
-  if (initialState === 9) {
-    console.log("dev: reviewed 0000-0008 already applied; no changes made.");
+  if (initialState === 10) {
+    console.log("dev: reviewed 0000-0009 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 9) throw new DevMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 10) throw new DevMigrationPlanError("Migration final state verification failed.");
+      for (const [table, count] of contentCounts) {
+        const { rows: [row] } = await client.query(`SELECT count(*)::text AS count FROM public.${table}`);
+        if (row.count !== count) throw new DevMigrationPlanError("Migration did not preserve content row counts.");
+      }
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new DevMigrationPlanError("Migration starting state changed.");
+      // This grant/audit-only migration preserves existing content.
+      if (initialState !== 9) throw new DevMigrationPlanError("Require reviewed CMS page baseline.");
       await client.query("LOCK TABLE " + allTables.map(table => "public." + table).join(",") + " IN ACCESS EXCLUSIVE MODE");
+      contentCounts = new Map();
       for (const table of allTables) {
-        const { rows: [row] } = await client.query(`SELECT EXISTS (SELECT 1 FROM public.${table}) AS populated`);
-        if (row.populated) throw new DevMigrationPlanError("Refusing dev migration: content is not empty; inspect data before proceeding.");
+        const { rows: [row] } = await client.query(`SELECT count(*)::text AS count FROM public.${table}`);
+        contentCounts.set(table, row.count);
       }
     });
-    console.log("dev: applied 0008_cms_pages_access; 28 public and 9 auth tables owned by tiny_osaka_dev_owner.");
+    console.log("dev: applied 0009_cms_catalog_access; 28 public and 9 auth tables owned by tiny_osaka_dev_owner.");
   }
 } catch (error) {
   console.error(error instanceof DevDatabaseGuardError || error instanceof DevMigrationPlanError

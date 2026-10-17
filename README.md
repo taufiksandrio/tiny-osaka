@@ -1647,3 +1647,35 @@ npm.cmd run test:cms-pages-e2e. These use synthetic accounts and only the isolat
 test database. Run database fixture suites sequentially; QA children receive
 application/CMS credentials, never admin/migrator credentials. See
 docs/PHASE3_PLAN.md for scope/rollback and docs/SECURITY_AND_QA.md for actual results.
+
+## Phase 3.3 catalog CMS and preview
+
+After approved local migration0009, restart development and sign in at
+http://localhost:3000/admin/login. Open **Katalog menu** from navigation or
+http://localhost:3000/admin/catalog. Existing local accounts/configuration are
+preserved; do not rerun provisioning or send passwords through chat.
+
+Create a draft, add categories/products with unique immutable slugs, expand each
+section and save Indonesia/Inggris independently. Add the first variant with code
+`standard`, integer rupiah price, and both translations. Optional modifier groups
+and options have codes, translated names, nonnegative additional prices, ordering,
+and minimum/maximum selection limits. Use a cloned revision to reuse existing
+identities/content; creation never silently attaches an existing slug.
+
+Every form retains its own pending edits while another saves. Save all forms
+before checking readiness or submitting. Preview displays current existing-field
+edits, including unsaved text/prices, but newly created identities appear after
+their create action succeeds. Variant/modifier choices calculate a draft total;
+invalid/incomplete choices show no numeric total. Images have an explicit
+placeholder until physical media support. Merchant price verification is pending.
+
+Owner alone approves/rejects/publishes/archives. Frozen revisions require cloning;
+approval is not inherited and live menu content remains until approved replacement.
+Page content preview now groups content and SEO in shadcn Cards too.
+
+Verification: `npm.cmd run test:cms-catalog-db` and, after build,
+`npm.cmd run test:cms-catalog-e2e`. Database/browser fixture suites run sequentially
+against synthetic test data. Runtime children never receive migrator credentials.
+Migrators require an already reviewed0008 baseline; they are not empty-database
+bootstrap tools. See PHASE3_PLAN.md for boundaries and SECURITY_AND_QA.md for
+executed verification, remaining release blockers and rollback.

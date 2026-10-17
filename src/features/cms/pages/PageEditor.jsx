@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { pageTemplateFields, pageDefinitions } from "@/server/pages/templates.mjs";
-import RichTextEditor, { RichPreview } from "./RichTextEditor";
+import RichTextEditor from "./RichTextEditor";
+import PagePreview from "./PagePreview";
 import RevisionActions from "./RevisionActions";
 import { cmsRequest } from "./client";
 import { Button } from "@/components/ui/button";
@@ -72,11 +73,7 @@ const PageEditor = ({ initial, role }) => {
       </Badge>)}</div>
       <p role="status" aria-live="polite" className="text-sm font-medium">{message || (unsaved ? "Ada perubahan belum disimpan." : "")}</p>
     </CardContent></Card>
-    {preview ? <section className="cms-preview" lang={locale} aria-label="Pratinjau konten"><h2>Pratinjau konten</h2>
-      <p>Pratinjau isi kolom; susunan halaman publik mengikuti template tetap.</p>
-      {Object.entries(spec).map(([key, type]) => <section key={key}><h3>{labels[key]}</h3>
-        {type === "rich" ? <RichPreview document={fields[locale][key] ?? { blocks: [] }} /> : <p>{fields[locale][key] ?? ""}</p>}</section>)}
-    </section> : <form onSubmit={save} lang={locale}>
+    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} /> : <form onSubmit={save} lang={locale}>
       <fieldset disabled={busy || revision.status !== "draft"} className="cms-fields"><legend className="sr-only">Konten {locale === "id" ? "Indonesia" : "Inggris"}</legend>
         <div className="grid gap-6">{groups.map(group => <Card key={group.key} className="gap-5 shadow-none">
           <CardHeader><h2>{group.title}</h2><CardDescription>{group.description}</CardDescription></CardHeader>

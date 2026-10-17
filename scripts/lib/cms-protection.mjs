@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-export const verifyCmsProtection = async (client, owner, { absent = false } = {}) => {
+export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true } = {}) => {
   const cms = owner.replace("_owner", "_cms"), app = owner.replace("_owner", "_app");
   const role = (await client.query("SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,rolcanlogin,rolconnlimit,(SELECT count(*)::int FROM pg_auth_members WHERE member=r.oid) AS memberships FROM pg_roles r WHERE rolname=$1", [cms])).rows[0];
   assert.ok(role, "Provision isolated CMS role first.");
@@ -11,6 +11,13 @@ export const verifyCmsProtection = async (client, owner, { absent = false } = {}
   assert.equal(isolation.other, false); assert.equal(isolation.create, false);
   const reads = ["pages", "page_revisions", "page_translations", "page_submissions", "page_approvals", "page_publications", "page_workflow_events", "page_media_refs", "media_assets"];
   const inserts = reads.filter(table => table !== "media_assets"), updates = ["page_revisions", "page_translations", "page_publications"];
+  if (catalog) {
+    const catalogReads = ["catalog_revisions", "categories", "products", "category_entries", "product_entries", "category_translations", "product_translations", "product_variants", "variant_translations", "modifier_groups", "modifier_group_translations", "modifier_options", "modifier_option_translations", "catalog_submissions", "catalog_approvals", "catalog_publication", "catalog_workflow_events", "catalog_media_refs"];
+    reads.push(...catalogReads); inserts.push(...catalogReads);
+    updates.push(...catalogReads.filter(table => !["categories", "products", "catalog_submissions", "catalog_approvals", "catalog_workflow_events", "catalog_media_refs"].includes(table)));
+    const constraint = (await client.query("SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='public.catalog_workflow_events'::regclass AND conname='catalog_workflow_events_action'")).rows[0]?.definition;
+    assert.deepEqual([...constraint.matchAll(/'([^']+)'/g)].map(match => match[1]).sort(), ["create", "save", "clone", "submit", "approve", "reject", "publish", "archive"].sort());
+  }
   const tables = (await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows;
   for (const { tablename } of tables) {
     for (const [privilege, allowed] of [["SELECT", reads], ["INSERT", inserts], ["UPDATE", updates], ["DELETE", []], ["TRUNCATE", []], ["TRIGGER", []], ["REFERENCES", []]]) {

@@ -142,3 +142,52 @@ passed. The focused CMS run includes an additional real two-connection race test
 added after the full regression; eight CMS cases overlap that full run. Migration
 repeats are no-op; public secret scan passed. Existing dependency advisories remain
 release blockers. Exact commands and initial corrected failures: SECURITY_AND_QA.md.
+
+## Subphase 3.3: catalog CMS and preview cards
+
+Approved by user on 2026-10-17. Branch feat/phase3-3-cms-catalog starts from
+origin/main2b8b4cb, including merged PR8's form/button spacing.
+
+Scope: authenticated catalog revision list/create/clone, ID/EN category/product
+content, ordering/placement, standard and additional variants, integer IDR prices,
+modifier groups/options and selection limits. Staff may draft/submit; Owner alone
+approves/rejects/publishes/archives the exact frozen version/hash. Existing live
+content persists while a replacement draft is edited. No deletion UI is added.
+
+All UI reuses installed shadcn components. Form fields retain12px label clearance,
+24px separation and wrapping action rows. Category/product sections expand with
+semantic details/summary. Each form retains its own pending edits while another
+form saves. Actions/readiness are disabled until every form has saved. Preview
+can display unsaved existing-field edits, while new identities appear after create.
+
+Catalog preview cards show localized category/product text, variant choices,
+modifier bounds and a calculated total using the existing pricing validator.
+Invalid or incomplete choices show no numeric total. Images show an explicit
+unavailable placeholder until the physical media phase. The UI never claims
+merchant price verification. Page previews use grouped Cards and SEO metadata.
+
+Forward migration0009 adds least-privilege catalog grants to the existing isolated
+CMS roles and create/save/clone audit actions. It preserves old SQL/history and
+all content. Test/dev migration plans accept only reviewed9/10-row states. Dev
+migration locks content and verifies equal row counts before/after; the previous
+empty-database requirement is replaced only for this grant/audit-only transition.
+No credential reset, application-superuser access or production migration.
+
+New service/API checks authenticated database membership, exact input fields,
+bounded text/body, route revision scope, Origin, and expected version/hash. Writes
+and draft audits share a transaction. Runtime shares the existing CMS pool; no
+new dependency or public API provider. Private asset storage metadata is omitted
+from the browser response. Physical uploads, scheduling, email delivery, merchant
+integration and dependency-advisory resolution remain separate phases.
+
+Approved verification: lint/build, unit, full integration, catalog/page/auth/public
+browser regressions, migration no-op/protection checks, bundle secret scan and
+diff review. Fixtures remain test-only, synthetic and cleaned by tracked actor IDs.
+Actual results are recorded in SECURITY_AND_QA.md after execution.
+
+Rollback the application/UI files from this subphase and rebuild, while retaining
+0009 SQL/metadata, migration manifests/verifiers and applied history. Keep private
+envs, accounts and content. Restoring the prior privilege
+boundary requires an inspected approved reverse migration; never delete0009 or
+rewrite applied history. Commit/push follows standing approval; merge/deploy remain
+separate operations.

@@ -27,6 +27,7 @@ const validatePriceEdit = input => {
 };
 const persistenceError = error => {
   if (error instanceof CatalogDraftError) return error;
+  if (["40001", "40P01"].includes(error?.code ?? error?.cause?.code)) return new CatalogDraftError("REVISION_CONFLICT", "Draft changed; reload before editing.");
   // Do not expose driver errors, SQL parameters or connection details to callers.
   return new CatalogDraftError("PERSISTENCE_FAILED", "Draft persistence failed.");
 };

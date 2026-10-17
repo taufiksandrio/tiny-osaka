@@ -1085,3 +1085,32 @@ Approved follow-up: increase label/control spacing to12px, field spacing to24px,
 and group action buttons in wrapping rows with12px gaps. List item removal sits
 beside text-part addition; block actions remain in the Card footer. The change
 stays on fix/cms-revision-ui, reuses shadcn and does not alter content operations.
+
+## ADR-030 — Phase3.3 catalog CMS and preview cards (approved 2026-10-17)
+
+User approved the complete catalog CMS scope and page/product preview refinement,
+including a forward migration on local test then dev after QA. Branch
+feat/phase3-3-cms-catalog starts from merged main2b8b4cb. Existing pinned packages
+are reused; shadcn remains the approved UI direction.
+
+Reuse existing category/product/variant/modifier writers and frozen approval/
+published readers through real server-authenticated CMS APIs. Database membership
+is rechecked per transaction. No request accepts an actor/role override. Draft
+audits are atomic; draft serialization/deadlock failures map to safe revision
+conflicts. Category/product slugs remain immutable; copying uses a fresh draft.
+
+Migration0009 grants only required catalog SELECT/INSERT/UPDATE capabilities to
+the existing isolated CMS logins and extends catalog audit actions. No DELETE,
+TRUNCATE, asset registration, identity updates, auth writes or privileged grants.
+Existing trigger functions, SQL/history and public reader isolation are preserved.
+This grant/audit-only dev transition may contain real local draft content: retain
+all rows and verify counts under locks instead of requiring an empty dev database.
+
+Preview is an authenticated simulation of the current draft, including unsaved
+existing-field changes. Product total uses code-owned pricing/selection rules;
+invalid selections have no numeric total. Media uses an honest placeholder.
+No merchant price-comparison claim, live merchant call, checkout, stock quantity,
+upload, scheduler, public schema or production operation is included.
+
+See PHASE3_PLAN.md for scope/rollback and SECURITY_AND_QA.md for executed results.
+Standing verified subphase commit/push workflow applies; merge/deploy stay separate.

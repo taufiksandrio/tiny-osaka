@@ -32,7 +32,8 @@ const AdminPage = async () => {
       <Card className="shadow-none"><CardHeader><CardTitle>Konten yang siap dikerjakan</CardTitle><CardDescription>Halaman mengikuti template tetap, dengan versi Indonesia dan Inggris.</CardDescription></CardHeader>
         <CardContent className="space-y-5"><div className="rounded-xl bg-accent p-5"><Files className="mb-3 size-6 text-primary" aria-hidden="true" />
           <h2>Halaman website</h2><p className="mt-2 text-sm text-muted-foreground">Buat draft, lengkapi kedua bahasa, dan kirim revisi untuk ditinjau.</p></div>
-          <Button asChild><Link href="/admin/pages">Kelola halaman website<ArrowRight aria-hidden="true" /></Link></Button>
+          <div className="cms-button-row"><Button asChild><Link href="/admin/pages">Kelola halaman website<ArrowRight aria-hidden="true" /></Link></Button>
+          <Button asChild variant="outline"><Link href="/admin/catalog">Kelola katalog menu<ArrowRight aria-hidden="true" /></Link></Button></div>
         </CardContent></Card>
       <Card className="shadow-none"><CardHeader><CardTitle>Alur publikasi</CardTitle><CardDescription>Konten live tetap tampil selama revisi pengganti dikerjakan.</CardDescription></CardHeader>
         <CardContent><ol className="grid gap-5">{[["01", "Susun draft", "Simpan konten Indonesia dan Inggris."], ["02", "Kirim untuk review", "Owner meninjau revisi yang diajukan."], ["03", "Setujui dan terbitkan", "Hanya Owner yang dapat menerbitkan revisi."]].map(([number, title, copy]) => <li key={number} className="flex gap-3">

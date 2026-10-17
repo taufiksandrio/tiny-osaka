@@ -121,9 +121,10 @@ test("Staff edits draft with safe preview, accessible fields and incomplete-revi
   await page.getByLabel("Bahasa konten", { exact: true }).selectOption("id");
   await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
   await expect(page.getByRole("link", { name: "<script>literal preview</script>" })).toHaveAttribute("href", "/id/menu");
-  expect(await page.locator(".cms-preview script").count()).toBe(0);
-  await expect(page.locator(".cms-preview ol li")).toHaveText(["QA ordered item"]);
-  await expect(page.locator(".cms-preview strong")).toHaveText("<script>literal preview</script>");
+  expect(await page.locator(".cms-page-preview script").count()).toBe(0);
+  await expect(page.locator(".cms-page-preview ol li")).toHaveText(["QA ordered item"]);
+  await expect(page.locator(".cms-page-preview strong")).toHaveText("<script>literal preview</script>");
+  await expect(page.getByRole("heading", { name: "Metadata SEO", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Kirim untuk review" }).click();
   const dialog = page.getByRole("alertdialog"); await expect(dialog).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
