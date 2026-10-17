@@ -389,13 +389,13 @@ test("simultaneous first publication serializes per page and leaves one complete
   }
 });
 
-test("all twenty-four tables remain empty with exact protection definitions and nine history entries", async () => {
+test("all twenty-four tables remain empty with exact protection definitions and twelve history entries", async () => {
   const client = await connectTestOwner();
   try {
     for (const table of contentTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 10);
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 14);
   } finally { await client.end(); }
 });
 

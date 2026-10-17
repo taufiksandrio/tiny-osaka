@@ -190,7 +190,7 @@ test("runtime application cannot read or write any new draft pricing table", asy
   }
 });
 
-test("all twenty-eight tables remain empty, owner-owned, with thirty RESTRICT FKs", async () => {
+test("all thirty tables remain empty, owner-owned, with thirty-three RESTRICT FKs", async () => {
   const client = await connectTestOwner();
   try {
     for (const table of pricingTables) {
@@ -201,7 +201,7 @@ test("all twenty-eight tables remain empty, owner-owned, with thirty RESTRICT FK
     assert.deepEqual(tables.map(row => row.name), allTables);
     assert.ok(tables.every(row => row.owner === "tiny_osaka_test_owner"));
     const { rows: fks } = await client.query("SELECT confupdtype,confdeltype FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='public' AND c.contype='f'");
-    assert.equal(fks.length, 30);
+    assert.equal(fks.length, 33);
     assert.ok(fks.every(row => row.confupdtype === "r" && row.confdeltype === "r"));
   } finally { await client.end(); }
 });

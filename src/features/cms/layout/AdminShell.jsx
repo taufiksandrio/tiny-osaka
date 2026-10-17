@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import AdminHeader from "./AdminHeader";
 import AdminNav from "./AdminNav";
 const Brand = () => <Link href="/admin" className="flex items-center gap-3">
-  <Image src="/brand/tiny-osaka-mark.svg" alt="" width={40} height={40} className="size-10 shrink-0" />
+  <Image src="/brand/tiny-osaka-logo.png" alt="" width={48} height={48} unoptimized className="size-12 shrink-0" />
   <span className="grid"><span className="text-base font-bold tracking-tight">Tiny Osaka</span><span className="text-xs text-muted-foreground">Content workspace</span></span>
 </Link>;
 const AdminShell = ({ actor, children }) => {

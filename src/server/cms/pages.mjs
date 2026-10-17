@@ -6,6 +6,8 @@ import { createPageWorkflow } from "../pages/workflow.mjs";
 import { pageDefinitions, getPageDefinition } from "../pages/templates.mjs";
 import { validPageUuid } from "../pages/validation.mjs";
 import { cmsFail, exactInput } from "./request-policy.mjs";
+import { loadRevisionMedia } from "../media/references.mjs";
+import { assetDto } from "./media.mjs";
 
 export const createCmsPages = ({ db, authenticate }) => {
   const run = async (headers, callback) => {
@@ -42,7 +44,8 @@ export const createCmsPages = ({ db, authenticate }) => {
       const row = await revision(tx, id);
       const translations = await tx.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, id));
       const [live] = await tx.select().from(s.pagePublications).where(eq(s.pagePublications.pageKey, row.pageKey));
-      return { ...row, translations, isLive: live?.revisionId === id };
+      const media = await loadRevisionMedia(tx, id, "page");
+      return { ...row, translations, mediaRefs: media.mediaRefs, mediaAssets: media.mediaAssets.map(assetDto), isLive: live?.revisionId === id };
     }),
     write: (headers, action, input) => run(headers, async (tx, actor) => {
       const fields = { create: ["pageKey"], save: ["revisionId", "expectedVersion", "locale", "fields"],

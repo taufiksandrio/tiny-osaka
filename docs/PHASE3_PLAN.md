@@ -191,3 +191,94 @@ envs, accounts and content. Restoring the prior privilege
 boundary requires an inspected approved reverse migration; never delete0009 or
 rewrite applied history. Commit/push follows standing approval; merge/deploy remain
 separate operations.
+
+## Subphase 3.4: private media library and original brand assets
+
+Approved on 2026-10-17. Branch `feat/phase3-4-cms-media`. Reuse the immutable
+Phase 2 media graph with real Staff/Owner authentication, revision versions,
+frozen-state guards and normal Owner review/publication. No automatic publishing.
+
+The shadcn media library at `/admin/media` accepts original JPEG/PNG/WebP and
+conditionally MP4/WebM. Full image decoding validates MIME/dimensions; video
+requires explicitly configured local FFmpeg and ffprobe, with bounded inspection,
+codec/container checks and a full decode. Without those executables video upload
+fails closed. YouTube ID registration requires an already registered image poster;
+the visitor must consent before the external player is loaded.
+
+Files are immutable original bytes under ignored `.media/dev` or `.media/test`,
+outside `public`. UUID keys are server-generated and never returned in browser
+DTOs. Uploads have streaming byte caps, idle/total time bounds and a concurrency
+limit. File responses verify integrity, stream bytes with single-range support,
+and use no-store/nosniff headers. Public access requires an exact live approved
+page/catalog reference, including video/YouTube posters. Preview requires a CMS
+session. No remote import, physical delete or in-CMS retouch is implemented.
+
+Migration 0010 grants media asset/event INSERT and draft-reference UPDATE/DELETE
+to isolated CMS roles, plus a narrow published-media SQL capability to the public
+reader. Immutable asset/audit guards remain. Reviewed test/dev runners accept only
+the 10-to-12-history-row transition (including the verified 11-row intermediate)
+and no-op state. Dev content counts are checked
+under locks. No production migration or deployment is authorized.
+
+Original logo 01b is retained byte-for-byte; separately approved web/favicon/Apple
+PNG derivatives replace the temporary lantern in the UI. See BRAND_ASSETS.md.
+Verification commands/results and limitations are recorded in SECURITY_AND_QA.md.
+Rollback application code while retaining applied migrations 0010/0011, their metadata,
+history verifiers, private media files and credentials. Any privilege reversal is
+a separate inspected migration. Standing verified commit/push workflow applies;
+merge and deploy remain separate.
+
+QA also found that the original poster trigger used FOR SHARE, which required
+UPDATE privilege. Forward migration 0011 removes only that redundant lock from
+the immutable-poster read. All mutation guards remain; no UPDATE grant on assets
+is added. Prior applied SQL and history stay unchanged. Runtime pools are shared
+per process across route bundles to respect the existing connection limits.
+
+## Subphase 3.5: durable scheduled publication
+
+Approved on 2026-10-17, branch `feat/phase3-5-scheduled-publishing`.
+Owner schedules an exact approved page/catalog version and content hash. Staff
+can read the queue but cannot schedule/cancel through forged API requests.
+Shadcn forms use an explicitly labeled WIB wall clock; storage is UTC.
+`/admin/publications` shows active jobs first, then recent history (100 total), safe failure reasons, retries,
+revision links and optimistic Owner cancellation. The screen refreshes every
+30 seconds while open. Closing the browser does not cancel a job.
+
+Scheduling is an overlay on the approved revision, not an edit of its frozen
+status/hash/approval. The root remains approved until successful publication.
+One pending job per target; changing a due date requires cancel then schedule.
+Due time must be future and at most 365 days away. The job seals the live pointer
+at scheduling; a later publication makes that job obsolete. Manual publication
+cancels pending jobs for that target, including an idempotent publish of its live
+revision. Archiving cancels only that revision's pending job. Prior public content
+remains until publication commits successfully.
+
+Worker rechecks the original scheduling Owner's enabled DB membership, exact
+approved revision and live baseline. It reuses existing hash/receipt/approval
+workflows, rather than inventing a system Owner. Publication, job completion and
+audit share one transaction. A shared advisory lock precedes target/root locks
+on scheduler, worker, manual publish and archive. Concurrent workers cannot
+double-publish; a crash rolls back or commits the entire result. Transient
+persistence failures get at most three attempts, delayed 30 then 60 seconds.
+Unavailable Owner/revision or changed live publication fails terminally. A DB
+outage before job update leaves the durable job pending for a later invocation.
+
+Migration 0012 adds jobs/events, frozen identity/append-only audit guards and
+least-privilege CMS grants. QA found missing ON UPDATE RESTRICT on the three new
+foreign keys; forward migration 0013 corrects them without rewriting 0012.
+Reviewed runners accept history states 12, 13 and 14 with exact hashes/ownership.
+Dev migration preserves content counts under locks. No auth write grant, public
+table read, dependency, Railway action, production migration or deployment.
+
+Foreground worker commands are documented in OPERATIONS.md. No actual development
+jobs are run and no service/cron/Task Scheduler is registered in this phase;
+tests execute the worker only against synthetic isolated test fixtures. A future
+approved operational setup must keep it running and monitor delays/failures.
+Email delivery/domain and FFmpeg installation remain separate unresolved tasks.
+
+Rollback: stop the worker, then restore the previous application commit and
+rebuild while retaining migrations 0012/0013, snapshots, verifiers and database
+history. Retain jobs/events and existing content/media/configuration. Pending
+jobs stay inert while the worker is stopped. Reconcile or cancel pending jobs
+before restarting it. Removing tables/grants requires a separately reviewed
+reverse migration; never rewrite an applied SQL file or delete migration history.

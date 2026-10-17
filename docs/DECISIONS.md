@@ -1149,3 +1149,26 @@ No dependency, migration, session/RBAC, merchant or production change. Rollback
 application/assets together while retaining CMS content and existing SQL history;
 already saved editorial content remains a normal revision requiring normal review.
 Standing branch/commit/push workflow applies; merge/deployment remain separate.
+# ADR-032 — private local media and original logo (2026-10-17)
+
+User approved Phase 3.4 media CMS plus original logo/favicon after reviewing
+scope, local storage, dependency and video-prerequisite limitations. Reuse existing
+media schema/revision approval; use local private immutable original files,
+server-authenticated preview and live-reference-only public byte delivery. No
+cloud service, external binary installation, destructive asset action, publication
+or deployment is included. Sharp 0.35.5 becomes a pinned direct dependency for
+full image inspection and approved logo derivatives. Original source assets stay
+untouched. See PHASE3_PLAN.md and BRAND_ASSETS.md for implementation boundaries.
+
+## ADR-033 — durable Owner-authorized scheduled publishing (2026-10-17)
+
+User approved Phase 3.5 scheduling for exact approved page/catalog revisions,
+shadcn UI, WIB input/display, UTC storage, isolated local migration/QA and a local
+foreground worker. Reuse the persisted real Owner authorization, then recheck
+enabled Owner membership and exact approval at execution. No fabricated Owner,
+public run endpoint or browser-session dependency. Jobs overlay frozen approved
+revisions; manual publication cancels obsolete schedules. Persist live baseline,
+bounded retries and atomic audit under consistent publication locks. Details and
+rollback are in PHASE3_PLAN.md and OPERATIONS.md. No automatic worker startup,
+Railway mutation, deployment, real email or FFmpeg installation is authorized.
+Standing verified commit/push workflow applies; merge/deploy remain separate.

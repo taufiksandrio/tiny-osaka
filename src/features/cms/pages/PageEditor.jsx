@@ -1,4 +1,5 @@
 "use client";
+import { SchedulePanel } from "../publishing/Publications";
 import { useEffect, useState } from "react";
 import { pageTemplateFields, pageDefinitions } from "@/server/pages/templates.mjs";
 import RichTextEditor from "./RichTextEditor";
@@ -15,6 +16,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Eye, Save, LoaderCircle, Languages, LockKeyhole } from "lucide-react";
 import RevisionStatus from "./RevisionStatus";
 import { fillHomeDraft } from "@/features/public-site/home-draft.mjs";
+import MediaAttachments from "../media/MediaAttachments";
 const labels = { eyebrow: "Pengantar", title: "Judul", summary: "Ringkasan", seoTitle: "Judul SEO", seoDescription: "Deskripsi SEO", body: "Isi",
   menuTitle: "Judul menu", menuIntro: "Pengantar menu", aboutTitle: "Judul tentang", aboutBody: "Isi tentang", primaryCtaLabel: "Label tombol utama",
   secondaryCtaLabel: "Label tombol kedua", storyHeading: "Judul cerita", storyBody: "Isi cerita", serviceHeading: "Judul layanan", serviceBody: "Isi layanan",
@@ -31,7 +33,8 @@ const PageEditor = ({ initial, role }) => {
     Object.fromEntries(["id", "en"].map(language => [language, initial.translations.find(row => row.locale === language)?.fields ?? {}])));
   const [dirty, setDirty] = useState({ id: false, en: false }), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const [preview, setPreview] = useState(false);
-  const unsaved = dirty.id || dirty.en;
+  const [mediaDirty, setMediaDirty] = useState({});
+  const unsaved = dirty.id || dirty.en || Object.values(mediaDirty).some(Boolean);
   useEffect(() => {
     if (!unsaved) return;
     const warn = event => { event.preventDefault(); event.returnValue = ""; };
@@ -81,7 +84,7 @@ const PageEditor = ({ initial, role }) => {
       </Badge>)}</div>
       <p role="status" aria-live="polite" className="text-sm font-medium">{message || (unsaved ? "Ada perubahan belum disimpan." : "")}</p>
     </CardContent></Card>
-    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} pageKey={revision.pageKey} /> : <form onSubmit={save} lang={locale}>
+    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <form onSubmit={save} lang={locale}>
       <fieldset disabled={busy || revision.status !== "draft"} className="cms-fields"><legend className="sr-only">Konten {locale === "id" ? "Indonesia" : "Inggris"}</legend>
         <div className="grid gap-6">{groups.map(group => <Card key={group.key} className="gap-5 shadow-none">
           <CardHeader><h2>{group.title}</h2><CardDescription>{group.description}</CardDescription></CardHeader>
@@ -104,6 +107,14 @@ const PageEditor = ({ initial, role }) => {
         </div>
       </fieldset>
     </form>}
+    <MediaAttachments domain="page" revisionId={revision.id} version={revision.version} disabled={busy || dirty.id || dirty.en || revision.status !== "draft"}
+      onBusy={setBusy} onChange={async version => {
+        const next = await cmsRequest(`/${revision.id}`, undefined, "GET");
+        if (next.version === version) setRevision(next);
+        else { setRevision(previous => ({ ...previous, version })); setMessage("Revisi berubah lagi. Salin perubahan sebelum memuat ulang."); }
+      }}
+      onDirty={(key, value) => setMediaDirty(previous => ({ ...previous, [key]: value }))} />
+    <SchedulePanel domain="page" revision={revision} role={role} disabled={busy || unsaved} />
     <RevisionActions revision={revision} role={role} disabled={busy || unsaved} onMessage={setMessage} onBusy={setBusy}
       onChange={row => setRevision(previous => ({ ...previous, ...row, isLive: row.status === "published" || previous.isLive }))} />
   </div>;

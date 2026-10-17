@@ -7,6 +7,7 @@ import { createCatalogWorkflow } from "../catalog/workflow.mjs";
 import { loadCatalogGraph, getCatalogReviewReadiness } from "../catalog/review.mjs";
 import { validPageUuid } from "../pages/validation.mjs";
 import { cmsFail, exactInput } from "./request-policy.mjs";
+import { assetDto } from "./media.mjs";
 
 const scope = ["revisionId", "expectedVersion"];
 const translation = ["locale", "title", "description"];
@@ -51,7 +52,7 @@ export const createCmsCatalog = ({ db, authenticate }) => {
     const row = await revision(tx, id);
     const graph = await loadCatalogGraph(tx, row);
     const [live] = await tx.select().from(s.catalogPublication).where(eq(s.catalogPublication.id, 1));
-    return { ...graph, mediaAssets: graph.mediaAssets.map(asset => ({ id: asset.id })), isLive: live?.revisionId === row.id };
+    return { ...graph, mediaAssets: graph.mediaAssets.map(assetDto), isLive: live?.revisionId === row.id };
   };
   return Object.freeze({
     list: headers => run(headers, async tx => {

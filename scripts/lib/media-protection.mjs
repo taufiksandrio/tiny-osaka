@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 export const mediaTables = Object.freeze(["media_assets", "media_events", "catalog_media_refs", "page_media_refs"].sort());
-export const verifyMediaProtection = async (client, owner) => {
+export const verifyMediaProtection = async (client, owner, { posterRead = true } = {}) => {
   const source = readFileSync(new URL("../../drizzle/0005_media_references.sql", import.meta.url), "utf8");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(media_\w+)\(\) RETURNS trigger\s+LANGUAGE plpgsql SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
+  if (posterRead) {
+    const replacement = readFileSync(new URL("../../drizzle/0011_media_poster_read.sql", import.meta.url), "utf8");
+    const body = /AS \$\$([\s\S]*?)\$\$;/.exec(replacement)[1];
+    expected.find(([, name]) => name === "media_guard_asset")[2] = body;
+  }
   const { rows: functions } = await client.query(`
     SELECT p.proname,p.prosrc,p.prosecdef,p.proconfig,l.lanname,pg_get_userbyid(p.proowner) AS owner
     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang

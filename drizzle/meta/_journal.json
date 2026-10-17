@@ -71,6 +71,34 @@
       "when": 1792206000000,
       "tag": "0009_cms_catalog_access",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792212000000,
+      "tag": "0010_cms_media_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792212600000,
+      "tag": "0011_media_poster_read",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792216200000,
+      "tag": "0012_scheduled_publishing",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792216260000,
+      "tag": "0013_publication_identity_restrict",
+      "breakpoints": true
     }
   ]
 }

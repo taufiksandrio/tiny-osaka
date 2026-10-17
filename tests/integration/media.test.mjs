@@ -364,14 +364,14 @@ test("two raw inserts at eleven references cannot bypass the database twelve-med
   }
 });
 
-test("all twenty-eight tables are empty and guard definitions, ownership and nine history entries remain intact", async () => {
+test("all thirty tables are empty and guard definitions, ownership and fourteen history entries remain intact", async () => {
   const client = await connectTestOwner();
   try {
     for (const table of allTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM ${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
     await verifyMediaProtection(client, "tiny_osaka_test_owner");
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 10);
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 14);
   } finally { await client.end(); }
 });
 

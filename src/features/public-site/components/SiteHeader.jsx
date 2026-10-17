@@ -6,7 +6,7 @@ const SiteHeader = ({ locale, copy }) => (
   <header className="site-header" id="top">
     <div className="container header-inner">
       <Link className="wordmark" href={`/${locale}`}>
-        <Image src="/brand/tiny-osaka-mark.svg" alt="" width={48} height={48} className="site-brand-mark" />
+        <Image src="/brand/tiny-osaka-logo.png" alt="" width={64} height={64} unoptimized className="site-brand-mark" />
         <span>TINY<br />OSAKA<span className="brand-dot">.</span></span>
       </Link>
       <nav className="main-nav" aria-label={copy.navLabel}>
