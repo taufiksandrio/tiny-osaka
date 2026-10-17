@@ -41,7 +41,6 @@ test("Staff saves and immediately replaces the public page under their own ident
   assert.equal((await getPublishedPage(db, { pageKey: "about", locale: "id" })).fields.title, "QA pengganti");
   const receipt = (await db.execute("SELECT approved_by FROM public.page_approvals")).rows;
   assert.equal(receipt.length, 2); assert.ok(receipt.every(row => row.approved_by === fixture.accounts[1].id));
-  assert.equal((await pages.read(headers[0], first.id)).translations[0].fields.title, fields.title);
   const list = await pages.list(headers[1]); assert.equal(list.find(row => row.key === "about").publishedRevisionId, next.id);
 }));
 test("Owner uses the same save action and stale saves cannot overwrite content", () => check(async pages => {
@@ -68,24 +67,6 @@ test("anonymous, forged actor/commands and schedule fields are denied; membershi
   await assert.rejects(pages.saveCurrent(headers[1], { ...input(row), pageKey: "missing" }), { code: "INVALID_INPUT" });
   // The runtime role still has read-only membership access.
   await assert.rejects(db.execute("UPDATE cms_auth.roles SET enabled=false"));
-}));
-test("legacy unpublished content is loaded without changing it; live content wins over newer unsaved work", () => check(async pages => {
-  let old = await pages.write(headers[1], "create", { pageKey: "about" });
-  old = await pages.write(headers[1], "save", { revisionId: old.id, expectedVersion: old.version, locale: "id", fields });
-  const current = await pages.current(headers[1], "about"); assert.equal(current.id, old.id);
-  const live = await pages.saveCurrent(headers[1], input(current));
-  await pages.write(headers[1], "create", { pageKey: "about" });
-  assert.equal((await pages.current(headers[1], "about")).id, live.id);
-}));
-test("saving cancels an older page schedule atomically without deleting its history", () => check(async (pages, db) => {
-  const live = await pages.saveCurrent(headers[0], input(await pages.current(headers[0], "about")));
-  const replacement = await pages.write(headers[0], "clone", { sourceRevisionId: live.id, expectedSourceVersion: live.version });
-  await pages.write(headers[0], "approve", { revisionId: replacement.id, expectedVersion: replacement.version, expectedHash: replacement.contentHash,
-    dueAt: new Date(Date.now() + 60000).toISOString() });
-  assert.equal((await db.execute("SELECT status FROM public.publication_jobs")).rows[0].status, "scheduled");
-  await pages.saveCurrent(headers[1], input(live));
-  assert.equal((await db.execute("SELECT status FROM public.publication_jobs")).rows[0].status, "cancelled");
-  assert.equal((await db.execute("SELECT actor_id FROM public.publication_events WHERE action='cancel'")).rows[0].actor_id, fixture.accounts[1].id);
 }));
 test("concurrent first and replacement saves have one winner each, with no abandoned draft", async () => {
   const pages = createCmsPages({ db: drizzle(pool), authenticate: input => fixture.service.authenticate(input) });

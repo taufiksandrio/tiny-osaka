@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run start -- --hostname=127.0.0.1 --port=3030",
-    url: "http://127.0.0.1:3030/id",
+    url: "http://127.0.0.1:3030/",
     reuseExistingServer: false,
     timeout: 60000,
     env: { NEXT_TELEMETRY_DISABLED: "1", PUBLIC_CONTENT_SOURCE: "fixture", PUBLIC_DATABASE_TARGET: "dev" },

@@ -1,4 +1,4 @@
-import { publishingLock, cancelPending } from "../publishing/locks.mjs";
+import { publishingLock } from "../publishing/locks.mjs";
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -8,7 +8,7 @@ import { pageFail, validPageUuid, validPageVersion, validatePageReadiness } from
 
 // Inject only from trusted server composition. Request actor/role fields are ignored.
 // Auth/session wiring is Phase 3; absent provider denies every write.
-export const createPageWorkflow = ({ db, resolveActor, scheduledJobId = null } = {}) => {
+export const createPageWorkflow = ({ db, resolveActor } = {}) => {
   const authorize = async action => {
     let actor;
     try { actor = typeof resolveActor === "function" ? await resolveActor() : null; }
@@ -72,7 +72,6 @@ export const createPageWorkflow = ({ db, resolveActor, scheduledJobId = null } =
             const [approval] = await tx.select().from(s.pageApprovals).where(eq(s.pageApprovals.revisionId, revision.id));
             if (approval?.contentHash !== contentHash) pageFail("APPROVAL_REQUIRED", "Exact page approval required.");
             if (live?.revisionId === revision.id) {
-              await cancelPending(tx, `page:${revision.pageKey}`, actor.subject, { exceptId: scheduledJobId });
               return { revisionId: revision.id, pageKey: revision.pageKey, version: revision.version, contentHash, status: "published" };
             }
             if (revision.status !== "approved") pageFail("REVISION_CONFLICT", "Clone historical content before republishing.");
@@ -82,8 +81,6 @@ export const createPageWorkflow = ({ db, resolveActor, scheduledJobId = null } =
         await tx.update(s.pageRevisions).set({ status, contentHash }).where(eq(s.pageRevisions.id, revision.id));
         if (action === "publish") await tx.insert(s.pagePublications).values({ pageKey: revision.pageKey, revisionId: revision.id, contentHash })
           .onConflictDoUpdate({ target: s.pagePublications.pageKey, set: { revisionId: revision.id, contentHash, publishedAt: sql`now()` } });
-        if (["publish", "archive"].includes(action)) await cancelPending(tx, `page:${revision.pageKey}`, actor.subject,
-          action === "publish" ? { exceptId: scheduledJobId } : { revisionId: revision.id, code: "REVISION_UNAVAILABLE" });
         await tx.insert(s.pageWorkflowEvents).values({ revisionId: revision.id, action, actorId: actor.subject });
         return { revisionId: revision.id, pageKey: revision.pageKey, version: revision.version, contentHash, status };
       });

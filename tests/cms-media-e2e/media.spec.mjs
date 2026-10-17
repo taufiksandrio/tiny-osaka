@@ -59,7 +59,7 @@ test("original upload, Staff direct save and public revocation work on every vie
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   const publicFile = await page.request.get(`/media/${asset.id}`); expect(publicFile.status()).toBe(200);
   expect(Buffer.compare(await publicFile.body(), bytes)).toBe(0); expect(publicFile.headers()["cache-control"]).toContain("no-store");
-  await page.goto("/id/about");
+  await page.goto("/about");
   const photo = page.getByRole("img", { name: "Gambar sintetis QA", exact: true }); await expect(photo).toBeVisible();
   await expect.poll(() => photo.evaluate(img => img.naturalWidth)).toBe(32);
   await page.goto("/admin/pages/about");

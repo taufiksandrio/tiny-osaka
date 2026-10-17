@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { applyReviewedMigration } from "./lib/apply-reviewed-migration.mjs";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { connectDevOwner, DevDatabaseGuardError } from "./lib/dev-db.mjs";
-import { allTables, validateDevMigrationFiles, validateDevMigrationState, DevMigrationPlanError } from "./lib/dev-migration-plan.mjs";
+import { tablesForState, validateDevMigrationFiles, validateDevMigrationState, DevMigrationPlanError } from "./lib/dev-migration-plan.mjs";
 
 import { verifyCatalogProtection } from "./lib/catalog-protection.mjs";
 
@@ -37,7 +37,7 @@ const checkHistory = async (client) => {
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_dev_owner", { posterRead: state >= 12 });
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_dev_owner", { media: state >= 11 });
   await verifyAuthProtection(client, "tiny_osaka_dev_owner", { absent: state === 7 });
-  await verifyCmsProtection(client, "tiny_osaka_dev_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13 });
+  await verifyCmsProtection(client, "tiny_osaka_dev_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13, deletion: state >= 15 });
   if (state >= 13) await verifyPublishingProtection(client, "tiny_osaka_dev_owner", { identityRestrict: state >= 14 });
   return state;
 };
@@ -51,12 +51,12 @@ try {
   // Preserve the original dev lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210983)");
   const initialState = await checkHistory(client);
-  if (initialState === 14) {
-    console.log("dev: reviewed 0000-0013 already applied; no changes made.");
+  if (initialState === 15) {
+    console.log("dev: reviewed 0000-0014 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 14) throw new DevMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 15) throw new DevMigrationPlanError("Migration final state verification failed.");
       for (const [table, count] of contentCounts) {
         const { rows: [row] } = await client.query(`SELECT count(*)::text AS count FROM public.${table}`);
         if (row.count !== count) throw new DevMigrationPlanError("Migration did not preserve content row counts.");
@@ -64,8 +64,8 @@ try {
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new DevMigrationPlanError("Migration starting state changed.");
       // Preserve all existing tables, including jobs if resuming at 0012.
-      if (![12, 13].includes(initialState)) throw new DevMigrationPlanError("Require reviewed catalog/media baseline.");
-      const existingTables = initialState >= 13 ? allTables : allTables.filter(table => !["publication_jobs", "publication_events"].includes(table));
+      if (![12, 13, 14].includes(initialState)) throw new DevMigrationPlanError("Require reviewed catalog/media baseline.");
+      const existingTables = tablesForState(initialState);
       await client.query("LOCK TABLE " + existingTables.map(table => "public." + table).join(",") + " IN ACCESS EXCLUSIVE MODE");
       contentCounts = new Map();
       for (const table of existingTables) {
@@ -73,7 +73,7 @@ try {
         contentCounts.set(table, row.count);
       }
     });
-    console.log("dev: applied reviewed 0012/0013 scheduled publishing; 30 public and 9 auth tables owned by tiny_osaka_dev_owner.");
+    console.log("dev: applied reviewed catalog card CRUD plan up to 0014; 31 public and 9 auth tables owned by tiny_osaka_dev_owner.");
   }
 } catch (error) {
   console.error(error instanceof DevDatabaseGuardError || error instanceof DevMigrationPlanError

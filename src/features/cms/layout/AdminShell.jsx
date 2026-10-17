@@ -20,7 +20,7 @@ const AdminShell = ({ actor, children }) => {
   if (authPage || !actor) return <div className="min-h-screen">
     <a className="skip-link" href="#main-content">Langsung ke konten</a>
     <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-5 py-5 sm:px-10">
-      <Brand /><Button asChild variant="ghost" size="sm"><Link href="/id">Website publik<ArrowUpRight aria-hidden="true" /></Link></Button>
+      <Brand /><Button asChild variant="ghost" size="sm"><Link href="/">Website publik<ArrowUpRight aria-hidden="true" /></Link></Button>
     </header><div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-16">{children}</div>
   </div>;
   return <div inert={open} className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">

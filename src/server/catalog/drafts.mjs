@@ -333,12 +333,15 @@ const cloneChildren = [
   ["catalog_media_refs", ["id", "product_id", "asset_id", "alt_id", "alt_en", "caption_id", "caption_en", "sort_order"]],
 ];
 
+// excludeProductId (optional) copies the snapshot without one product: the card delete flow
+// builds its replacement snapshot this way, because CMS roles cannot DELETE frozen/child rows.
 export const cloneCatalogDraft = async (db, input) => {
   if (!input || !validUuid(input.sourceRevisionId) || !Number.isInteger(input.expectedSourceVersion) ||
-    input.expectedSourceVersion < 1 || input.expectedSourceVersion > 2147483647) {
+    input.expectedSourceVersion < 1 || input.expectedSourceVersion > 2147483647 ||
+    (input.excludeProductId !== undefined && !validUuid(input.excludeProductId))) {
     throw new CatalogDraftError("INVALID_INPUT", "Require a valid source revision ID and integer source version.");
   }
-  const { sourceRevisionId, expectedSourceVersion } = input;
+  const { sourceRevisionId, expectedSourceVersion, excludeProductId } = input;
   try {
     return await db.transaction(async tx => {
       // FOR SHARE blocks root UPDATEs by compliant writers while allowing reads
@@ -351,8 +354,9 @@ export const cloneCatalogDraft = async (db, input) => {
       for (const [name, columns] of cloneChildren) {
         const table = sql`${sql.identifier("public")}.${sql.identifier(name)}`;
         const fields = sql.join(columns.map(column => sql.identifier(column)), sql`, `);
+        const skip = excludeProductId && columns.includes("product_id") ? sql` AND product_id <> ${excludeProductId}::uuid` : sql``;
         await tx.execute(sql`INSERT INTO ${table} (revision_id, ${fields})
-          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid`);
+          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid${skip}`);
       }
       return draft;
     });

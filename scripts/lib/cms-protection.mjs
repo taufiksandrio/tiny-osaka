@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true, publishing = true } = {}) => {
+export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true, publishing = true, deletion = true } = {}) => {
   const cms = owner.replace("_owner", "_cms"), app = owner.replace("_owner", "_app");
   const role = (await client.query("SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,rolcanlogin,rolconnlimit,(SELECT count(*)::int FROM pg_auth_members WHERE member=r.oid) AS memberships FROM pg_roles r WHERE rolname=$1", [cms])).rows[0];
   assert.ok(role, "Provision isolated CMS role first.");
@@ -16,8 +16,9 @@ export const verifyCmsProtection = async (client, owner, { absent = false, catal
     reads.push(...catalogReads); inserts.push(...catalogReads);
     updates.push(...catalogReads.filter(table => !["categories", "products", "catalog_submissions", "catalog_approvals", "catalog_workflow_events", "catalog_media_refs"].includes(table)));
     const constraint = (await client.query("SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='public.catalog_workflow_events'::regclass AND conname='catalog_workflow_events_action'")).rows[0]?.definition;
-    assert.deepEqual([...constraint.matchAll(/'([^']+)'/g)].map(match => match[1]).sort(), ["create", "save", "clone", "submit", "approve", "reject", "publish", "archive"].sort());
+    assert.deepEqual([...constraint.matchAll(/'([^']+)'/g)].map(match => match[1]).sort(), ["create", "save", "clone", "submit", "approve", "reject", "publish", "archive", ...(deletion ? ["delete"] : [])].sort());
   }
+  if (deletion) reads.push("catalog_deletion_log"); // SELECT only: rows are written by the guarded purge function.
   if (media) { inserts.push("media_assets", "media_events"); updates.push("page_media_refs", "catalog_media_refs"); }
   if (publishing) { reads.push("publication_jobs", "publication_events"); inserts.push("publication_jobs", "publication_events"); updates.push("publication_jobs"); }
   const tables = (await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows;

@@ -3,6 +3,27 @@ import { readFileSync } from "node:fs";
 import { pricingTables, workflowTables } from "./test-migration-plan.mjs";
 
 // Hash-pinned SQL remains the source of truth for hand-written functions.
+// ADR-037 objects (migration 0014). The purge function is the only guard bypass.
+const verifyDeletionObjects = async (client, owner) => {
+  const cms = owner.replace("_owner", "_cms"), app = owner.replace("_owner", "_app");
+  const { rows } = await client.query(`SELECT p.oid,p.prosecdef,p.proconfig,p.proowner::regrole::text AS owner,
+    pg_get_function_identity_arguments(p.oid) AS args FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname='catalog_purge_product'`);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].prosecdef, true); assert.equal(rows[0].owner, owner);
+  assert.deepEqual(rows[0].proconfig, ["search_path=pg_catalog"]);
+  assert.equal(rows[0].args, "p_product_id uuid, p_actor text");
+  const { rows: acl } = await client.query(`SELECT CASE WHEN x.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END AS role,
+    x.privilege_type FROM pg_proc p,aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) x WHERE p.oid=$1`, [rows[0].oid]);
+  assert.deepEqual(acl.map(row => row.role).sort(), [owner, cms].sort());
+  assert.ok(acl.every(row => row.privilege_type === "EXECUTE"));
+  assert.equal((await client.query("SELECT has_function_privilege($1,'public.catalog_purge_product(uuid,text)','EXECUTE') AS ok", [app])).rows[0].ok, false);
+  const { rows: triggers } = await client.query(`SELECT t.tgname,t.tgenabled FROM pg_trigger t WHERE t.tgrelid='public.catalog_deletion_log'::regclass
+    AND NOT t.tgisinternal ORDER BY t.tgname`);
+  assert.deepEqual(triggers.map(row => row.tgname), ["catalog_deletion_log_guard", "catalog_no_truncate"]);
+  assert.ok(triggers.every(row => row.tgenabled === "O"));
+};
+
 export const verifyCatalogProtection = async (client, owner, state = 4) => {
   const source = readFileSync(new URL("../../drizzle/0002_catalog_publication.sql", import.meta.url), "utf8");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(catalog_\w+)\(\) RETURNS trigger\s+LANGUAGE plpgsql SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
@@ -15,7 +36,8 @@ export const verifyCatalogProtection = async (client, owner, state = 4) => {
     SELECT p.proname, p.prosrc, p.prosecdef, p.proconfig, l.lanname,
       pg_get_userbyid(p.proowner) AS owner
     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang
-    WHERE n.nspname='public' AND p.proname LIKE 'catalog_%' ORDER BY p.proname
+    WHERE n.nspname='public' AND p.proname LIKE 'catalog_%'
+      AND p.proname NOT IN ('catalog_purge_product','catalog_guard_deletion_log') ORDER BY p.proname
   `);
   assert.equal(expected.length, 8);
   assert.equal(functions.length, expected.length);
@@ -28,6 +50,7 @@ export const verifyCatalogProtection = async (client, owner, state = 4) => {
     assert.equal(fn.lanname, "plpgsql");
     assert.deepEqual(fn.proconfig, ["search_path=pg_catalog"]);
   }
+  if (state >= 15) await verifyDeletionObjects(client, owner);
   const wanted = [];
   const add = (table, name, fn, type = 31, deferred = false) => wanted.push({
     table, name, fn, type, deferred, initially: deferred, enabled: "O",

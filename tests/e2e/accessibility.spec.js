@@ -1,10 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, locales, publicPaths } from "./fixtures";
+import { test, expect, publicPaths } from "./fixtures";
 
-for (const locale of locales) {
+{
   for (const path of publicPaths) {
-    test(`${locale}${path || "/"}: accessible structure and responsive layout`, async ({ page }, testInfo) => {
-      await page.goto(`/${locale}${path}`);
+    test(`${path || "/"}: accessible structure and responsive layout`, async ({ page }, testInfo) => {
+      await page.goto(path || "/");
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const duplicateIds = await page.locator("[id]").evaluateAll((nodes) => {
         const ids = nodes.map((node) => node.id);
@@ -20,9 +20,9 @@ for (const locale of locales) {
   }
 
   for (const path of ["", "/menu/sample-01", "/guides/takoyaki"]) {
-    test(`${locale}${path || "/"}: keyboard skip link and navbar promo`, async ({ page }) => {
-      await page.goto(`/${locale}${path}`);
-      const skip = page.getByRole("link", { name: locale === "id" ? "Langsung ke konten" : "Skip to content", exact: true });
+    test(`${path || "/"}: keyboard skip link and navbar promo`, async ({ page }) => {
+      await page.goto(path || "/");
+      const skip = page.getByRole("link", { name: "Langsung ke konten", exact: true });
       await page.keyboard.press("Tab");
       await expect(skip).toBeFocused();
       await expect(skip).toBeInViewport();
@@ -31,13 +31,13 @@ for (const locale of locales) {
       await expect(page.locator("main")).toBeFocused();
 
       // Reload resets natural tab order; verify a real keyboard journey to promos.
-      await page.goto(`/${locale}${path}`);
-      const promo = page.locator(".main-nav").getByRole("link", { name: locale === "id" ? "Promo & event" : "Promos & events", exact: true });
+      await page.goto(path || "/");
+      const promo = page.locator(".main-nav").getByRole("link", { name: "Promo & event", exact: true });
       for (let index = 0; index < 5; index += 1) await page.keyboard.press("Tab");
       await expect(promo).toBeFocused();
       await expect(promo).toHaveCSS("outline-style", "solid");
       await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(new RegExp(`/${locale}/promos$`));
+      await expect(page).toHaveURL(/\/promos$/);
     });
   }
 }

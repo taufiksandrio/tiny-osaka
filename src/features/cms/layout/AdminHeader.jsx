@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSepar
 import LogoutButton from "@/features/cms/auth/LogoutButton";
 const AdminHeader = ({ actor, onOpenNav, navTriggerRef }) => {
   const pathname = usePathname();
-  const section = pathname.startsWith("/admin/publications") ? "Publikasi terjadwal" : pathname.startsWith("/admin/media") ? "Pustaka media" : pathname.startsWith("/admin/catalog") ? "Katalog menu" : pathname.startsWith("/admin/pages") ? "Halaman website" : pathname.startsWith("/admin/security") ? "Keamanan" : "Dashboard";
+  const section = pathname.startsWith("/admin/media") ? "Pustaka media" : pathname.startsWith("/admin/catalog") ? "Katalog menu" : pathname.startsWith("/admin/pages") ? "Halaman website" : pathname.startsWith("/admin/security") ? "Keamanan" : "Dashboard";
   return <header className="sticky top-0 z-30 flex min-h-18 items-center justify-between gap-3 border-b border-border bg-card/95 px-4 backdrop-blur sm:px-8">
     <div className="flex min-w-0 items-center gap-3">
       <Button ref={navTriggerRef} variant="outline" size="icon" className="lg:hidden" aria-label="Buka navigasi" onClick={onOpenNav}><Menu aria-hidden="true" /></Button>
@@ -26,9 +26,9 @@ const AdminHeader = ({ actor, onOpenNav, navTriggerRef }) => {
           <span className="hidden max-w-36 truncate sm:block">{actor.name}</span>
         </Button>
       </DropdownMenuTrigger><DropdownMenuContent align="end" portalLabel="Menu akun" className="w-56">
-        <DropdownMenuLabel className="break-words whitespace-normal">{actor.name}</DropdownMenuLabel>
+        <DropdownMenuLabel className="wrap-break-word whitespace-normal">{actor.name}</DropdownMenuLabel>
         <DropdownMenuLabel><Badge variant="secondary">{actor.role === "owner" ? "Owner" : "Staff"}</Badge></DropdownMenuLabel>
-        <DropdownMenuSeparator /><DropdownMenuItem asChild><Link href="/id">Lihat website</Link></DropdownMenuItem>
+        <DropdownMenuSeparator /><DropdownMenuItem asChild><Link href="/">Lihat website</Link></DropdownMenuItem>
       </DropdownMenuContent></DropdownMenu><LogoutButton />
     </div>
   </header>;

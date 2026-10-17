@@ -22,7 +22,7 @@ const AdminNav = ({ role, onNavigate }) => {
       </Link>;
     })}
     <div className="my-4 border-t border-border" />
-    <Link href="/id" onClick={onNavigate} className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
+    <Link href="/" onClick={onNavigate} className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
       <ArrowUpRight className="size-4" aria-hidden="true" />Website publik
     </Link>
   </nav>;

@@ -1,90 +1,40 @@
-import { saveBatch } from "./batch.mjs";
-import { approveContent } from "./approval.mjs";
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
-import * as s from "../db/schema.mjs";
+import { and, eq } from "drizzle-orm";
 import { roles } from "../db/auth-schema.mjs";
-import * as drafts from "../catalog/drafts.mjs";
-import { createCatalogWorkflow } from "../catalog/workflow.mjs";
-import { loadCatalogGraph, getCatalogReviewReadiness } from "../catalog/review.mjs";
-import { validPageUuid } from "../pages/validation.mjs";
-import { cmsFail, exactInput } from "./request-policy.mjs";
-import { assetDto } from "./media.mjs";
+import { parseProductInput, validProductSlug } from "../catalog/product-input.mjs";
+import { readCards, createProduct, updateProduct, deleteProduct, lockCatalogWrites } from "../catalog/products.mjs";
+import { cmsFail } from "./request-policy.mjs";
 
-const scope = ["revisionId", "expectedVersion"];
-const translation = ["locale", "title", "description"];
-const operations = {
-  create: [[], "createCatalogDraft"],
-  clone: [["sourceRevisionId", "expectedSourceVersion"], "cloneCatalogDraft"],
-  categoryCreate: [[...scope, "slug", "sortOrder"], "createCatalogCategory"],
-  productCreate: [[...scope, "categoryId", "slug", "sortOrder"], "createCatalogProduct"],
-  categoryTranslation: [[...scope, "categoryId", ...translation], "saveCategoryTranslation"],
-  productTranslation: [[...scope, "productId", ...translation], "saveProductTranslation"],
-  categoryPlacement: [[...scope, "categoryId", "sortOrder"], "updateCategoryPlacement"],
-  productPlacement: [[...scope, "productId", "categoryId", "sortOrder"], "updateProductPlacement"],
-  variantCreate: [[...scope, "productId", "code", "basePrice", "sortOrder"], "createProductVariant"],
-  variantUpdate: [[...scope, "productId", "variantId", "code", "basePrice", "sortOrder"], "updateProductVariant"],
-  variantTranslation: [[...scope, "productId", "variantId", ...translation], "saveVariantTranslation"],
-  groupCreate: [[...scope, "productId", "code", "selectionType", "minSelections", "maxSelections", "sortOrder"], "createModifierGroup"],
-  groupUpdate: [[...scope, "productId", "groupId", "code", "selectionType", "minSelections", "maxSelections", "sortOrder"], "updateModifierGroup"],
-  groupTranslation: [[...scope, "productId", "groupId", ...translation], "saveModifierGroupTranslation"],
-  optionCreate: [[...scope, "productId", "groupId", "code", "priceDelta", "sortOrder"], "createModifierOption"],
-  optionUpdate: [[...scope, "productId", "groupId", "optionId", "code", "priceDelta", "sortOrder"], "updateModifierOption"],
-  optionTranslation: [[...scope, "productId", "groupId", "optionId", ...translation], "saveModifierOptionTranslation"],
-  readiness: [scope, "readiness"], submit: [scope, "submit"],
-  ...Object.fromEntries(["approve", "reject", "publish", "archive"].map(action => [action, [[...scope, "expectedHash"], action]])),
-};
+// Catalog card CRUD (ADR-037). Owner and Staff may create/update (live immediately);
+// only the Owner may hard-delete. Membership is re-read from the DB inside the transaction.
 export const createCmsCatalog = ({ db, authenticate }) => {
-  const run = async (headers, callback) => {
+  const run = async (headers, { owner = false, write = true } = {}, callback) => {
     const actor = await authenticate(headers);
     if (!actor) cmsFail("AUTH_REQUIRED", 401);
-    return db.transaction(async tx => {
-      const [member] = await tx.select().from(roles).where(and(eq(roles.userId, actor.subject), eq(roles.enabled, true)));
-      if (!member || !["owner", "staff"].includes(member.role)) cmsFail("AUTH_REQUIRED", 401);
-      return callback(tx, { subject: actor.subject, role: member.role });
-    }, { isolationLevel: "repeatable read" });
+    try {
+      // Default isolation (read committed): the catalog advisory lock is taken before the
+      // live pointer is read, so a repeatable-read snapshot would serve stale state.
+      return await db.transaction(async tx => {
+        const [member] = await tx.select().from(roles).where(and(eq(roles.userId, actor.subject), eq(roles.enabled, true)));
+        if (!member || !["owner", "staff"].includes(member.role)) cmsFail("AUTH_REQUIRED", 401);
+        if (owner && member.role !== "owner") cmsFail("FORBIDDEN", 403);
+        if (write) await lockCatalogWrites(tx);
+        return callback(tx, { subject: actor.subject, role: member.role });
+      });
+    } catch (error) {
+      if (["40001", "40P01"].includes(error?.code ?? error?.cause?.code)) cmsFail("PRODUCT_CONFLICT", 409);
+      throw error;
+    }
   };
-  const revision = async (tx, id) => {
-    if (!validPageUuid(id)) cmsFail("INVALID_INPUT");
-    const [row] = await tx.select().from(s.catalogRevisions).where(eq(s.catalogRevisions.id, id));
-    if (!row) cmsFail("NOT_FOUND", 404);
-    return row;
-  };
-  const read = async (tx, id) => {
-    const row = await revision(tx, id);
-    const graph = await loadCatalogGraph(tx, row);
-    const [live] = await tx.select().from(s.catalogPublication).where(eq(s.catalogPublication.id, 1));
-    return { ...graph, mediaAssets: graph.mediaAssets.map(assetDto), isLive: live?.revisionId === row.id };
-  };
+  const slugOf = slug => { if (!validProductSlug(slug)) cmsFail("NOT_FOUND", 404); return slug; };
   return Object.freeze({
-    batch: (headers, input) => run(headers, (tx, actor) => saveBatch(tx, actor, input, "catalog", createCmsCatalog({ db: tx, authenticate: async () => actor }))),
-    list: headers => run(headers, async tx => {
-      const rows = await tx.select().from(s.catalogRevisions).orderBy(desc(s.catalogRevisions.createdAt), desc(s.catalogRevisions.id)).limit(100);
-      const [live] = await tx.select().from(s.catalogPublication).where(eq(s.catalogPublication.id, 1));
-      return { rows, publishedRevisionId: live?.revisionId ?? null };
-    }),
-    read: (headers, id) => run(headers, tx => read(tx, id)),
-    write: (headers, action, input) => run(headers, async (tx, actor) => {
-      if (!Object.hasOwn(operations, action)) cmsFail("INVALID_INPUT");
-      const [fields, method] = operations[action];
-      exactInput(input, [...fields, ...(action === "approve" && Object.hasOwn(input, "dueAt") ? ["dueAt"] : [])]);
-      if (Object.hasOwn(input, "locale") && input.locale !== "id") cmsFail("INVALID_INPUT");
-      for (const [key, value] of Object.entries(input)) {
-        if (["slug", "code"].includes(key) && (typeof value !== "string" || value.length > 160)) cmsFail("INVALID_INPUT");
-        if (key === "title" && (typeof value !== "string" || value.length > 240)) cmsFail("INVALID_INPUT");
-        if (key === "description" && (typeof value !== "string" || value.length > 2000)) cmsFail("INVALID_INPUT");
-      }
-      if (method === "readiness") return getCatalogReviewReadiness(tx, input);
-      let result;
-      if (Object.hasOwn(drafts, method) && method !== "CatalogDraftError") {
-        result = await drafts[method](tx, input);
-        await tx.insert(s.catalogWorkflowEvents).values({ revisionId: result.revisionId ?? result.id,
-          action: ["create", "clone"].includes(action) ? action : "save", actorId: actor.subject });
-      } else {
-        const workflow = createCatalogWorkflow({ db: tx, resolveActor: async () => actor });
-        result = action === "approve" ? await approveContent({ tx, actor, domain: "catalog", input, workflow }) : await workflow[method](input);
-      }
-      return read(tx, result.revisionId ?? result.id);
+    list: headers => run(headers, { write: false }, async (tx, actor) => ({ ...await readCards(tx), role: actor.role })),
+    create: (headers, input) => run(headers, {}, async (tx, actor) => ({ product: await createProduct(tx, actor, parseProductInput(input)) })),
+    update: (headers, slug, input) => run(headers, {}, async (tx, actor) =>
+      ({ product: await updateProduct(tx, actor, slugOf(slug), parseProductInput(input, { update: true })) })),
+    remove: (headers, slug) => run(headers, { owner: true }, async (tx, actor) => {
+      const result = await deleteProduct(tx, actor, slugOf(slug));
+      return { deleted: true, slug: result.slug, name: result.name };
     }),
   });
 };

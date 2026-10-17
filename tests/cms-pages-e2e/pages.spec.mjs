@@ -43,14 +43,14 @@ test("Staff opens one editor from the table, sees required fields, saves and edi
   await save(page);
   const first = await (await page.request.get("/api/cms/pages/by-key/about")).json();
   expect(first.isLive).toBe(true); expect(first.translations.map(row => row.locale)).toEqual(["id"]);
-  expect(await (await page.request.get("/id/about")).text()).toContain("QA Staff simpan langsung");
+  expect(await (await page.request.get("/about")).text()).toContain("QA Staff simpan langsung");
   await fill(page, "QA Staff perubahan kedua"); await save(page); await expect(page).toHaveURL(origin + "/admin/pages/about");
-  expect(await (await page.request.get("/id/about")).text()).toContain("QA Staff perubahan kedua");
+  expect(await (await page.request.get("/about")).text()).toContain("QA Staff perubahan kedua");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.screenshot({ path: info.outputPath("direct-page-editor.png"), fullPage: true });
-  await page.goto("/admin/pages/about/" + first.id); await expect(page).toHaveURL(origin + "/admin/pages/about");
+  const removed = await page.goto("/admin/pages/about/" + first.id); expect(removed.status()).toBe(404); await expect(page).toHaveURL(origin + "/admin/pages/about/" + first.id);
   await page.goto("/admin/pages"); await expect(page.locator("tbody tr").filter({ hasText: "Tentang" }).locator("time")).toBeVisible();
 });
 test("Owner uses the same single Save and preview has no approval controls", async ({ page }) => {
@@ -59,7 +59,7 @@ test("Owner uses the same single Save and preview has no approval controls", asy
   await expect(page.locator(".cms-page-preview")).toContainText("QA Owner simpan langsung");
   await expect(page.getByRole("button", { name: "Simpan", exact: true })).toHaveCount(1);
   await expect(page.getByLabel("Jadwal publikasi (opsional, WIB)")).toHaveCount(0);
-  await save(page); await page.goto("/id/about"); await expect(page.locator("h1")).toHaveText("QA Owner simpan langsung");
+  await save(page); await page.goto("/about"); await expect(page.locator("h1")).toHaveText("QA Owner simpan langsung");
 });
 test("a stale editor preserves input and cannot overwrite a newer save; CSRF and forged fields fail", async ({ page, browser }) => {
   await login(page, "owner"); await page.goto("/admin/pages/about");
@@ -70,7 +70,7 @@ test("a stale editor preserves input and cannot overwrite a newer save; CSRF and
     await other.getByRole("button", { name: "Simpan", exact: true }).click();
     await expect(other.getByRole("status")).toContainText("Halaman sudah diubah pengguna lain");
     await expect(other.locator("#page-title")).toHaveValue("QA perubahan yang dipertahankan");
-    expect(await (await page.request.get("/id/about")).text()).toContain("QA pemenang");
+    expect(await (await page.request.get("/about")).text()).toContain("QA pemenang");
   } finally { await other.close(); }
   const current = await (await page.request.get("/api/cms/pages/by-key/about")).json();
   const data = { pageKey: "about", expectedRevisionId: current.id, expectedVersion: current.version,

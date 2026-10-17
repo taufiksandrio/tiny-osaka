@@ -37,14 +37,14 @@ try {
     server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname=127.0.0.1", "--port=3031"], { env, stdio: "ignore", windowsHide: true });
     let ready = false;
     for (let i = 0; i < 100; i++) {
-      try { if ((await fetch("http://127.0.0.1:3031/id")).ok) { ready = true; break; } } catch { /* Wait for local server. */ }
+      try { if ((await fetch("http://127.0.0.1:3031/")).ok) { ready = true; break; } } catch { /* Wait for local server. */ }
       await delay(200);
     }
     if (!ready) throw new Error("Local Lighthouse server did not start.");
     await mkdir("test-results/lighthouse", { recursive: true });
     const toolEnv = { ...env };
     delete toolEnv.TEST_DATABASE_URL;
-    for (const [name, path] of [["home-id", "/id"], ["menu-en", "/en/menu"], ["product-id", "/id/menu/" + fixture.slug]]) {
+    for (const [name, path] of [["home", "/"], ["menu", "/menu"], ["product", "/menu/" + fixture.slug]]) {
       await run(process.execPath, [process.env.npm_execpath || "C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js", "exec", "--yes", "--package=lighthouse@12.8.2", "--", "lighthouse",
         "http://127.0.0.1:3031" + path, "--chrome-flags=--headless", "--output=json", "--output=html", "--output-path=test-results/lighthouse/" + name, "--quiet"], toolEnv);
       const report = JSON.parse(await readFile("test-results/lighthouse/" + name + ".report.json", "utf8"));

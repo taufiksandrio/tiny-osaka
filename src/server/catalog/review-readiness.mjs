@@ -8,7 +8,8 @@ const int4 = value => Number.isInteger(value) && value >= 0 && value <= 21474836
 const code = value => typeof value === "string" && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value);
 
 // Structural readiness only: not restaurant fact verification, approval or publish.
-export const validateCatalogReviewReadiness = graph => {
+// allowEmpty: a store may legitimately end up with no products (last card deleted).
+export const validateCatalogReviewReadiness = (graph, { allowEmpty = false } = {}) => {
   const issues = [];
   const issue = (code, entityType = "catalog", entityId = null, locale) => issues.push({ code, entityType, entityId, ...(locale ? { locale } : {}) });
   const finish = () => ({ revisionId: graph?.revision?.id ?? null, version: graph?.revision?.version ?? null,
@@ -56,7 +57,7 @@ export const validateCatalogReviewReadiness = graph => {
   const variants = index(rows.productVariants, ["productId", "id"], "variant");
   const groups = index(rows.modifierGroups, ["productId", "id"], "modifierGroup");
   const options = index(rows.modifierOptions, ["productId", "groupId", "id"], "modifierOption");
-  if (!categoryEntries.size || !productEntries.size) issue("EMPTY_CATALOG");
+  if (!allowEmpty && (!categoryEntries.size || !productEntries.size)) issue("EMPTY_CATALOG");
   for (const row of categoryEntries.values()) if (!categories.has(row.categoryId)) issue("MISSING_IDENTITY", "category", row.categoryId);
   for (const row of productEntries.values()) {
     if (!products.has(row.productId)) issue("MISSING_IDENTITY", "product", row.productId);
