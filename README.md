@@ -1602,3 +1602,33 @@ not files to publish. Existing advisory/release gates remain open.
 
 CMS Owner/Staff passwords now require 6-128 characters (user-approved change).
 Provisioning, password change/reset and the reset form share this minimum.
+
+## Phase 3.2 page editor
+
+After local CMS provisioning and migration0008, restart development and open
+/admin/pages through the authenticated dashboard. Staff/Owner can create and
+save bilingual drafts, preview structured rich text and submit for review.
+Owner alone approves/rejects/publishes/archives. Frozen content must be cloned
+to a fresh draft; approval is never copied and the live revision stays intact.
+Save each language before submitting. The editor preserves unsaved fields when
+a stale version conflicts; copy those changes before reloading.
+
+For a new local environment, after the separately approved database/auth baseline:
+
+```powershell
+powershell.exe -NoProfile -File .\scripts\setup-cms.ps1
+npm.cmd run db:migrate:test
+npm.cmd run db:migrate:dev
+```
+
+The setup asks for the local PostgreSQL administrator password in a hidden
+terminal prompt. It generates separate unprivileged CMS logins, writes ignored
+owner-only .env.cms.local and refuses existing roles/configuration. Do not paste
+credentials into chat or copy migrator credentials into the application. If setup
+fails, inspect role/config state before retry; never overwrite/reset blindly.
+
+Verification: npm.cmd run test:cms-pages-db and, after build,
+npm.cmd run test:cms-pages-e2e. These use synthetic accounts and only the isolated
+test database. Run database fixture suites sequentially; QA children receive
+application/CMS credentials, never admin/migrator credentials. See
+docs/PHASE3_PLAN.md for scope/rollback and docs/SECURITY_AND_QA.md for actual results.
