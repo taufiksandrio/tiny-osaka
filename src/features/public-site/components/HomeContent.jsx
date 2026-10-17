@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 import PublicRichText from "./PublicRichText";
 const copy = {
-  id: { illustration: "Ilustrasi bernuansa Osaka · bukan foto produk atau lokasi Tiny Osaka", alt: "Ilustrasi lentera merah, jembatan, dan siluet kota bernuansa Osaka", menu: "KATALOG", about: "TINY OSAKA", empty: "Menu belum diterbitkan.", menuLink: "Lihat seluruh menu", draft: "Pratinjau draf · belum diterbitkan" },
-  en: { illustration: "Osaka-inspired illustration · not a photograph of Tiny Osaka products or premises", alt: "Illustration of a red lantern, bridge, and Osaka-inspired city silhouettes", menu: "THE CATALOG", about: "TINY OSAKA", empty: "The menu has not been published yet.", menuLink: "Explore all menu items", draft: "Draft preview · not published" },
+  id: { caption: "Takoyaki Shio Negi · Tiny Osaka", alt: "Takoyaki Shio Negi Tiny Osaka disajikan dalam wadah berbentuk perahu", menu: "KATALOG", about: "TINY OSAKA", empty: "Menu belum diterbitkan.", menuLink: "Lihat seluruh menu", draft: "Pratinjau draf · belum diterbitkan" },
+  en: { caption: "Takoyaki Shio Negi · Tiny Osaka", alt: "Tiny Osaka Takoyaki Shio Negi served in a boat-shaped tray", menu: "THE CATALOG", about: "TINY OSAKA", empty: "The menu has not been published yet.", menuLink: "Explore all menu items", draft: "Draft preview · not published" },
 };
 const HomeContent = ({ fields, locale, catalogContent, mediaContent, orderingContent, preview = false }) => {
   const text = copy[locale];
@@ -25,9 +25,9 @@ const HomeContent = ({ fields, locale, catalogContent, mediaContent, orderingCon
         <div className="flex flex-wrap gap-3"><Button asChild size="lg"><Link href={`/${locale}/menu`}>{fields.primaryCtaLabel || fallback.primary}<ArrowUpRight aria-hidden="true" /></Link></Button>
           <Button asChild size="lg" variant="outline"><Link href={`/${locale}/about`}>{fields.secondaryCtaLabel || fallback.secondary}<ArrowRight aria-hidden="true" /></Link></Button></div>
       </div>
-      <figure className="home-art"><Image src="/images/osaka-editorial.png" alt={text.alt} width={1536} height={1024}
+      <figure className="home-art"><Image src="/images/02a - Takoyaki Shio Negi.jpeg" alt={text.alt} width={1600} height={1200} unoptimized
         sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1280px) 48vw, 600px" preload={!preview} className="home-art-image" />
-        <figcaption>{text.illustration}</figcaption></figure>
+        <figcaption>{text.caption}</figcaption></figure>
     </section>
     <section className="container home-story" aria-label={locale === "id" ? "Mengenal Tiny Osaka" : "Meet Tiny Osaka"}><div className="home-prose"><PublicRichText document={fields.body} /></div></section>
     <section className="container home-menu" aria-labelledby={preview ? "home-preview-menu" : "home-menu"}>

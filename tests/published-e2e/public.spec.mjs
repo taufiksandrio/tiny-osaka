@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 
 const runtimeErrors = new WeakMap();
 test.beforeEach(async ({ page }) => {
@@ -34,12 +35,16 @@ for (const locale of ["id", "en"]) {
       if (key === "home") {
         const hero = page.locator(".home-art-image"); await expect(hero).toBeVisible();
         await expect.poll(() => hero.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
-        await expect(page.locator(".home-art figcaption")).toContainText(locale === "id" ? "bukan foto produk" : "not a photograph");
+        await expect(page.locator(".home-art figcaption")).toHaveText("Takoyaki Shio Negi · Tiny Osaka");
         await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", `/${locale}/menu`);
         const icon = await request.get("/icon.svg"); expect(await icon.text()).not.toContain(">TO<");
-        const optimized = await request.get("/_next/image?url=%2Fimages%2Fosaka-editorial.png&w=640&q=75", { headers: { accept: "image/webp" } });
-        expect(optimized.status()).toBe(200); expect(optimized.headers()["content-type"]).toContain("image/webp");
-        expect((await optimized.body()).byteLength).toBeLessThan(300000);
+        await expect(hero).toHaveAttribute("src", "/images/02a - Takoyaki Shio Negi.jpeg");
+        expect(await hero.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([1600, 1200]);
+        const photo = await request.get("/images/02a%20-%20Takoyaki%20Shio%20Negi.jpeg");
+        expect(photo.status()).toBe(200); expect(photo.headers()["content-type"]).toContain("image/jpeg");
+        expect(Buffer.compare(await photo.body(), await readFile("public/images/02a - Takoyaki Shio Negi.jpeg"))).toBe(0);
+        const dimensions = await hero.boundingBox();
+        expect(dimensions.width / dimensions.height).toBeCloseTo(4 / 3, 2);
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
