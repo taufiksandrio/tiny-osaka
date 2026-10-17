@@ -21,6 +21,8 @@ export const pageDefinitions = Object.freeze(Object.fromEntries([
 ].map(([key, template, path]) => [key, Object.freeze({ key, template, path })])));
 export const getPageDefinition = key => typeof key === "string" && Object.hasOwn(pageDefinitions, key) ? pageDefinitions[key] : null;
 export const isPageLocale = locale => locale === "id";
+export const pageNames = Object.freeze({ home: "Beranda", about: "Tentang", menu: "Menu", guides: "Panduan makanan", promos: "Promo", location: "Lokasi dan layanan",
+  "guide-takoyaki": "Panduan takoyaki", "guide-okonomiyaki": "Panduan okonomiyaki", "guide-burger": "Panduan burger" });
 export const isInternalPageLink = href => typeof href === "string" &&
   ["id", "en"].some(locale => Object.values(pageDefinitions).some(page => href === "/" + locale + page.path));
 

@@ -1251,3 +1251,82 @@ pause the worker and preserve all content, media, receipts, jobs and history.
 Older bilingual readiness cannot approve newly created Indonesian-only snapshots;
 use an approved compatible forward fix or replacement before reverting an active
 publication. Do not edit frozen snapshots or delete English history.
+
+## ADR-036 direct page editing (2026-10-17)
+
+Approved scope: stable page table/editor, one immediate Save for enabled Owner
+and Staff, no page editorial workflow UI, no scheduling UI/API/worker CLI.
+Catalog review and Owner approval are retained. Original assets, private
+configuration, immutable snapshots, receipts, hashes and SQL/history are retained;
+no dependency, migration, cloud or actual development content write is included.
+
+Executed local verification:
+
+- `npm run lint`: passed.
+- `$env:QA_NEXT_DIST_DIR='.next-qa'; npm run build`: passed on the isolated
+  production QA output. No running development build was replaced.
+- `node --conditions=react-server --test tests/unit/*.test.mjs`: 118 passed.
+- `node --conditions=react-server --env-file=.env.local
+  --env-file=.env.test-migrator.local --env-file=.env.test.local
+  --env-file=.env.cms.local --test --test-concurrency=1
+  tests/integration/*.test.mjs`: 211 passed, zero failures/skips on the initial
+  complete run. The first focused current-pages run passed 7 cases before adding
+  cancellation/disabled-member coverage and replacement-save concurrency checks.
+- Sequential `npm run test:cms-pages-e2e`: 12 passed; `test:cms-media-e2e`:
+  6 passed; `test:cms-catalog-e2e`: 9 passed; `test:publishing-e2e`: 9 retired
+  scheduling denial/redirect cases passed; `test:auth-e2e`: 18 passed;
+  `test:published-e2e`: 36 published-content and 3 empty-database cases passed.
+  These 93 distinct browser cases ran with retries disabled and the isolated
+  QA build, on desktop/390px/320px. Desktop page table and 320px direct editor
+  screenshots were inspected.
+- `node --conditions=react-server scripts/publication-worker.mjs --once`:
+  expected exit1 and the retirement message, with no database connection.
+- A read-only CMS-role query of local dev scheduled-job counts returned no rows.
+  No real content or job was changed by verification.
+- `npm audit --json`: exit1 for 9 existing advisories (5 high, 4 moderate,
+  0 critical). No dependency/lockfile edits or audit-fix were performed. These
+  remain release blockers.
+
+Integration/browser coverage verifies that opening an empty editor does not
+create a draft or audit; Staff and Owner save directly to the public reader;
+all receipts use the real actor; prior content remains immutable; initial and
+replacement-save races each have one winner; stale saves and late media failures
+leave the pointer, versions, audits and snapshots unchanged. Required errors and
+conflict messages preserve typed fields. Disabled database membership overrides
+a forged resolver role. Anonymous/CSRF/forged command/schedule attempts fail.
+Saving cancels a superseded page job and retains its audit/history. Media tests
+cover original bytes, invalid attachments, immediate public visibility and
+revocation by Staff Save. Stable editor links and old revision/queue redirects,
+table timestamps, axe and overflow are checked.
+
+Browser QA exposed a pg warning when the table issued simultaneous queries on
+one transaction connection. The list now awaits those reads sequentially;
+legacy unpublished timestamps also use their latest audit event.
+
+Final source regression after that fix (2026-10-17, same staged source):
+
+- `npm run lint`: exit 0.
+- `$env:QA_NEXT_DIST_DIR='.next-qa'; npm run build`: exit 0.
+- Unit suite: 118 passed, 0 failed/skipped.
+- Integration suite (same command as above, `--test-concurrency=1`): 211
+  passed, 0 failed/cancelled/skipped.
+- Sequential browser suites with `QA_NEXT_DIST_DIR=.next-qa`, retries 0, on
+  desktop/390px/320px: cms-pages 12, cms-media 6, cms-catalog 9, publishing 9,
+  auth 18, published 36 + 3 empty-database; 93 passed, every runner exit 0
+  with its synthetic records cleaned. No pg concurrent-query warning appeared
+  in the captured logs.
+- `npm audit` was not rerun; the 9 existing advisories above remain blockers.
+
+Security/SEO: the approved permission change is website page publication by
+enabled Staff as well as Owner. The server never impersonates an Owner; catalog,
+merchant/account rights and database grants remain unchanged. Whole-page saves
+validate the fixed template, rich text and media before an atomic pointer change,
+then invalidate the public layout. Session/CSRF/no-store/noindex policies remain;
+English output and Restaurant/LocalBusiness schema are not introduced.
+
+Not executed: staging QA, Lighthouse/CWV rerun, production deployment/migration,
+Railway operations, real email, live merchant calls or actual dev publication.
+There is no persistent worker/service setup. Rollback: ADR-036; restore PR15 app
+and UI together, retain all data/media/history and keep the worker stopped until
+old pending jobs are inspected. An application revert does not restore previous
+page text automatically; use a separately approved content replacement.

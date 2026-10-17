@@ -18,7 +18,7 @@ const HomeContent = ({ fields, locale, catalogContent, mediaContent, orderingCon
   return <Wrapper className="home-theme" {...(preview ? { "aria-label": "Pratinjau desain home" } : { id: "main-content", tabIndex: -1 })}>
     <section className="home-hero container" aria-labelledby={preview ? "home-preview-title" : "home-title"}>
       <div className="space-y-7 min-w-0">
-        {preview && <Badge variant="outline">{text.draft}</Badge>}
+        {preview && <Badge variant="outline">Pratinjau konten</Badge>}
         <p className="home-kicker">{fields.eyebrow}</p>
         <Title id={preview ? "home-preview-title" : "home-title"} className="home-headline">{fields.title || fallback.title}</Title>
         {(fields.summary || preview) && <p className="home-summary">{fields.summary || fallback.summary}</p>}

@@ -14,7 +14,7 @@ export const CreateCatalogDraft = () => {
     catch (error) { setMessage(error.message); } finally { setBusy(false); }
   }}>Buat draft katalog</Button><p role="status">{message}</p></div>;
 };
-const CatalogActions = ({ graph, role, disabled, busy, onBusy, onChange, onMessage, children, feedback, beforeAction, dueAt }) => {
+const CatalogActions = ({ graph, role, disabled, busy, onBusy, onChange, onMessage, children, feedback, beforeAction }) => {
   const [confirm, setConfirm] = useState(null), router = useRouter(), trigger = useRef(null), section = useRef(null);
   const revision = graph.revision, actions = ["clone"];
   if (revision.status === "draft") actions.push(role === "owner" ? "approve" : "submit");
@@ -26,11 +26,11 @@ const CatalogActions = ({ graph, role, disabled, busy, onBusy, onChange, onMessa
   const execute = async () => {
     const action = confirm; setConfirm(null); onBusy(true); onMessage("");
     const data = action === "clone" ? { sourceRevisionId: revision.id, expectedSourceVersion: revision.version } :
-      { revisionId: revision.id, expectedVersion: revision.version, ...(action === "submit" ? {} : { expectedHash: revision.contentHash, ...(action === "approve" && dueAt ? { dueAt } : {}) }) };
+      { revisionId: revision.id, expectedVersion: revision.version, ...(action === "submit" ? {} : { expectedHash: revision.contentHash }) };
     try {
       const next = await catalogRequest(`/${revision.id}/actions`, { action, data });
       if (action === "clone") router.push(`/admin/catalog/${next.revision.id}`);
-      else { onChange(next); onMessage(action === "approve" ? (next.revision.status === "published" ? "Disetujui. Konten baru sudah tampil di website." : "Disetujui. Konten akan tampil sesuai jadwal publikasi.") : "Tindakan berhasil: " + titles[action] + "."); }
+      else { onChange(next); onMessage(action === "approve" ? (next.revision.status === "published" ? "Disetujui. Konten baru sudah tampil di website." : "Persetujuan tersimpan. Muat ulang untuk memeriksa status konten.") : "Tindakan berhasil: " + titles[action] + "."); }
       router.refresh();
     } catch (error) { onMessage(error.message); } finally { onBusy(false); }
   };

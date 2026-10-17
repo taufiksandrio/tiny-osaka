@@ -1,5 +1,6 @@
 import { saveBatch } from "./batch.mjs";
 import { approveContent } from "./approval.mjs";
+import { currentPageRoot, readCurrentPage, saveCurrentPage } from "./current-pages.mjs";
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -20,7 +21,11 @@ export const createCmsPages = ({ db, authenticate }) => {
       const [member] = await tx.select().from(roles).where(and(eq(roles.userId, actor.subject), eq(roles.enabled, true)));
       if (!member || !["owner", "staff"].includes(member.role)) cmsFail("AUTH_REQUIRED", 401);
       const trusted = { subject: actor.subject, role: member.role };
-      return callback(tx, trusted);
+      try { return await callback(tx, trusted); }
+      catch (error) {
+        if (["40001", "40P01"].includes(error.code ?? error.cause?.code)) cmsFail("REVISION_CONFLICT", 409);
+        throw error;
+      }
     }, { isolationLevel: "repeatable read" });
   };
   const revision = async (tx, id) => {
@@ -30,11 +35,16 @@ export const createCmsPages = ({ db, authenticate }) => {
     return row;
   };
   return Object.freeze({
+    current: (headers, pageKey) => run(headers, (tx, actor) => readCurrentPage(tx, pageKey, createCmsPages({ db: tx, authenticate: async () => actor }))),
+    saveCurrent: (headers, input) => run(headers, (tx, actor) => saveCurrentPage(tx, actor, input, createCmsPages({ db: tx, authenticate: async () => actor }))),
     batch: (headers, input) => run(headers, (tx, actor) => saveBatch(tx, actor, input, "page", createCmsPages({ db: tx, authenticate: async () => actor }))),
     list: headers => run(headers, async tx => {
       const publications = await tx.select().from(s.pagePublications);
-      return Object.values(pageDefinitions).map(page => ({ ...page,
-        publishedRevisionId: publications.find(row => row.pageKey === page.key)?.revisionId ?? null }));
+      const pages = [];
+      for (const page of Object.values(pageDefinitions)) pages.push({ ...page,
+        publishedRevisionId: publications.find(row => row.pageKey === page.key)?.revisionId ?? null,
+        updatedAt: (await currentPageRoot(tx, page.key)).updatedAt });
+      return pages;
     }),
     revisions: (headers, pageKey) => run(headers, async tx => {
       if (!getPageDefinition(pageKey)) cmsFail("NOT_FOUND", 404);

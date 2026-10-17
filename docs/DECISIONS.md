@@ -1302,3 +1302,58 @@ a persistent scheduler. Scheduled publication still requires the existing worker
   small-mobile 4), exit 0; the runner cleaned its exact synthetic records and
   verified database protections/empty test state. Across the three browser suites:
   33 distinct cases passed. Final lint/build and whitespace checks passed.
+
+## ADR-036 - Direct page Save for Owner and Staff, no scheduling (2026-10-17)
+
+The user explicitly approved the scoped plan after requesting a simpler page
+flow. This supersedes Owner-only publication and draft/review/approval UI for
+website pages in earlier requirements, repository instructions and CMS skills.
+The approved branch is feat/direct-page-editor, based on main9f694d2 (merged
+PR15). Existing shadcn and locked dependencies are reused; no install/migration.
+
+The page menu is a table of fixed page names, last modification (WIB), and Edit.
+Each page has one stable /admin/pages/[pageKey] editor, no revision/draft list,
+and one bottom Simpan. Enabled Owner and Staff can save valid Indonesian content,
+template fields and media directly to the public website. Old revision URLs
+redirect to that editor. Preview is optional and never writes. Required content
+and media failures preserve inputs and the previous public copy. Design remains
+fixed-template; arbitrary layout/design-token editing is not introduced.
+
+GET resolves the current live snapshot, or existing latest unpublished legacy
+content when no live copy exists, or an in-memory empty form. Opening the editor
+does not create database content. Save checks enabled database membership, exact
+prior snapshot ID/version, session/Origin/CSRF and bounded template/media input.
+It takes existing publication locks, clones an internal snapshot, validates the
+complete graph and atomically updates the public pointer. Prior snapshots, English
+rows, hashes and media bytes remain unchanged. No unfinished snapshot commits on
+failure. Legacy receipt/status tables and internal workflow primitives remain
+for the existing immutable public-reader contract and historical regression
+coverage; they do not add user-facing editorial steps. Automatic receipts/audit
+record the real Staff/Owner subject, never a fabricated or promoted Owner.
+
+Scheduling navigation/page/controls are removed throughout CMS. Authenticated
+schedule API calls return410, anonymous callers still receive401. Former queue
+URLs redirect to the page table. Catalog review/Owner approval is otherwise
+retained; HTTP approval requests containing dueAt are rejected. The worker CLI
+exits nonzero without connecting to the database. Existing jobs/events are not
+deleted. A successful immediate page Save cancels its superseded pending jobs
+with the real actor in the same transaction. A read-only dev query found zero
+scheduled jobs; no real dev content/job was mutated. Historical scheduling
+library tests run only against isolated synthetic test data.
+
+Affected modules: admin page table/direct editor/legacy redirects and dashboard,
+AdminNav/AdminShell, PageEditor/PagePreview/shared media labels, current-pages
+CMS service and page-key HTTP endpoint, schedule API/catalog schedule controls,
+worker CLI, regression tests and requirement/UX/data/operations/QA documents.
+Old page UUID APIs remain protected compatibility interfaces for historical
+fixtures; the current UI uses only the new page-key API. No catalog permission,
+merchant synchronization, account/security, upload-format or SEO indexing policy
+is broadened. Save does not sync merchant platforms. No deployment/cloud action.
+
+Verification results are recorded in SECURITY_AND_QA.md. The standing approved
+branch/verified commit/push/PR workflow applies; merge/deploy remain separate.
+Rollback app/UI/docs to PR15 together while keeping all snapshots, media,
+credentials, applied SQL/history and jobs/events. PR15 can read the resulting
+Indonesian snapshots; reverting the app does not restore the previous live text.
+Use a separately approved content replacement if needed. Keep the old worker
+stopped and inspect any pending jobs before restoring scheduling behavior.

@@ -9,7 +9,6 @@ const AdminNav = ({ role, onNavigate }) => {
     { href: "/admin", title: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/pages", title: "Halaman website", icon: Files },
     { href: "/admin/catalog", title: "Katalog menu", icon: UtensilsCrossed },
-    { href: "/admin/publications", title: "Publikasi terjadwal", icon: Files },
     { href: "/admin/media", title: "Pustaka media", icon: Images },
     ...(role === "owner" ? [{ href: "/admin/security", title: "Keamanan", icon: ShieldCheck }] : []),
   ];
