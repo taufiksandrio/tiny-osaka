@@ -38,7 +38,8 @@ const RevisionActions = ({ revision, role, disabled, onChange, onMessage, onBusy
     } catch (error) { onMessage(error.message); } finally { setBusy(false); onBusy(false); }
   };
   return <section ref={section} tabIndex={-1} aria-label="Tindakan revisi"><Card className="shadow-none"><CardHeader><h2>Tindakan revisi</h2>
-    <CardDescription>Simpan perubahan sebelum melanjutkan. Tindakan berlaku untuk revisi dan versi ini.</CardDescription></CardHeader><CardContent>
+    <CardDescription>{disabled ? "Simpan perubahan di setiap bahasa sebelum menjalankan tindakan revisi." :
+      revision.status === "draft" ? "Kirim draft yang lengkap untuk review, atau buat salinan draft baru." : "Tindakan berlaku hanya untuk revisi dan versi yang sedang dibuka."}</CardDescription></CardHeader><CardContent>
     <div className="cms-actions">{actions.map(action => <Button type="button" key={action} disabled={disabled || busy}
       variant={["reject", "archive"].includes(action) ? "destructive" : action === "clone" ? "outline" : "default"}
       onClick={event => { trigger.current = event.currentTarget; setConfirm(action); }}>{titles[action]}</Button>)}</div>
