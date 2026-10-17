@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import LanguageSwitcher from "./LanguageSwitcher";
 
 const SiteHeader = ({ locale, copy }) => (
   <header className="site-header" id="top">
@@ -15,7 +14,7 @@ const SiteHeader = ({ locale, copy }) => (
         <Link href={`/${locale}/promos`}>{copy.nav.promos}</Link>
         <a href={`/${locale}#ordering`}>{copy.nav.order}</a>
       </nav>
-      <LanguageSwitcher locale={locale} label={copy.languageLabel} />
+
     </div>
   </header>
 );

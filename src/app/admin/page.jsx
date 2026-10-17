@@ -14,7 +14,7 @@ const AdminPage = async () => {
   try { pages = await getCmsPages().list(await headers()); } catch { /* Do not invent dashboard counts when CMS is unavailable. */ }
   const published = pages?.filter(page => page.publishedRevisionId).length;
   const stats = [
-    { title: "Template halaman", value: pages?.length, icon: Files, copy: "Template tetap untuk website bilingual" },
+    { title: "Template halaman", value: pages?.length, icon: Files, copy: "Template tetap untuk website bahasa Indonesia" },
     { title: "Halaman terbit", value: published, icon: CheckCircle2, copy: "Memiliki revisi yang tampil di website" },
     { title: "Belum diterbitkan", value: pages ? pages.length - published : null, icon: FilePenLine, copy: "Mulai dari draft Indonesia dan Inggris" },
   ];

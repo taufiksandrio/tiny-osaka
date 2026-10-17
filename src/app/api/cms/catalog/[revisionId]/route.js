@@ -5,5 +5,5 @@ export const GET = (request, { params }) => catalogRoute(request, async api => a
 export const PATCH = (request, { params }) => catalogRoute(request, async (api, input) => {
   exactInput(input, ["action", "data"]);
   if (input.data?.revisionId !== (await params).revisionId) cmsFail("INVALID_INPUT");
-  return api.write(request.headers, input.action, input.data);
+  return input.action === "saveAll" ? api.batch(request.headers, input.data) : api.write(request.headers, input.action, input.data);
 });

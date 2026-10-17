@@ -1172,3 +1172,133 @@ bounded retries and atomic audit under consistent publication locks. Details and
 rollback are in PHASE3_PLAN.md and OPERATIONS.md. No automatic worker startup,
 Railway mutation, deployment, real email or FFmpeg installation is authorized.
 Standing verified commit/push workflow applies; merge/deploy remain separate.
+
+## ADR-034 - Indonesian-only website and simple atomic CMS forms (2026-10-17)
+
+Explicitly approved by the user after replacing the bilingual/translation proposal.
+This decision supersedes bilingual requirements, mandatory ID/EN authoring and
+per-section save controls in earlier decisions and skills. Public and CMS UI use
+Indonesian only; existing /id URLs remain, former /en URLs redirect permanently.
+No translation service, dependency or cloud action is introduced.
+
+Page authors supply a title and body; summary, media, SEO overrides and existing
+template extras are optional. SEO defaults from authored content. Catalog starts
+with name/category/price, creates a standard variant automatically for new products,
+and keeps additional variants/modifiers available under optional controls. One
+Save all changes action persists all pending fields, new identities and media
+references atomically. Add controls stage local items rather than save to the DB.
+Drafts may be incomplete; review readiness, exact approval and Owner-only publish/
+scheduling remain enforced server-side. Feedback and required-field errors stay
+beside the bottom action controls. Uploaded library bytes remain a separate explicit
+upload; attaching/removing them from a draft uses the common save action.
+
+Legacy English rows, immutable hashes/receipts, published pointers and old field
+values are retained. No content, asset, credential or applied migration is deleted.
+Readiness requires only Indonesian, and page readiness requires title/body plus
+valid media labels. English HTTP authoring and public reads are rejected. Legacy
+rich-text English links render as equivalent Indonesian links. Database guards
+already enforce scope/frozen revision integrity rather than two-language readiness;
+no schema change or migration is needed. Existing hash algorithms stay unchanged.
+
+Branch feat/indonesian-simple-cms starts from merged main24eb63e. Existing shadcn
+components and package versions are reused. Verified commit/push/PR follows the
+standing workflow; merge/deploy and starting a worker remain separate operations.
+Rollback application/docs together to the previous commit: English legacy data
+remains intact, but any newly approved Indonesian-only revision cannot pass old
+bilingual readiness. Keep the public app/worker on the same version. Pause the
+worker and prepare an approved compatible forward fix or exact approved replacement
+before rolling back active publication; never edit a frozen revision or delete history.
+
+
+## ADR-035 - One Owner approval immediately publishes content (2026-10-17)
+
+Approved by the user after the scoped plan, with the explicit requirement that
+content replaces the previous version immediately unless a publication schedule
+is selected. Supersedes separate Owner submit/review/approve/publish clicks in
+ADR-034 and earlier CMS decisions. Staff still saves drafts and submits them for
+Owner review; only Owner can approve or schedule, enforced server-side.
+
+All page and catalog forms, including their revision-owned media, variants and
+modifiers, share the behavior. Owner approves a saved draft directly; approving a
+Staff submission also publishes immediately. Existing immutable revision hashes,
+submission/approval receipts, audit events and database guards remain intact.
+Internal transitions run in one CMS transaction. Validation, stale version/hash,
+publication or scheduling failure rolls the entire action back; live content
+persists. Previous published revisions remain historical rather than being deleted.
+
+Owner may choose an optional future WIB time before approval; this approves and
+creates the durable publication job atomically, retaining the previous live copy
+until the worker succeeds. Existing pending schedules are respected. A conflicting
+schedule for another revision must be cancelled explicitly before replacement.
+Legacy approved revisions can still be scheduled or approved for immediate
+publication. Scheduler execution still rechecks Owner membership and exact content.
+
+Public routes already use request-time database reads; immediate CMS publication
+also invalidates the /id layout tree. New server requests receive the committed
+revision without a cache TTL or publication worker. Already open browser documents
+need a navigation/reload to request new content. Scheduled jobs use the existing
+worker; its availability, polling interval and bounded retries still govern them.
+
+No dependency, schema migration, merchant sync or deployment is introduced. Changes
+remain on feat/indonesian-simple-cms, preserving unrelated local edits. Rollback:
+reverse only this approval/UI/cache/test patch and retain all publication data and
+audits; the old UI can read published revisions. Do not restore entire dirty files
+from HEAD or delete revisions. Validation results are recorded after verification.
+
+
+ADR-035 implementation files:
+- `src/server/cms/approval.mjs` (new), `pages.mjs`, `catalog.mjs`: atomic
+  Owner approval, exact version/hash guards, shared publication locks and scheduling.
+- `src/features/cms/pages/{RevisionActions.jsx,PageEditor.jsx,client.js}` and
+  `src/features/cms/catalog/{CatalogActions.jsx,CatalogEditor.jsx,client.js}`:
+  role-specific actions, validation and immediate/scheduled success messages.
+- `src/features/cms/publishing/Publications.jsx`: optional WIB schedule chosen
+  before approval, preserving the existing approved-revision scheduling controls.
+- `src/app/api/cms/{pages,catalog}/[revisionId]/actions/route.js`: invalidate
+  public layout after committed immediate publication.
+- `tests/integration/simple-cms.test.mjs`, `tests/integration/publishing.test.mjs`,
+  `tests/cms-pages-e2e/pages.spec.mjs`, `tests/cms-catalog-e2e/catalog.spec.mjs`,
+  `tests/publishing-e2e/publishing.spec.mjs`: regression coverage and updated fixtures.
+- This decision record. All pre-existing and concurrent workspace edits are retained.
+
+ADR-035 verification (local isolated QA, 2026-10-17):
+- `npm.cmd run lint`: passed; `npm.cmd run build`: passed with local environment
+  loaded, after the final runtime change. No dependency installation or migration.
+- `node --conditions=react-server --test tests/unit/cms-pages.test.mjs tests/unit/publishing.test.mjs tests/unit/catalog-workflow.test.mjs`:
+  11 passed, zero failures.
+- `node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/simple-cms.test.mjs tests/integration/cms-pages.test.mjs tests/integration/cms-catalog.test.mjs tests/integration/publishing.test.mjs`:
+  40 passed. A subsequent focused run of `simple-cms.test.mjs` with the same Node
+  conditions/environment flags passed all 11 tests after adding concurrent direct
+  approval coverage (41 distinct integration cases across those runs).
+- The first focused run failed two old `approved` status expectations because
+  approval now correctly publishes. The next run found two test-reader permission
+  errors: the CMS role intentionally cannot execute the app-only public SQL
+  functions. Assertions now use the authorized published readers within their test
+  transaction. No database grant was broadened. Final focused run: 11/11 passed.
+- Protected env files were unavailable to sandboxed test/build attempts. Those
+  checks were rerun with approved escalation; secrets were not printed. The local
+  content-mode-only check confirmed `published`.
+- `git diff --check`, plus `node --check src/server/cms/approval.mjs` and
+  `node --check tests/integration/simple-cms.test.mjs`: passed.
+
+Security: Staff API forgery remains denied, real database membership overrides
+request/resolver role claims, CSRF/session checks remain active, and concurrent
+approval produces one winner and one conflict with one exact audit sequence.
+Failed schedules/validation preserve the prior public revision. SEO title and
+content replacement share the committed revision; existing noindex policy remains.
+Full dependency audit, Lighthouse, cross-browser/manual QA and unrelated release
+suites were not rerun. These results do not authorize production release or starting
+a persistent scheduler. Scheduled publication still requires the existing worker.
+
+- Browser QA: `npm.cmd run test:cms-pages-e2e` passed all 12 cases across
+  desktop/mobile/small-mobile; `npm.cmd run test:cms-catalog-e2e` passed all 9.
+  Initial `npm.cmd run test:publishing-e2e` had three desktop passes and one
+  timeout: the catalog UI incorrectly queried draft-only readiness for a frozen
+  review revision, preventing confirmation. The editor now queries that readiness
+  endpoint only for drafts; the server still validates exact reviewed content.
+  Lint/build were rerun after this one-line UI correction.
+
+- Final `npm.cmd run test:publishing-e2e`: 12/12 passed (desktop 4, mobile 4,
+  small-mobile 4), exit 0; the runner cleaned its exact synthetic records and
+  verified database protections/empty test state. Across the three browser suites:
+  33 distinct cases passed. Final lint/build and whitespace checks passed.

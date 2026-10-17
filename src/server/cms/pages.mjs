@@ -1,3 +1,5 @@
+import { saveBatch } from "./batch.mjs";
+import { approveContent } from "./approval.mjs";
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -28,6 +30,7 @@ export const createCmsPages = ({ db, authenticate }) => {
     return row;
   };
   return Object.freeze({
+    batch: (headers, input) => run(headers, (tx, actor) => saveBatch(tx, actor, input, "page", createCmsPages({ db: tx, authenticate: async () => actor }))),
     list: headers => run(headers, async tx => {
       const publications = await tx.select().from(s.pagePublications);
       return Object.values(pageDefinitions).map(page => ({ ...page,
@@ -53,10 +56,11 @@ export const createCmsPages = ({ db, authenticate }) => {
         approve: ["revisionId", "expectedVersion", "expectedHash"], reject: ["revisionId", "expectedVersion", "expectedHash"],
         publish: ["revisionId", "expectedVersion", "expectedHash"], archive: ["revisionId", "expectedVersion", "expectedHash"] };
       if (!Object.hasOwn(fields, action)) cmsFail("INVALID_INPUT");
-      exactInput(input, fields[action]);
+      exactInput(input, [...fields[action], ...(action === "approve" && Object.hasOwn(input, "dueAt") ? ["dueAt"] : [])]);
+      if (action === "save" && input.locale !== "id") cmsFail("INVALID_INPUT");
       const api = createPageWorkflow({ db: tx, resolveActor: async () => actor });
       const method = { create: "createDraft", save: "saveTranslation", clone: "cloneDraft" }[action] ?? action;
-      const result = await api[method](input);
+      const result = action === "approve" ? await approveContent({ tx, actor, domain: "page", input, workflow: api }) : await api[method](input);
       if (["create", "save", "clone"].includes(action)) await tx.insert(s.pageWorkflowEvents).values({
         revisionId: result.revisionId ?? result.id, action, actorId: actor.subject,
       });

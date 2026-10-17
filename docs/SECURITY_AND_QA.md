@@ -1169,3 +1169,85 @@ Worker supervision and external alert delivery remain operational follow-ups.
 Pending jobs require an explicitly started worker. Rollback instructions:
 PHASE3_PLAN.md and OPERATIONS.md; stop worker, restore application, retain all
 applied migrations/history, jobs/events, content, media and private configuration.
+
+## ADR-034 / ADR-035 combined local verification (2026-10-17)
+
+The user approved combining the Indonesian-only/simple-form work with the other
+session's Owner approval change, and confirmed that session had finished editing
+and QA before this combined run. No dependency, migration, real development
+content mutation, deployment or cloud operation was performed.
+
+Executed checks on the combined branch:
+
+- `npm run lint`: passed.
+- `$env:QA_NEXT_DIST_DIR = '.next-qa'; npm run build`: passed. The isolated output
+  avoids overwriting the user's running `.next` development server. The accepted
+  override is restricted to `.next-qa`; ordinary builds keep `.next`.
+- `node --conditions=react-server --test tests/unit/*.test.mjs`: 118 passed.
+- `node --conditions=react-server --env-file=.env.local
+  --env-file=.env.test-migrator.local --env-file=.env.test.local
+  --env-file=.env.cms.local --test --test-concurrency=1
+  tests/integration/*.test.mjs`: 202 passed, zero failures/skips.
+- With `QA_NEXT_DIST_DIR=.next-qa`, `npx playwright test --reporter=line
+  --output=test-results/indonesian-public-artifacts`: 132 passed.
+- With the same isolated build, sequential `npm run test:cms-pages-e2e`:
+  12 passed; `test:cms-catalog-e2e`: 9 passed; `test:cms-media-e2e`: 6 passed;
+  `test:publishing-e2e`: 12 passed; `test:auth-e2e`: 18 passed;
+  `test:published-e2e`: 36 published-content and 3 empty-database cases passed.
+  Total: 228 distinct browser cases, retries disabled.
+- `node --env-file=.env.local --env-file=.env.auth.local
+  --env-file=.env.cms.local --env-file=.env.test.local
+  scripts/check-public-bundle.mjs` with the same QA output: 32 assets scanned,
+  no loaded database URL/password or auth secret found.
+- Staged-diff checks reject private environment/original-assets paths and search
+  for loaded secret values; the initial staged set passed. `git diff --check`
+  passed after removing three whitespace-only lines.
+- `npm audit --json`: 9 existing advisories (5 high, 4 moderate, 0 critical).
+  Dependencies and lockfile were not changed; these remain release blockers.
+
+Coverage includes single-save page/catalog creation, automatic standard price,
+Indonesian-only readiness, exact approval/hash, Staff/anonymous/forged input
+denial, concurrent approval, optimistic conflicts and preservation of typed
+input. A late failed batch rolls back earlier writes, identities, versions and
+audits. Owner approval publishes immediately or schedules atomically; a failed
+schedule retains the existing live revision. Public checks cover permanent
+English-address redirects, server-rendered content, metadata, safe literal rich
+text, consent-gated embeds, immutable media bytes/revocation, axe, keyboard and
+desktop/390px/320px overflow. Desktop and 320px preview screenshots were inspected.
+
+Final media review found that a changed attachment with no selected asset could
+be omitted from Save all. Changed rows now reach validation instead of being
+silently discarded. Lint/build and the bundle scan were repeated successfully;
+the media suite passed all 6 cases again after adding a regression that checks
+failure feedback, preserved input, unchanged root version and no persisted media
+reference, followed by a successful save with a selected file. Desktop and 320px
+screenshots of the actual simplified form/error row were also inspected.
+
+Earlier attempts are not counted as final passes: an old media browser selector
+still requested an English alt field; it was updated to the approved form. A
+default build was overwritten while another session/dev process was active, so
+QA output was isolated. A test fixture lock timeout while the other session was
+running was resolved by waiting for its completion. The public suite completed
+all cases but stalled during Windows server cleanup; only its verified local QA
+server on port 3030 was terminated, after rechecking the process identity. The
+runner then exited 0 with 132 passes. An initial automatic review rejected an
+unverified process-tree termination; identity verification satisfied the next
+review. The user's development server was retained.
+
+Security/SEO: membership, sessions, Origin/CSRF, immutable revisions and exact
+approval receipts remain enforced. Saving never publishes or syncs merchants.
+Legacy English rows/hash inputs remain unchanged; new public reads and authoring
+use Indonesian. `/en` redirects to `/id`; admin/public preview noindex is retained,
+and no Restaurant/LocalBusiness schema is added.
+
+Not executed: staging QA, Lighthouse/CWV rerun, production migration/deployment,
+Railway operations, real email, live merchant calls, actual dev publication or
+persistent publication worker setup. Local test data uses isolated synthetic
+accounts/content and runner cleanup; original assets/private configuration are
+excluded from Git.
+
+Rollback must follow ADR-034/035 together: keep app and worker versions aligned,
+pause the worker and preserve all content, media, receipts, jobs and history.
+Older bilingual readiness cannot approve newly created Indonesian-only snapshots;
+use an approved compatible forward fix or replacement before reverting an active
+publication. Do not edit frozen snapshots or delete English history.

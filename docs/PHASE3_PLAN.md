@@ -282,3 +282,32 @@ history. Retain jobs/events and existing content/media/configuration. Pending
 jobs stay inert while the worker is stopped. Reconcile or cancel pending jobs
 before restarting it. Removing tables/grants requires a separately reviewed
 reverse migration; never rewrite an applied SQL file or delete migration history.
+
+
+## Follow-up: Indonesian-only simple forms (ADR-034)
+
+User approved removal of English switching/authoring and simplification across
+pages/catalog on 2026-10-17. See ADR-034 for scope and compatibility/rollback.
+UI has one Save all changes action next to review/Owner approval/publication;
+required fields and feedback are visible in the same area. Existing fields and
+English history are preserved; only Indonesian title/body are required for pages.
+Catalog requires Indonesian names, placement and valid pricing; descriptions are
+optional and standard variant creation is automatic for a new product.
+
+Bounded batch saves reuse existing authenticated writers, version checks, frozen
+revision guards and audits inside one transaction. New local aliases resolve only
+from earlier creations within that save; forged workflow actions/root versions/
+actors are rejected. A failed last operation rolls back earlier identities,
+translations, media references, versions and audit rows. Existing workflow audit
+and approval hashes are not reformatted. No database migration or dependency.
+
+English public paths permanently redirect to stable Indonesian /id paths. No
+language selector or English output remains. Approved snapshots can contain legacy
+English rows internally so their original hashes and signatures stay valid. No
+new Owner publication or real development content edit is performed by the agent.
+
+The user subsequently approved combining this follow-up with ADR-035 after the
+other editing/QA session finished. Owner uses Setujui after saving, with an
+optional WIB publication time; Staff keeps Kirim untuk review. Approval and
+immediate publication are one atomic server operation, separate from Save all.
+Final combined verification is recorded in SECURITY_AND_QA.md.

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { validateRevisionMedia } from "../media/validation.mjs";
-import { getPageDefinition, isInternalPageLink, isPageLocale, pageTemplateFields } from "./templates.mjs";
+import { getPageDefinition, isInternalPageLink, pageTemplateFields } from "./templates.mjs";
 
 export class PageContentError extends Error {
   constructor(code, message) { super(message); this.name = "PageContentError"; this.code = code; }
@@ -53,15 +53,15 @@ const validateRich = (document, ready) => {
 
 export const validatePageFields = (pageKey, locale, fields, { ready = false } = {}) => {
   const definition = getPageDefinition(pageKey);
-  if (!definition || !isPageLocale(locale)) pageFail("INVALID_INPUT", "Unknown page or locale.");
+  if (!definition || !["id", "en"].includes(locale)) pageFail("INVALID_INPUT", "Unknown page or locale.");
   const allowed = pageTemplateFields[definition.template];
-  if (!keys(fields, Object.keys(allowed), ready ? Object.keys(allowed) : [])) invalid();
+  if (!keys(fields, Object.keys(allowed), ready ? ["title", "body"] : [])) invalid();
   // Validate the bounded node/field shape before JSON serialization.
   // Persistence snapshots the validated JSON rather than retaining caller objects.
   for (const [name, value] of Object.entries(fields)) {
     const type = allowed[name];
-    if (type === "rich") validateRich(value, ready);
-    else if (!text(value, limits[type], ready)) invalid();
+    if (type === "rich") validateRich(value, ready && name === "body");
+    else if (!text(value, limits[type], ready && name === "title")) invalid();
   }
   let bytes;
   try { bytes = Buffer.byteLength(JSON.stringify(fields), "utf8"); } catch { invalid(); }
@@ -73,21 +73,21 @@ export const validatePageFields = (pageKey, locale, fields, { ready = false } = 
 export const validatePageReadiness = graph => {
   if (!graph || !getPageDefinition(graph.page?.key) || graph.page.template !== getPageDefinition(graph.page.key).template ||
     !validPageUuid(graph.revision?.id) || graph.revision.pageKey !== graph.page.key ||
-    !validPageVersion(graph.revision.version) || !Array.isArray(graph.translations) || graph.translations.length !== 2) {
-    pageFail("NOT_READY", "Require a complete bilingual page revision.");
+    !validPageVersion(graph.revision.version) || !Array.isArray(graph.translations) || graph.translations.length < 1 || graph.translations.length > 2) {
+    pageFail("NOT_READY", "Require an Indonesian page revision.");
   }
   const locales = new Set();
   try {
     for (const row of graph.translations) {
       if (row.revisionId !== graph.revision.id || locales.has(row.locale)) invalid();
-      validatePageFields(graph.page.key, row.locale, row.fields, { ready: true });
+      validatePageFields(graph.page.key, row.locale, row.fields, { ready: row.locale === "id" });
       locales.add(row.locale);
     }
   } catch (error) {
-    if (error instanceof PageContentError) pageFail("NOT_READY", "Complete both locales before submitting.");
+    if (error instanceof PageContentError) pageFail("NOT_READY", "Lengkapi judul dan isi halaman sebelum mengirim review.");
     throw error;
   }
-  if (!locales.has("id") || !locales.has("en")) pageFail("NOT_READY", "Both locales required.");
+  if (!locales.has("id")) pageFail("NOT_READY", "Konten Indonesia wajib tersedia.");
   try { validateRevisionMedia(graph, "page"); }
   catch { pageFail("NOT_READY", "Complete valid bilingual media references before submitting."); }
   return true;

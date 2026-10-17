@@ -6,11 +6,11 @@ import SiteHeader from "@/features/public-site/components/SiteHeader";
 import SiteFooter from "@/features/public-site/components/SiteFooter";
 import "@/styles/globals.css";
 
-export const generateStaticParams = () => [{ locale: "id" }, { locale: "en" }];
+export const generateStaticParams = () => [{ locale: "id" }];
 
 export const generateMetadata = async ({ params }) => {
   const { locale } = await params;
-  if (!Object.hasOwn(content, locale)) notFound();
+  if (locale !== "id") notFound();
   return {
     title: usesPublishedContent() ? "Tiny Osaka" : content[locale].metadata.title,
     description: usesPublishedContent() ? "Tiny Osaka" : content[locale].metadata.description,

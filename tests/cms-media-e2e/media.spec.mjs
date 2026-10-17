@@ -38,14 +38,20 @@ test("original upload, draft picker, Owner publication and public revocation wor
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("media-library.png"), fullPage: true });
   let row = await write(page, "", { pageKey: "about" });
-  for (const locale of ["id", "en"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
+  for (const locale of ["id"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
   await page.goto(`/admin/pages/about/${row.id}`);
+  await page.getByRole("button", { name: "Tambah media", exact: true }).click();
+  await page.getByLabel("Deskripsi gambar * (wajib untuk review)", { exact: true }).fill("Gambar sintetis QA");
+  await page.getByRole("button", { name: "Simpan semua perubahan", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Permintaan gagal");
+  await expect(page.getByLabel("Deskripsi gambar * (wajib untuk review)", { exact: true })).toHaveValue("Gambar sintetis QA");
+  const unchanged = await (await page.request.get(`/api/cms/pages/${row.id}`)).json();
+  expect(unchanged.version).toBe(row.version); expect(unchanged.mediaRefs).toHaveLength(0);
+  await page.screenshot({ path: testInfo.outputPath("simple-form-invalid-media.png"), fullPage: true });
   await page.getByLabel("Pilih media", { exact: true }).selectOption(asset.id);
-  await page.getByLabel("Alt Indonesia", { exact: true }).fill("Gambar sintetis QA");
-  await page.getByLabel("Alt Inggris", { exact: true }).fill("Synthetic QA image");
   await expect(page.getByRole("button", { name: "Kirim untuk review", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Simpan media", exact: true }).click();
-  await expect(page.getByText("Media draft tersimpan.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Simpan semua perubahan", exact: true }).click();
+  await expect(page.getByText("Semua perubahan tersimpan.", { exact: true })).toBeVisible();
   row = await (await page.request.get(`/api/cms/pages/${row.id}`)).json();
   await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
   const preview = page.locator(".cms-page-preview");
@@ -63,7 +69,7 @@ test("original upload, draft picker, Owner publication and public revocation wor
     const photo = page.getByRole("img", { name: "Gambar sintetis QA", exact: true }); await expect(photo).toBeVisible();
     await expect.poll(() => photo.evaluate(img => img.naturalWidth)).toBe(32);
     let clone = await write(owner, "", { pageKey: "about" });
-    for (const locale of ["id", "en"]) clone = await write(owner, `/${clone.id}`, { revisionId: clone.id, expectedVersion: clone.version, locale, fields: fields() }, "patch");
+    for (const locale of ["id"]) clone = await write(owner, `/${clone.id}`, { revisionId: clone.id, expectedVersion: clone.version, locale, fields: fields() }, "patch");
     for (const action of ["submit", "approve", "publish"]) clone = await write(owner, `/${clone.id}/actions`, { action, revisionId: clone.id, expectedVersion: clone.version, ...(action === "submit" ? {} : { expectedHash: clone.contentHash }) });
     expect((await page.request.get(`/media/${asset.id}`)).status()).toBe(404);
   } finally { await owner.close(); }

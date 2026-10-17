@@ -80,7 +80,7 @@ export const validateCatalogReviewReadiness = graph => {
     }
     for (const row of parents.values()) {
       const parentKey = parentKeys.map(key => row[key]).join(":");
-      for (const locale of ["id", "en"]) {
+      for (const locale of ["id"]) {
         if (!translations.has(`${parentKey}:${locale}`)) issue("MISSING_TRANSLATION", type, row[parentKeys.at(-1)], locale);
       }
     }

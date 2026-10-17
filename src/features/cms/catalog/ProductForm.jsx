@@ -13,15 +13,17 @@ const ProductForm = ({ product, graph }) => {
     <CatalogForm title="Penempatan produk" action="productPlacement" scope={scope} initial={{ categoryId: entry.categoryId, sortOrder: entry.sortOrder }}
       fields={[{ name: "categoryId", label: "Kategori", options: graph.categories.map(row => ({ value: row.id, label: row.slug })) }, orderField]}
       preview={{ table: "productEntries", match: scope }} />
-    <h3>Varian dan harga</h3>
-    {graph.productVariants.filter(row => row.productId === product.id).sort((a, b) => a.sortOrder - b.sortOrder).map(variant => <VariantForm key={variant.id} variant={variant} productId={product.id} graph={graph} />)}
+    <h3>Harga</h3>
+    {graph.productVariants.filter(row => row.productId === product.id && row.code === "standard").map(variant => <VariantForm key={variant.id} variant={variant} productId={product.id} graph={graph} />)}
+    <details className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">Varian tambahan dan topping (opsional)</summary><div className="mt-6 grid gap-6">
     <VariantForm productId={product.id} graph={graph} />
+    {graph.productVariants.filter(row => row.productId === product.id && row.code !== "standard").map(variant => <VariantForm key={variant.id} variant={variant} productId={product.id} graph={graph} />)}
     <h3>Modifier dan topping</h3>
     {graph.modifierGroups.filter(row => row.productId === product.id).sort((a, b) => a.sortOrder - b.sortOrder).map(group => <ModifierForm key={group.id} group={group} productId={product.id} graph={graph} />)}
     <ModifierForm productId={product.id} graph={graph} />
-    <MediaAttachments domain="catalog" revisionId={graph.revision.id} version={graph.revision.version} productId={product.id}
-      disabled={context.disabled} onBusy={context.media.onBusy} onChange={context.media.onChange}
-      onDirty={(key, value) => context.setDirty(`media-${product.id}-${key}`, value)} />
+    </div></details>
+    <MediaAttachments key={graph.revision.version} productId={product.id} initial={graph.mediaRefs} assets={graph.mediaAssets} disabled={context.disabled}
+      onOperations={operations => context.stageMedia(product.id, operations)} />
   </div>;
 };
 export default ProductForm;

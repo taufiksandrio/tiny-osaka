@@ -63,7 +63,7 @@ test("draft references increment versions, frozen edits fail and only exact publ
   const ref = await api.reference(jars[1], "page", "save", data); assert.equal(ref.version, 2);
   await assert.rejects(api.reference(jars[1], "page", "save", data), { code: "REVISION_CONFLICT" });
   let version = 2;
-  for (const locale of ["id", "en"]) row = await pages.write(jars[1], "save", { revisionId: row.id, expectedVersion: version++, locale, fields: fields() });
+  for (const locale of ["id"]) row = await pages.write(jars[1], "save", { revisionId: row.id, expectedVersion: version++, locale, fields: fields() });
   row = await pages.write(jars[1], "submit", { revisionId: row.id, expectedVersion: row.version });
   await assert.rejects(api.reference(jars[0], "page", "remove", { revisionId: row.id, expectedVersion: row.version, referenceId: ref.id }), { code: "REVISION_CONFLICT" });
   await assert.rejects(pages.write(jars[1], "approve", token(row)), { code: "FORBIDDEN" });

@@ -9,6 +9,6 @@ export const PATCH = async (request, { params }) => {
   const { revisionId } = await params;
   return cmsRoute(request, (api, input) => {
     if (input.revisionId !== revisionId) cmsFail("INVALID_INPUT");
-    return api.write(request.headers, "save", input);
+    return Object.hasOwn(input, "operations") ? api.batch(request.headers, input) : api.write(request.headers, "save", input);
   });
 };

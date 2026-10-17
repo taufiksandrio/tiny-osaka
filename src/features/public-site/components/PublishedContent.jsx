@@ -31,8 +31,8 @@ export const publishedMetadata = async (key, locale, slug) => {
   }
   const page = await publicPage(key, locale);
   if (key.startsWith("guide-") && !page) notFound();
-  return { title: page?.fields.seoTitle || `${labels[locale][key] || "Tiny Osaka"} | Tiny Osaka`,
-    description: page?.fields.seoDescription || labels[locale].empty, robots: { index: false, follow: false } };
+  return { title: page?.fields.seoTitle || page?.fields.title || `${labels[locale][key] || "Tiny Osaka"} | Tiny Osaka`,
+    description: page?.fields.seoDescription || page?.fields.summary || labels[locale].empty, robots: { index: false, follow: false } };
 };
 
 const CatalogCards = ({ catalog, locale }) => !catalog || !catalog.products.length ? <p>{labels[locale].emptyMenu}</p> :
@@ -59,13 +59,13 @@ export const PublishedPage = async ({ pageKey, locale }) => {
     <section className="page-section container published-content">
       {fields?.eyebrow && <p className="eyebrow">{fields.eyebrow}</p>}
       <h1>{fields?.title || labels[locale][pageKey] || "Tiny Osaka"}</h1>
-      <p>{fields?.summary || labels[locale].empty}</p>
+      {fields ? fields.summary && <p>{fields.summary}</p> : <p>{labels[locale].empty}</p>}
       <Rich document={fields?.body} />
       <Media items={page?.media} locale={locale} />
       {["home", "menu"].includes(pageKey) && <CatalogCards catalog={catalog} locale={locale} />}
-      {pageKey === "about" && fields && <><h2>{fields.storyHeading}</h2><Rich document={fields.storyBody} />
-        <h2>{fields.serviceHeading}</h2><Rich document={fields.serviceBody} /></>}
-      {pageKey === "location" && fields && <dl className="info-list">{["city", "service", "hours", "coverage"].map(key =>
+      {pageKey === "about" && fields && <>{fields.storyHeading && <h2>{fields.storyHeading}</h2>}<Rich document={fields.storyBody} />
+        {fields.serviceHeading && <h2>{fields.serviceHeading}</h2>}<Rich document={fields.serviceBody} /></>}
+      {pageKey === "location" && fields && <dl className="info-list">{["city", "service", "hours", "coverage"].filter(key => fields[key]?.trim()).map(key =>
         <div key={key}><dt>{({ id: { city: "Kota", service: "Layanan", hours: "Jam", coverage: "Cakupan" },
           en: { city: "City", service: "Service", hours: "Hours", coverage: "Coverage" } })[locale][key]}</dt><dd>{fields[key]}</dd></div>)}</dl>}
       {guides.length > 0 && <ul>{guides.map(guide => <li key={guide.pageKey}><Link href={`/${locale}${pageDefinitions[guide.pageKey].path}`}>{guide.fields.title}</Link></li>)}</ul>}

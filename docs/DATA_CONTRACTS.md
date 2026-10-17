@@ -1,6 +1,13 @@
 # Conceptual Contracts — DO NOT mistake for confirmed platform API schema
 
+## Current language and editing contract (ADR-034)
+
+Public content and CMS authoring are Indonesian-only. Existing `/id` paths remain stable; `/en/:path*` permanently redirects to `/id/:path*`. No English switch, alternate language output or automatic translation provider is used. Legacy English rows remain within immutable snapshots and hashes; new content requires only Indonesian. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
+
+ADR-035 adds a distinct Owner approval command after Save all. It checks current database membership, exact version/hash and readiness, then atomically submits/approves/publishes or schedules the same revision. Staff cannot invoke this command. Invalid schedules, conflicts and failed readiness roll back the complete transition; a save batch cannot contain approval or publication commands.
+
 ## Earlier conceptual entities (not an implemented schema)
+
 `User(id,email,role,status,createdAt)`; `Session(userId,issuedAt,lastActiveAt,expiresAt)`; `AuditEvent(actor,action,target,revision,time,metadata)`; `ContentPage(id,type,slug,locale,status,publishedRevisionId)`; `PageRevision(id,pageId,fields,createdBy,approvedBy,approvedAt,scheduledFor,version)`; `Media(id,type,storageKey,mime,size,alt,posterKey,owner)`; `Product(id,slug,category,basePrice,media)`; `ProductTranslation(productId,locale,title,description,seo)`; `ModifierGroup(id,productId,min,max,selectionType)`; `ModifierOption(id,groupId,title,priceDelta)`; `MerchantMapping(productId,platform,externalId,verifiedProductUrl,verifiedStoreUrl,lastSyncHash)`; `SyncRun(id,initiator,platform,status,attempt,idempotencyKey,requestSummary,finishedAt,errorCategory)`; `PlatformSettings(platform,isEnabled,connectionStatus)`. Define real DB constraints and normalized relations during schema design.
 
 ## Invariants
@@ -19,7 +26,7 @@
 - Prevent duplicate analytics events across generic outbound tracking and custom CTA tracking.
 - `click_order` represents a click, NEVER a paid order or completed purchase.
 
-## Bilingual routing
+## Historical bilingual routing (superseded by ADR-034)
 `/id/...` and `/en/...` with shared slugs were approved in ADR-002/003 and are
 implemented for the public preview. Production canonical/hreflang/sitemap and
 verified public content remain future work; the preview remains noindex.

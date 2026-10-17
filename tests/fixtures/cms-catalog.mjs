@@ -13,7 +13,7 @@ export const seedCmsCatalog = async write => {
   const groupId = graph.modifierGroups[0].id;
   await save("optionCreate", { productId, groupId, code: "extra", priceDelta: 5000, sortOrder: 0 });
   const optionId = graph.modifierOptions[0].id;
-  for (const locale of ["id", "en"]) {
+  for (const locale of ["id"]) {
     for (const [action, scope, title] of [
       ["categoryTranslation", { categoryId }, "QA category"], ["productTranslation", { productId }, "QA product"],
       ["variantTranslation", { productId, variantId }, "QA standard"], ["groupTranslation", { productId, groupId }, "QA extras"],

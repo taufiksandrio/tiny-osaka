@@ -4,7 +4,7 @@ const Inline = ({ spans }) => spans.map((span, index) => {
   let node = span.text;
   if (span.marks?.includes("bold")) node = <strong>{node}</strong>;
   if (span.marks?.includes("italic")) node = <em>{node}</em>;
-  if (span.href && isInternalPageLink(span.href)) node = <Link href={span.href}>{node}</Link>;
+  if (span.href && isInternalPageLink(span.href)) node = <Link href={span.href.replace(/^\/en(?=\/|$)/, "/id")}>{node}</Link>;
   return <span key={index}>{node}</span>;
 });
 const PublicRichText = ({ document }) => document?.blocks.map((block, index) => {
