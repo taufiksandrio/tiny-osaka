@@ -61,7 +61,7 @@ const PageEditor = ({ initial, role }) => {
       <CardDescription>Konten Indonesia dan Inggris wajib lengkap sebelum dikirim untuk review. Simpan setiap bahasa secara terpisah.</CardDescription>
     </CardHeader><CardContent className="space-y-4">
       {revision.status !== "draft" && <p className="flex items-start gap-2 rounded-lg bg-secondary p-3 text-sm"><LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Revisi ini dibekukan. Buat draft dari revisi ini untuk mengubah konten.</p>}
-      <div className="flex flex-wrap items-end justify-between gap-4"><div className="grid gap-2"><Label htmlFor="content-locale">Bahasa konten</Label>
+      <div className="flex flex-wrap items-end justify-between gap-4"><div className="cms-form-field"><Label htmlFor="content-locale">Bahasa konten</Label>
         <NativeSelect id="content-locale" value={locale} disabled={busy} onChange={event => setLocale(event.target.value)}>
           <NativeSelectOption value="id">Indonesia</NativeSelectOption><NativeSelectOption value="en">Inggris</NativeSelectOption>
         </NativeSelect></div>
@@ -86,7 +86,7 @@ const PageEditor = ({ initial, role }) => {
             const Control = type === "summary" ? Textarea : Input;
             const limit = type === "short" ? 160 : type === "title" ? 240 : 2000;
             const id = `cms-${locale}-${key}`;
-            return <div key={key} className="grid min-w-0 gap-2"><Label htmlFor={id}>{labels[key]}</Label>
+            return <div key={key} className="cms-form-field"><Label htmlFor={id}>{labels[key]}</Label>
               <Control id={id} value={fields[locale][key] ?? ""} maxLength={limit} aria-describedby={id + "-help"} onChange={event => change(key, event.target.value)} />
               <div id={id + "-help"} className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                 <span>{fieldHelp[key] ?? `Isi ${labels[key].toLowerCase()} untuk bahasa yang dipilih.`}</span><span>{(fields[locale][key] ?? "").length}/{limit}</span>

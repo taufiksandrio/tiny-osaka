@@ -84,7 +84,9 @@
 .admin-root .cms-editor [data-slot="checkbox"] { width: 1rem; height: 1rem; min-height: 1rem; min-width: 1rem; padding: 0; border: 1px solid var(--input); border-radius: .25rem; }
 .admin-root .cms-editor [data-slot="checkbox"][data-state="checked"] { border-color: var(--primary); }
 .admin-root .cms-editor [data-slot="input"] { min-height: 44px; }
-.admin-root .cms-rich { display: grid; min-width: 0; margin: 0; border: 0; padding: 0; background: transparent; gap: 1rem; }
+.admin-root .cms-form-field { display: grid; min-width: 0; gap: 12px; }
+.admin-root .cms-button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.admin-root .cms-rich { display: grid; min-width: 0; margin: 0; border: 0; padding: 0; background: transparent; gap: 24px; }
 .admin-root .cms-rich > legend { margin-bottom: .75rem; padding: 0; font-weight: 600; }
 .admin-root .cms-fields { min-width: 0; gap: 1.5rem; }
 .admin-root .cms-save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; background: var(--card); }

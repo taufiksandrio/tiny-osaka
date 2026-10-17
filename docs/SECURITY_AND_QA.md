@@ -857,3 +857,30 @@ browser tests. No release readiness, merge or deployment is claimed.
 
 Rollback: revert this UI commit and rebuild; preserve private envs, account/content
 data and SQL history. No database or dependency rollback is required.
+
+### Approved spacing follow-up (ADR-029)
+
+Modified PageEditor, RichTextEditor, RevisionActions and admin.css to give labels
+12px clearance from controls, fields24px separation, and action rows12px gaps with
+wrapping. Text-part addition and list-item removal share a row; block actions stay
+in the Card footer. All controls reuse existing shadcn; no dependencies changed.
+
+Actual verification:
+
+- npm.cmd run lint: passed, zero warnings.
+- npm.cmd run build: passed.
+- node --conditions=react-server --test tests/unit/*.test.mjs:111 passed.
+- npm.cmd run test:cms-pages-db:9 passed.
+- npm.cmd run test:cms-pages-e2e:18 passed across desktop1440/mobile390/small320;
+  zero unexpected/skipped/flaky cases, retries0. Existing Axe, workflow, permissions,
+  bilingual-save and conflict coverage passed. Added real bounding-box checks for
+  label/control clearance and horizontal/vertical gaps between adjacent buttons.
+  Desktop/mobile list-spacing screenshots were inspected. Test fixture cleanup
+  and protection assertions completed successfully.
+- git diff --check: passed; source/test/documentation diffs reviewed.
+
+Security and SEO behavior is unchanged; all new CSS rules are scoped to admin.
+Auth-only/public suites, fresh dependency audit, Lighthouse and staging/production
+were not rerun for this spacing-only follow-up. Previously documented dependency
+advisories remain unresolved. Rollback: revert this follow-up commit and rebuild;
+preserve private configuration and content. No merge/deployment was performed.
