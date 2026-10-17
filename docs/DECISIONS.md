@@ -1051,3 +1051,32 @@ lockfile together, then install that lockfile and rebuild. Preserve private envs
 accounts, content and applied migration history. No schema rollback is needed.
 Commit/push after verification follows the standing approved subphase workflow;
 merge/deployment still require separate authorization.
+
+## ADR-029 — Revision list and detail form refinement (approved 2026-10-17)
+
+User approved refining Kelola revisi and its detail form with the existing shadcn
+components. Branch fix/cms-revision-ui starts from merged main 831ac0f. The user's
+standing UI direction is shadcn for subsequent features/pages. This change reuses
+the pinned ADR-028 packages, with no installation, schema or API contract change.
+
+Revision lists use a desktop table and mobile cards, Indonesian status badges,
+version, live pointer and creation time in Asia/Jakarta (WIB). Counts describe only
+the displayed list of at most100 revisions. Shared RevisionStatus keeps labels
+consistent between list/detail without changing stored workflow values.
+
+The detail form groups fixed-template fields into main content, additional page
+sections, SEO metadata and CTA text when applicable. Short/title fields use Input;
+summary fields use Textarea. Each language has an explicit unsaved indicator;
+saving one language cannot clear the other's pending changes. Rich content uses
+one Card per block and flat text-part controls, retaining paragraph/heading/list,
+marks, internal links and existing limits. Save/actions and frozen revision notes
+remain tied to the existing version/approval workflow.
+
+Server RBAC, CSRF, sessions, immutable approvals, live content and code-owned links
+remain unchanged. Styling is scoped to admin; public SEO/noindex policies remain.
+Acceptance covers three viewports, Axe/focus, bilingual pending changes, rich-text
+editing/preview, revision navigation, permission denials and stale-save conflicts.
+
+Rollback: revert this UI commit and rebuild. Preserve content, private credentials
+and applied SQL history; no dependency or database rollback is required. Commit/
+push follows standing approval; merge and deployment need separate authorization.

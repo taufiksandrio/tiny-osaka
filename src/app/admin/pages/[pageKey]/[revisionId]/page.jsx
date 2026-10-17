@@ -17,7 +17,8 @@ const RevisionPage = async ({ params }) => {
   if (row.pageKey !== pageKey) notFound();
   return <main className="space-y-6" id="main-content" tabIndex={-1}>
     <Button asChild variant="ghost" size="sm"><Link href={`/admin/pages/${pageKey}`}><ArrowLeft aria-hidden="true" />Daftar revisi {pageKey}</Link></Button>
-    <div className="space-y-2"><h1>Editor halaman {pageKey}</h1><p className="text-muted-foreground">Susun konten bilingual menggunakan template halaman tetap.</p></div>
+    <div className="space-y-2"><h1>Editor halaman {pageKey}</h1><p className="text-muted-foreground">Lengkapi konten, metadata SEO, dan teks tombol sesuai template halaman.</p>
+      <p className="text-xs text-muted-foreground">ID revisi: <code className="break-all">{row.id}</code></p></div>
     <PageEditor key={revisionId} initial={row} role={actor.role} />
   </main>;
 };

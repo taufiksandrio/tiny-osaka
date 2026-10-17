@@ -802,3 +802,58 @@ Rollback: revert this UI commit, restore matching manifest/lockfile, install tha
 lockfile and rebuild. Keep private envs, accounts, content and SQL history; no schema
 rollback is required. Existing dependency advisories still block release readiness.
 No merge, deployment, live merchant or real email operation was performed.
+
+## Revision list/detail shadcn refinement — 2026-10-17 (ADR-029)
+
+Approved branch fix/cms-revision-ui starts from merged main 831ac0f. Modified:
+admin/pages/[pageKey]/page.jsx and [revisionId]/page.jsx; PageEditor,
+RichTextEditor, RevisionActions and new shared RevisionStatus; scoped admin.css;
+CMS browser acceptance tests; decisions and this QA record. Existing shadcn
+packages/components are reused. No package, backend, schema or migration changes.
+
+Acceptance: desktop table/mobile cards show version, creation time (WIB), readable
+status and live pointer. Forms separate main/additional content, SEO and applicable
+CTA fields. Short/title inputs, summary textareas, helpers, character counts and
+per-language pending indicators are present. Rich editing retains marks, internal
+links, numbered lists, item removal and block ordering with simpler Card grouping.
+Saving Indonesia preserves pending English edits; actions remain disabled until
+both languages are saved. Existing review/frozen/live/version rules still apply.
+
+Commands actually executed and their final outcomes:
+
+- npm.cmd run lint: passed, zero warnings.
+- npm.cmd run build: passed after the final dropdown height adjustment.
+- node --conditions=react-server --test tests/unit/*.test.mjs:111 passed.
+- npm.cmd run test:cms-pages-db:9 passed, including anonymous/Staff denials,
+  actual idle expiry, immutable live content and simultaneous-save conflicts.
+- npm.cmd run test:cms-pages-e2e:18 passed; six each desktop1440/mobile390/small320.
+  Added grouped Input/Textarea checks, unsaved bilingual preservation, ordered list
+  editing/reordering, literal escaped preview with bold/internal link, revision-list
+  navigation/date rendering, Axe and overflow checks. Existing publication/clone,
+  forged permissions and two-tab conflicts remain covered. Final report has zero
+  unexpected, skipped or flaky cases; retries0. Fixtures cleaned successfully.
+- npm.cmd run test:auth-e2e:18 passed; six each viewport, including login/MFA/logout,
+  anonymous redirect and Staff restrictions. Fixture cleanup assertions passed.
+- node --env-file=.env.local --env-file=.env.cms.local --env-file=.env.auth.local
+  scripts/check-public-bundle.mjs:26 assets passed; no loaded private database
+  URL/password or auth secret present in browser assets.
+- git diff --check: passed; final source/test/documentation diffs reviewed.
+
+Initial browser run passed desktop but failed one mobile Axe check during the
+AlertDialog exit animation. The test now waits for the closed dialog to unmount
+before scanning the page; no accessibility rule was disabled. All18 CMS cases
+were rerun successfully. Visual review also found legacy select padding clipping
+text; scoped select sizing was corrected before the final build/browser run.
+Desktop and mobile revision/editor screenshots were inspected. Artifacts remain
+ignored under test-results; traces can contain synthetic credentials.
+
+Security/SEO: no server RBAC, Origin/CSRF, session or approval/hash changes. Public
+content remains published-only and admin stays noindex. No dependency install or
+fresh audit ran; ADR-028's existing9 advisory entries (5high/4moderate, production
+omit-dev4moderate) remain unresolved release blockers. Public222-case regression,
+full catalog/media integration, Lighthouse, staging and production were not rerun
+for this scoped admin change. Bilingual public about publication is covered by CMS
+browser tests. No release readiness, merge or deployment is claimed.
+
+Rollback: revert this UI commit and rebuild; preserve private envs, account/content
+data and SQL history. No database or dependency rollback is required.

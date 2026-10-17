@@ -78,20 +78,16 @@
   border-color: var(--input); border-radius: .5rem; font-size: .875rem;
 }
 .admin-root .cms-editor textarea { min-height: 6rem; }
+.admin-root .cms-editor select { height: auto; min-height: 44px; padding: .5rem .75rem; }
 .admin-root .cms-editor [data-slot="button"] { max-width: 100%; height: auto; min-height: 44px; white-space: normal; border-width: 0; font-size: .875rem; padding: .5rem .75rem; }
 .admin-root .cms-editor [data-slot="button"][data-variant="outline"] { border: 1px solid var(--border); }
 .admin-root .cms-editor [data-slot="checkbox"] { width: 1rem; height: 1rem; min-height: 1rem; min-width: 1rem; padding: 0; border: 1px solid var(--input); border-radius: .25rem; }
 .admin-root .cms-editor [data-slot="checkbox"][data-state="checked"] { border-color: var(--primary); }
-.admin-root .cms-rich, .admin-root .cms-block, .admin-root .cms-span {
-  border-color: var(--border); border-radius: var(--radius); padding: 1rem;
-}
-.admin-root .cms-rich { background: #fcfcfb; }
-.admin-root .cms-block { background: white; }
-.admin-root .cms-rich legend { padding-inline: .35rem; font-weight: 600; }
-.admin-root .cms-span { background: #fafaf9; }
-.admin-root .cms-fields { gap: 1.5rem; }
-.admin-root .cms-fields > legend { margin-bottom: 1rem; font-weight: 600; }
-.admin-root .cms-fields > div { display: grid; gap: .5rem; }
+.admin-root .cms-editor [data-slot="input"] { min-height: 44px; }
+.admin-root .cms-rich { display: grid; min-width: 0; margin: 0; border: 0; padding: 0; background: transparent; gap: 1rem; }
+.admin-root .cms-rich > legend { margin-bottom: .75rem; padding: 0; font-weight: 600; }
+.admin-root .cms-fields { min-width: 0; gap: 1.5rem; }
+.admin-root .cms-save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; background: var(--card); }
 .admin-root .cms-preview { border-color: var(--border); border-radius: var(--radius); background: white; }
 .admin-root .cms-preview section { margin-block: 1.5rem; }
 .admin-root .cms-preview p { white-space: pre-wrap; }
@@ -101,7 +97,6 @@
 .admin-root .admin-table td { vertical-align: middle; }
 @media (max-width: 640px) {
   .admin-root [data-slot="button"] { min-height: 44px; }
-  .admin-root .cms-rich, .admin-root .cms-block, .admin-root .cms-span { padding: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .admin-root *, .admin-root *::before, .admin-root *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
