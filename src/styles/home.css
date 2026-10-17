@@ -13,7 +13,7 @@
 .home-theme .home-kicker { color: #a52c23; font-size: .75rem; font-weight: 700; letter-spacing: .16em; }
 .home-theme .home-headline { white-space: pre-line; overflow-wrap: anywhere; font-size: clamp(2.5rem, 4.6vw, 4.2rem); font-weight: 800; line-height: 1.06; letter-spacing: -.055em; }
 .home-theme .home-summary { max-width: 32rem; font-size: 1rem; color: #625c52; line-height: 1.85; }
-.home-theme .home-art-image { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 1rem; }
+.home-theme .home-art-image { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 1rem; }
 .home-theme .home-art figcaption { font-size: .7rem; line-height: 1.6; margin-top: .75rem; color: #625c52; }
 .home-theme .home-story { padding-block: 1rem 4rem; }
 .home-theme .home-story .home-prose { max-width: 48rem; padding-left: 1.5rem; border-left: 3px solid #b52f24; }

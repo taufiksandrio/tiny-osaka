@@ -156,7 +156,7 @@ test("Staff edits draft with safe preview, accessible fields and incomplete-revi
   await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
   const art = page.locator(".home-art-image");
   await expect(art).toBeVisible(); await expect.poll(() => art.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
-  await expect(page.locator(".home-art figcaption")).toContainText("bukan foto produk");
+  await expect(page.locator(".home-art figcaption")).toHaveText("Takoyaki Shio Negi · Tiny Osaka");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("home-preview.png"), fullPage: true });
