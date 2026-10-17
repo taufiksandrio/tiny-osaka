@@ -1,86 +1,24 @@
 import { test, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
-import { fields } from "../fixtures/page-content.mjs";
-import { seedCmsCatalog } from "../fixtures/cms-catalog.mjs";
 const origin = "http://127.0.0.1:3033";
 const login = async (page, role) => {
   await page.goto("/admin/login");
   await page.getByLabel("Email akun internal", { exact: true }).fill(process.env[role === "owner" ? "QA_AUTH_OWNER_EMAIL" : "QA_AUTH_STAFF_EMAIL"]);
   await page.getByLabel("Password", { exact: true }).fill(process.env.QA_AUTH_PASSWORD);
-  await page.getByRole("button", { name: "Masuk", exact: true }).click();
-  await expect(page).toHaveURL(/\/admin$/, { timeout: 15000 });
+  await page.getByRole("button", { name: "Masuk", exact: true }).click(); await expect(page).toHaveURL(/\/admin$/);
 };
-const write = async (page, path, data, method = "post") => {
-  const response = await page.request[method]("/api/cms/pages" + path, { headers: { origin }, data });
-  expect(response.ok(), await response.text()).toBe(true); return response.json();
-};
-const token = row => ({ revisionId: row.id, expectedVersion: row.version, expectedHash: row.contentHash });
-const approved = async page => {
-  let row = await write(page, "", { pageKey: "about" });
-  for (const locale of ["id"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
-  row = await write(page, `/${row.id}/actions`, { action: "submit", revisionId: row.id, expectedVersion: row.version });
-  return row;
-};
-const errors = new WeakMap();
-test.beforeEach(async ({ page }) => {
-  const current = []; errors.set(page, current); page.on("pageerror", error => current.push(error.message));
-  await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
-});
-test.afterEach(async ({ page }) => expect(errors.get(page)).toEqual([]));
-test("anonymous queue and mutations require authentication", async ({ page }) => {
-  await page.goto("/admin/publications"); await expect(page).toHaveURL(/\/admin\/login$/);
+test("anonymous access to the retired schedule API still requires authentication", async ({ page }) => {
   expect((await page.request.get("/api/cms/publications")).status()).toBe(401);
   expect((await page.request.post("/api/cms/publications", { headers: { origin }, data: {} })).status()).toBe(401);
+  await page.goto("/admin/publications"); await expect(page).toHaveURL(/\/admin\/login$/);
 });
-test("Owner schedules exact approved page in WIB, opens queue and cancels accessibly", async ({ page }, info) => {
-  await login(page, "owner"); const row = await approved(page);
-  expect((await page.request.post("/api/cms/publications", { headers: { origin }, data: { action: "schedule", role: "owner" } })).status()).toBe(400);
-  await page.goto(`/admin/pages/about/${row.id}`);
-  await expect(page.getByRole("heading", { name: "Waktu publikasi", exact: true })).toBeVisible();
-  const time = new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 16);
-  await page.getByLabel("Jadwal publikasi (opsional, WIB)").fill(time);
-  await page.getByRole("button", { name: "Setujui", exact: true }).click();
-  await page.getByRole("button", { name: "Konfirmasi", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "sesuai jadwal publikasi" })).toBeVisible();
-  await page.getByRole("link", { name: "Lihat publikasi terjadwal", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Publikasi terjadwal", exact: true })).toBeVisible();
-  await expect(page.locator("main")).toContainText("Terjadwal");
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath("publication-queue.png"), fullPage: true });
-  await page.getByRole("link", { name: "Buka revisi", exact: true }).first().click();
-  await expect(page).toHaveURL(new RegExp(row.id + "$"));
-  await page.goto("/admin/publications");
-  await page.getByRole("button", { name: "Batalkan jadwal", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Jadwal dibatalkan.");
-  await expect(page.locator("main")).toContainText("Dibatalkan");
-});
-test("Staff reads history but cannot forge schedule or cancel, CSRF and extra fields rejected", async ({ page }) => {
-  await login(page, "staff"); await page.goto("/admin/publications");
-  await expect(page.getByRole("button", { name: "Batalkan jadwal", exact: true })).toHaveCount(0);
-  expect((await page.request.post("/api/cms/publications", { headers: { origin }, data: { action: "schedule" } })).status()).toBe(403);
-  expect((await page.request.post("/api/cms/publications", { headers: { origin: "https://example.invalid" }, data: {} })).status()).toBe(403);
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-test("approved catalog shows shadcn schedule form and pending job can be cancelled", async ({ page }) => {
-  await login(page, "owner");
-  const catalogWrite = async (action, data) => {
-    const path = action === "create" ? "" : `/${data.revisionId}${["submit", "approve"].includes(action) ? "/actions" : ""}`;
-    const response = await page.request[action === "create" || path.endsWith("actions") ? "post" : "patch"]("/api/cms/catalog" + path,
-      { headers: { origin }, data: action === "create" ? data : { action, data } });
-    expect(response.ok(), await response.text()).toBe(true); return response.json();
-  };
-  let graph = await seedCmsCatalog(catalogWrite);
-  graph = await catalogWrite("submit", { revisionId: graph.revision.id, expectedVersion: graph.revision.version });
-  await page.goto(`/admin/catalog/${graph.revision.id}`);
-  await page.getByLabel("Jadwal publikasi (opsional, WIB)").fill(new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 16));
-  await page.getByRole("button", { name: "Setujui", exact: true }).click();
-  await page.getByRole("button", { name: "Konfirmasi", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "sesuai jadwal publikasi" })).toBeVisible();
-  await page.getByRole("link", { name: "Lihat publikasi terjadwal", exact: true }).click();
-  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("button", { name: "Batalkan jadwal", exact: true }) });
-  await expect(card).toContainText("Katalog menu");
-  await card.getByRole("button", { name: "Batalkan jadwal", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Jadwal dibatalkan.");
+for (const role of ["owner", "staff"]) test(`${role} cannot schedule, and old queue links lead to the page table`, async ({ page }) => {
+  await login(page, role); await page.goto("/admin/publications"); await expect(page).toHaveURL(origin + "/admin/pages");
+  await expect(page.getByRole("link", { name: "Publikasi terjadwal", exact: true })).toHaveCount(0);
+  expect((await page.request.get("/api/cms/publications")).status()).toBe(410);
+  expect((await page.request.post("/api/cms/publications", { headers: { origin }, data: { action: "schedule", domain: "page" } })).status()).toBe(410);
+  await page.goto("/admin/pages/about");
+  await expect(page.getByLabel("Jadwal publikasi (opsional, WIB)")).toHaveCount(0);
+  const response = await page.request.post("/api/cms/catalog/00000000-0000-0000-0000-000000000000/actions", { headers: { origin }, data: {
+    action: "approve", data: { revisionId: "00000000-0000-0000-0000-000000000000", dueAt: new Date(Date.now() + 60000).toISOString() } } });
+  expect(response.status()).toBe(410);
 });

@@ -1,5 +1,4 @@
 "use client";
-import { SchedulePanel } from "../publishing/Publications";
 import { useEffect, useState } from "react";
 import { addCatalogItem } from "./editor-state.mjs";
 import { CatalogContext, catalogRequest } from "./client";
@@ -17,7 +16,6 @@ const issueLabels = { EMPTY_CATALOG: "Tambahkan minimal satu kategori dan produk
   PRICE_TOTAL_OVERFLOW: "Total kombinasi harga melampaui batas yang didukung.", INVALID_MEDIA_GRAPH: "Periksa referensi media produk.",
   INVALID_SORT: "Periksa urutan tampil.", INVALID_TEXT: "Periksa nama dan deskripsi." };
 const CatalogEditor = ({ initial, role }) => {
-  const [publicationTime, setPublicationTime] = useState("");
   const [graph, setGraph] = useState(initial), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const [pending, setPending] = useState({}), [newItems, setNewItems] = useState({}), [media, setMedia] = useState({}), [created, setCreated] = useState([]), [changes, setChanges] = useState({}), [preview, setPreview] = useState(false), [readiness, setReadiness] = useState(null);
   const unsaved = Object.keys(pending).length > 0 || Object.keys(newItems).length > 0 || created.length > 0 || Object.values(media).some(rows => rows.length), revision = graph.revision;
@@ -89,9 +87,8 @@ const CatalogEditor = ({ initial, role }) => {
           fields={[{ name: "title", label: "Nama produk" }, { name: "basePrice", label: "Harga (Rp)", type: "number", max: Number.MAX_SAFE_INTEGER }, { name: "categoryId", label: "Kategori produk", options: [{ value: "", label: "Pilih kategori" }, ...graph.categories.map(row => ({ value: row.id, label: row.slug }))] }]} /> : <p className="text-sm text-muted-foreground">Tambahkan kategori sebelum membuat produk.</p>}
       </CardContent></Card>
     </div>
-    <SchedulePanel domain="catalog" revision={revision} role={role} disabled={busy || unsaved} time={publicationTime} onTimeChange={setPublicationTime} />
     <CatalogActions graph={graph} role={role} busy={busy} disabled={unsaved} onBusy={setBusy} onChange={next => { setGraph(next); setChanges({}); setReadiness(null); }} onMessage={setMessage}
-      beforeAction={checkReadiness} dueAt={publicationTime || undefined} feedback={<div className="space-y-4"><p role="status" aria-live="polite">{message || (unsaved ? "Ada perubahan belum disimpan." : "Semua perubahan sudah tersimpan.")}</p>        {readiness && <div className="rounded-lg border p-4"><h2>{readiness.ready ? "Katalog siap diajukan" : "Katalog belum lengkap"}</h2><p className="mt-2 text-xs text-muted-foreground">Hasil untuk versi {readiness.version}. Pemeriksaan struktur belum memverifikasi fakta restoran atau harga platform.</p>
+      beforeAction={checkReadiness} feedback={<div className="space-y-4"><p role="status" aria-live="polite">{message || (unsaved ? "Ada perubahan belum disimpan." : "Semua perubahan sudah tersimpan.")}</p>        {readiness && <div className="rounded-lg border p-4"><h2>{readiness.ready ? "Katalog siap diajukan" : "Katalog belum lengkap"}</h2><p className="mt-2 text-xs text-muted-foreground">Hasil untuk versi {readiness.version}. Pemeriksaan struktur belum memverifikasi fakta restoran atau harga platform.</p>
           {!!readiness.issues.length && <ul className="mt-3 grid gap-2">{readiness.issues.map((issue, index) => <li key={index} className="break-words text-sm"><strong>{issueName(issue)}{issue.locale ? ` (${issue.locale === "id" ? "Indonesia" : "Inggris"})` : ""}:</strong> {issueLabels[issue.code] ?? "Periksa kelengkapan dan keterkaitan isian katalog."}</li>)}</ul>}</div>}
 </div>}>
       {revision.status === "draft" && <Button disabled={busy || !unsaved} onClick={saveAll}>{busy ? "Menyimpan..." : "Simpan semua perubahan"}</Button>}

@@ -311,3 +311,14 @@ other editing/QA session finished. Owner uses Setujui after saving, with an
 optional WIB publication time; Staff keeps Kirim untuk review. Approval and
 immediate publication are one atomic server operation, separate from Save all.
 Final combined verification is recorded in SECURITY_AND_QA.md.
+
+## Follow-up: direct page editing (ADR-036)
+
+Approved 2026-10-17: website pages have one editor and immediate Save for Owner
+and Staff, without user-facing drafts/review/approval or a scheduling page.
+The page table links straight to /admin/pages/[pageKey]. Prior page data is
+preserved as internal immutable snapshots; there is no migration or broader
+database grant. Fixed templates, Indonesian content, shadcn, bounded media,
+server sessions/membership/CSRF, optimistic conflicts and audit remain enforced.
+Scheduling controls/API and worker CLI are retired; histories are retained.
+Catalog review/Owner approval continues. See ADR-036 for rollback and QA record.

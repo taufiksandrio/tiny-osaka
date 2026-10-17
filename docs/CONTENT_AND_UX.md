@@ -11,3 +11,10 @@ Food photo retouch outside CMS: preserve genuine portion, ingredients, product p
 Accessibility: keyboard nav, meaningful alt, contrast, semantic headings, focus indicators, avoid autoplay audio and motion effects that interfere with UX. Content is Indonesian only (ADR-034). No language selector or English authoring. Forms show required fields and advanced optional details; one bottom Save all action persists the whole draft atomically.
 
 Measurement: identify CTA placements and events consistent with `docs/DATA_CONTRACTS.md`. User arriving from ChatGPT Ads should immediately see relevant offering and merchant CTA; don't imply advertiser benefits guarantee organic AI recommendation.
+
+ADR-036 page editing overrides earlier review steps: table columns are page name,
+last change (WIB), Edit; each Edit link opens /admin/pages/[pageKey]. Owner and
+Staff use the same editor with optional preview and a single bottom Simpan.
+Required fields are validated before immediate publication, errors retain inputs,
+and no draft/revision/approval/schedule controls appear. Catalog approval remains
+Owner-only; scheduling UI is removed for both domains.

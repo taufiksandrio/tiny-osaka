@@ -5,6 +5,7 @@ export const POST = async (request, { params }) => {
   const { revisionId } = await params;
   return cmsRoute(request, async (api, input) => {
     const { action, ...payload } = input;
+    if (Object.hasOwn(payload, "dueAt")) cmsFail("SCHEDULING_REMOVED", 410);
     if ((action === "clone" ? payload.sourceRevisionId : payload.revisionId) !== revisionId ||
       !["clone", "submit", "approve", "reject", "publish", "archive"].includes(action)) cmsFail("INVALID_INPUT");
     const result = await api.write(request.headers, action, payload);

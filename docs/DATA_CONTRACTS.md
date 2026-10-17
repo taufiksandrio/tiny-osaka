@@ -6,6 +6,15 @@ Public content and CMS authoring are Indonesian-only. Existing `/id` paths remai
 
 ADR-035 adds a distinct Owner approval command after Save all. It checks current database membership, exact version/hash and readiness, then atomically submits/approves/publishes or schedules the same revision. Staff cannot invoke this command. Invalid schedules, conflicts and failed readiness roll back the complete transition; a save batch cannot contain approval or publication commands.
 
+Current override ADR-036: website page reads/writes use a stable page key and
+an exact previous snapshot ID/version token. GET never writes. Save validates
+the entire page/media graph and replaces the live pointer in one transaction
+for enabled Owner or Staff, recording the actual actor. Existing receipt/hash
+tables are maintained internally rather than exposed as editorial steps. Old
+revision URLs redirect to the current page editor. Schedule HTTP entrypoints
+are retired; old jobs/history persist and are cancelled when superseded by a
+direct page save. Catalog permission boundaries otherwise remain unchanged.
+
 ## Earlier conceptual entities (not an implemented schema)
 
 `User(id,email,role,status,createdAt)`; `Session(userId,issuedAt,lastActiveAt,expiresAt)`; `AuditEvent(actor,action,target,revision,time,metadata)`; `ContentPage(id,type,slug,locale,status,publishedRevisionId)`; `PageRevision(id,pageId,fields,createdBy,approvedBy,approvedAt,scheduledFor,version)`; `Media(id,type,storageKey,mime,size,alt,posterKey,owner)`; `Product(id,slug,category,basePrice,media)`; `ProductTranslation(productId,locale,title,description,seo)`; `ModifierGroup(id,productId,min,max,selectionType)`; `ModifierOption(id,groupId,title,priceDelta)`; `MerchantMapping(productId,platform,externalId,verifiedProductUrl,verifiedStoreUrl,lastSyncHash)`; `SyncRun(id,initiator,platform,status,attempt,idempotencyKey,requestSummary,finishedAt,errorCategory)`; `PlatformSettings(platform,isEnabled,connectionStatus)`. Define real DB constraints and normalized relations during schema design.

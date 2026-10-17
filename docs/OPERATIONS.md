@@ -47,6 +47,15 @@ monitoring delivery and any Railway linking/deployment require separate approval
 
 ## Backup
 
+ADR-036 retires publication scheduling: the former queue URL redirects to the
+page table, scheduling HTTP APIs return 410 for authenticated callers, and
+`publishing:once` / `publishing:watch` exit nonzero without opening the database.
+Do not register or restart the old worker. Existing jobs/events remain stored;
+an immediate page save atomically cancels superseded jobs for that page. A
+read-only local development check on 2026-10-17 found no scheduled jobs. Tests
+may still exercise the historical worker library against isolated fixtures.
+This paragraph supersedes the historical scheduler setup instructions above.
+
 Phase 3.4 local media lives under `.media/dev` (development) and `.media/test`
 (isolated QA), outside public assets and ignored by Git. Preserve the development
 directory across app rebuilds/checkouts. A future approved production backup must

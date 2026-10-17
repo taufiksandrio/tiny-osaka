@@ -28,7 +28,7 @@ const AdminShell = ({ actor, children }) => {
     <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-card p-5 lg:flex">
       <div className="px-2 pt-2 pb-10"><Brand /></div><AdminNav role={actor.role} />
       <div className="mt-auto rounded-xl border border-border bg-background p-4"><Badge variant="outline">Internal CMS</Badge>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Susun konten, tinjau revisi, lalu terbitkan dengan persetujuan Owner.</p></div>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Edit halaman lalu simpan untuk langsung memperbarui website.</p></div>
     </aside>
     <div className="min-w-0"><AdminHeader actor={actor} navTriggerRef={navTrigger} onOpenNav={() => setOpen(true)} />
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
