@@ -1,11 +1,15 @@
-import Link from "next/link";
+import { headers } from "next/headers";
+import { getAuthService } from "@/server/auth/runtime.mjs";
+import AdminShell from "@/features/cms/layout/AdminShell";
 import "@/styles/globals.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tiny Osaka CMS", robots: { index: false, follow: false }, referrer: "no-referrer" };
-const AdminLayout = ({ children }) => <html lang="id"><body>
-  <a className="skip-link" href="#main-content">Langsung ke konten</a>
-  <header className="container auth-header"><Link href="/admin">Tiny Osaka CMS</Link><Link href="/id">Website publik</Link></header>
-  {children}
-</body></html>;
+const AdminLayout = async ({ children }) => {
+  let actor = null;
+  try { actor = await getAuthService().authenticate(await headers()); } catch { /* Protected routes enforce authentication themselves. */ }
+  return <html lang="id"><body className="admin-root">
+    <AdminShell actor={actor ? { name: actor.name, role: actor.role } : null}>{children}</AdminShell>
+  </body></html>;
+};
 export default AdminLayout;

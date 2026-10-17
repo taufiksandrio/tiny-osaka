@@ -1,5 +1,20 @@
 # Tiny Osaka
 
+## CMS interface
+
+The admin uses local shadcn/ui JSX components with a light neutral/red theme.
+Use http://localhost:3000/admin/login to match the configured authentication
+origin. After login, /admin shows actual published-page counts and /admin/pages
+opens the bilingual page/revision editor. Desktop navigation appears in the
+sidebar; mobile uses the header menu button. Owner security links are role-gated.
+Account menu, mobile Sheet and revision confirmation support keyboard navigation
+and restore focus when closed. API authorization remains enforced on the server.
+
+Source components and MIT license: src/components/ui. Fixed admin theme:
+src/styles/admin.css, imported through globals.css for Tailwind compilation.
+Variables and style resets apply only under .admin-root. See docs/DEPENDENCIES.md,
+ADR-028 in docs/DECISIONS.md and docs/SECURITY_AND_QA.md for packages and verification.
+
 Website Tiny Osaka memiliki beranda dan halaman pendukung bilingual dengan konten
 contoh. Suite otomatis Phase 1C lulus setelah perbaikan aksesibilitas; review
 manual dan gate keamanan/release tetap terbuka.

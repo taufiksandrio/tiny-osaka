@@ -728,3 +728,77 @@ Rollback: revert the application commit while protecting private configuration,
 accounts/content and SQL history. Grant/role/constraint reversal requires a separate
 inspected approved reverse migration. No merge, deploy, merchant or real email
 operation is claimed; dependency findings still block release readiness.
+
+## CMS shadcn UI acceptance — 2026-10-17 (ADR-028)
+
+Approved scope: login, dashboard, page/revision lists/editor and shared header/
+navigation. Branch feat/cms-shadcn-ui starts from main ccdd20c. Files changed:
+components.json;15 vendored src/components/ui JSX files plus MIT license;
+src/lib/utils.js;AdminShell/AdminHeader/AdminNav;admin layout/dashboard/login and
+three page routes;LoginForm/LogoutButton;page editor/rich editor/revision actions;
+admin.css and its globals.css import;package manifest/lock;CMS browser tests and
+README/decisions/dependency/QA documentation. No backend API/schema/migration edit.
+
+Actual commands and outcomes:
+
+- npm.cmd install --save-exact --ignore-scripts radix-ui@1.8.1
+  class-variance-authority@0.7.1 clsx@2.1.1 tailwind-merge@3.7.0
+  lucide-react@1.58.0 tw-animate-css@1.4.0 --no-audit --no-fund: passed.
+  Existing ESLint peer warnings and optional Windows cleanup EPERM warning emitted.
+  Lock comparison:78 new entries, zero previous package version changes.
+- Official new-york-v4 component sources were downloaded and converted to JSX/
+  arrow functions in memory, with local import aliases and retained MIT license.
+  No shadcn CLI or scaffold command ran; no new TypeScript source was generated.
+- npm.cmd run lint: passed, zero warnings on final code.
+- npm.cmd run build: passed for public/admin routes and unchanged API handlers.
+- node --conditions=react-server --test tests/unit/*.test.mjs:111 passed.
+  Ignored local report: test-results/shadcn-unit.tap.
+- npm.cmd run test:auth-db:12 passed (11 cases plus suite wrapper).
+- npm.cmd run test:cms-pages-db:9 passed, including forged Owner actions,
+  actual session expiry and simultaneous-save conflict/audit integrity.
+- npm.cmd run test:cms-pages-e2e:18 passed, six each desktop1440/mobile390/small320.
+  Includes dashboard data, account dropdown, mobile Sheet navigation, selected
+  route, Escape/focus restoration, dialog cancel/confirm and Axe checks, plus all
+  existing draft/review/Owner publication, clone and stale-save flows.
+- npm.cmd run test:auth-e2e:18 passed, six each viewport; login, MFA, logout,
+  anonymous redirects, Staff restrictions and unavailable email reset UI.
+- npm.cmd run test:e2e:222 public bilingual navigation/accessibility cases passed.
+- Browser total258; final reports: zero unexpected/skipped/flaky cases, retries0.
+- node --env-file=.env.local --env-file=.env.cms.local --env-file=.env.auth.local
+  scripts/check-public-bundle.mjs:26 browser assets passed, no loaded private
+  URL/password or auth secret found.
+- Final read-only test DB check:28 public and9 auth tables empty after fixture
+  cleanup; CMS/auth privilege protection verified. Private envs/reports ignored.
+- git diff --check: passed. Source/lock/component-license diffs reviewed.
+- npm.cmd audit --json: exit1, existing9 affected-package entries (5 high/4 moderate).
+- npm.cmd audit --omit=dev --json: exit1, existing4 moderate optional-peer entries.
+  Reports retained privately in test-results/shadcn-audit.json and
+  test-results/shadcn-production-audit.json; no force fix/downgrade/waiver.
+- Full catalog/media DB regression, published-only standalone E2E, Lighthouse,
+  staging and production checks were not rerun for this UI subphase. Public
+  about-page publication is covered in the CMS browser flow in both locales.
+
+Visual review: screenshots of desktop login/page cards and mobile dashboard were
+inspected. Test runners retain login/dashboard/pages/editor captures under their
+viewport-specific ignored output directories. They contain synthetic QA data,
+not production restaurant content; traces can include synthetic credentials and
+must not be published.
+
+Initial failures corrected before final acceptance: one JSX closing tag during
+rich-editor conversion; semantic theme utilities missing from a separate Tailwind
+compilation; visible/accessibility label mismatch; focus restoration for custom
+dialog/drawer triggers; nonmodal account-menu landmark; one test locator matching
+both breadcrumb and sidebar. No Axe rule was disabled and no test was skipped.
+
+Security/SEO: server authentication/RBAC, Origin/CSRF, session expiry and revision
+hash/version checks are unchanged. Shell identity is only trusted server name/role,
+never session token or database credentials. Dashboard counts use existing CMS
+reads, with an explicit unavailable state instead of fabricated values. Staff
+navigation omits Owner security and API restrictions still apply. Admin variables/
+legacy resets are scoped to .admin-root; public rendering tests passed. CMS/public
+preview noindex remains; no analytics dashboard or business schema is added.
+
+Rollback: revert this UI commit, restore matching manifest/lockfile, install that
+lockfile and rebuild. Keep private envs, accounts, content and SQL history; no schema
+rollback is required. Existing dependency advisories still block release readiness.
+No merge, deployment, live merchant or real email operation was performed.

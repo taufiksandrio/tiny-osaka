@@ -1020,3 +1020,34 @@ in separately approved subphases. Existing release advisory blockers remain.
 
 Rollback preserves applied SQL/history and private credentials. See
 PHASE3_PLAN.md and SECURITY_AND_QA.md for boundaries and actual verification.
+
+## ADR-028 — CMS shadcn UI redesign (approved 2026-10-17)
+
+User approved the scoped redesign of login, dashboard, page/revision lists and
+editor, including a responsive header/navbar/sidebar, and six pinned dependencies
+listed in DEPENDENCIES.md. Branch feat/cms-shadcn-ui starts from merged main ccdd20c.
+This is an explicit choice of shadcn/Radix for admin UI over the baseline Headless
+UI direction. No database migration, API contract or authentication policy change.
+
+Fifteen official MIT shadcn components are vendored as JavaScript/JSX with retained
+license and source URLs. No scaffold/CLI overwrite, TypeScript conversion, paid
+package, analytics chart or fabricated dashboard statistic is introduced. Dashboard
+counts come from existing authenticated page reads; unavailable data shows an honest
+unavailable state. Admin shell receives only server-verified name/role, never tokens.
+
+The mobile navigation is a modal Sheet with inert background and restored trigger
+focus. The account dropdown is intentionally nonmodal with a named portal landmark.
+Revision confirmation uses AlertDialog and restores focus to its actual initiating
+button, or the action section if that button is disabled/removed after a transition.
+Existing server authorization, CSRF, sessions and frozen/live revision rules remain.
+
+Admin CSS variables and legacy style resets are scoped to .admin-root. globals.css
+imports admin.css into the same Tailwind compilation so semantic color utilities
+exist; it does not apply admin values to public pages. No public design-token or
+business-copy changes. CMS and public previews remain noindex.
+
+Rollback: revert the UI application commit and restore its previous package.json/
+lockfile together, then install that lockfile and rebuild. Preserve private envs,
+accounts, content and applied migration history. No schema rollback is needed.
+Commit/push after verification follows the standing approved subphase workflow;
+merge/deployment still require separate authorization.

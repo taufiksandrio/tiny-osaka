@@ -1,0 +1,108 @@
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+.admin-root {
+  --background: #f8f8f7;
+  --foreground: #242426;
+  --card: #fff;
+  --card-foreground: #242426;
+  --popover: #fff;
+  --popover-foreground: #242426;
+  --primary: #b52f24;
+  --primary-foreground: #fff;
+  --secondary: #f1f1ef;
+  --secondary-foreground: #323234;
+  --muted: #f1f1ef;
+  --muted-foreground: #636368;
+  --accent: #f9eeeb;
+  --accent-foreground: #92251d;
+  --destructive: #b42318;
+  --border: #e5e5e3;
+  --input: #d8d8d5;
+  --ring: #b52f24;
+  --radius: .625rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* Public legacy rules are unlayered. Restore Tailwind's cascade only in admin. */
+.admin-root :where(a) { color: revert-layer; text-decoration: revert-layer; }
+.admin-root :where(h1, h2, h3, p, figure) { margin: revert-layer; }
+.admin-root :where(h1, h2, h3) { font-size: revert-layer; font-weight: revert-layer; letter-spacing: revert-layer; line-height: revert-layer; }
+@layer base {
+  .admin-root *, .admin-root *::before, .admin-root *::after { border-color: var(--border); }
+  .admin-root :where(h1, h2, h3) { letter-spacing: -.025em; line-height: 1.25; }
+  .admin-root h1 { font-size: clamp(1.65rem, 3vw, 2.1rem); font-weight: 700; }
+  .admin-root h2 { font-size: 1.125rem; font-weight: 600; }
+  .admin-root h3 { font-size: 1rem; font-weight: 600; }
+}
+.admin-root button { cursor: pointer; }
+.admin-root button:disabled { cursor: not-allowed; }
+.admin-root :where(input, textarea, select, button) { font-family: inherit; }
+.admin-root .skip-link { z-index: 100; border-radius: .5rem; color: var(--foreground); }
+.admin-root .auth-panel { width: 100%; max-width: 52rem; min-height: auto; padding: 0; margin: 0 auto; }
+.admin-root .auth-panel h1 { margin-bottom: 1rem; }
+.admin-root .auth-form { gap: 1rem; }
+.admin-root .auth-form input:not([type="checkbox"]),
+.admin-root .auth-form select {
+  border-color: var(--input); border-radius: var(--radius); font-size: .875rem;
+}
+.admin-root .cms-editor { gap: 1.5rem; }
+.admin-root .cms-editor textarea, .admin-root .cms-editor select {
+  border-color: var(--input); border-radius: .5rem; font-size: .875rem;
+}
+.admin-root .cms-editor textarea { min-height: 6rem; }
+.admin-root .cms-editor [data-slot="button"] { max-width: 100%; height: auto; min-height: 44px; white-space: normal; border-width: 0; font-size: .875rem; padding: .5rem .75rem; }
+.admin-root .cms-editor [data-slot="button"][data-variant="outline"] { border: 1px solid var(--border); }
+.admin-root .cms-editor [data-slot="checkbox"] { width: 1rem; height: 1rem; min-height: 1rem; min-width: 1rem; padding: 0; border: 1px solid var(--input); border-radius: .25rem; }
+.admin-root .cms-editor [data-slot="checkbox"][data-state="checked"] { border-color: var(--primary); }
+.admin-root .cms-rich, .admin-root .cms-block, .admin-root .cms-span {
+  border-color: var(--border); border-radius: var(--radius); padding: 1rem;
+}
+.admin-root .cms-rich { background: #fcfcfb; }
+.admin-root .cms-block { background: white; }
+.admin-root .cms-rich legend { padding-inline: .35rem; font-weight: 600; }
+.admin-root .cms-span { background: #fafaf9; }
+.admin-root .cms-fields { gap: 1.5rem; }
+.admin-root .cms-fields > legend { margin-bottom: 1rem; font-weight: 600; }
+.admin-root .cms-fields > div { display: grid; gap: .5rem; }
+.admin-root .cms-preview { border-color: var(--border); border-radius: var(--radius); background: white; }
+.admin-root .cms-preview section { margin-block: 1.5rem; }
+.admin-root .cms-preview p { white-space: pre-wrap; }
+.admin-root .cms-preview a { color: var(--primary); text-decoration: underline; }
+.admin-root [data-slot="alert-dialog-content"], .admin-root [data-slot="sheet-content"] { line-height: 1.6; }
+.admin-root .admin-table { white-space: normal; }
+.admin-root .admin-table td { vertical-align: middle; }
+@media (max-width: 640px) {
+  .admin-root [data-slot="button"] { min-height: 44px; }
+  .admin-root .cms-rich, .admin-root .cms-block, .admin-root .cms-span { padding: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *, .admin-root *::before, .admin-root *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
