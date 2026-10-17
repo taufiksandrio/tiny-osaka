@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./.next-qa/**)",
+      "Read(./.media/**)",
+      "Read(./playwright-report/**)",
+      "Read(./test-results/**)",
+      "Read(./Tiny_Osaka_Assets_Original/**)",
+      "Read(./package-lock.json)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Bash(npm run db:migrate:dev*)"
+    ]
+  },
+  "env": {
+    "MAX_THINKING_TOKENS": "10000"
+  }
+}

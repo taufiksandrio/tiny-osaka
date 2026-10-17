@@ -14,3 +14,6 @@ Thumbs.db
 
 # Isolated production build used by local browser QA
 /.next-qa/
+
+# Claude Code (personal settings)
+.claude/settings.local.json
