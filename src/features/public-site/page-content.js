@@ -28,33 +28,7 @@ const pageContent = {
       { label: "Kota", value: "Bandung, Indonesia" }, { label: "Layanan", value: "Delivery-only" }, { label: "Alamat", value: "Menunggu verifikasi" }, { label: "Jam operasional", value: "Menunggu verifikasi" }, { label: "Cakupan pengiriman", value: "Menunggu verifikasi" },
     ], note: "Tidak ada petunjuk kunjungan atau peta pada pratinjau ini. Alamat dan informasi layanan akan ditambahkan setelah dikonfirmasi." },
   },
-  en: {
-    home: "Home", breadcrumb: "Breadcrumb", preview: "PAGE PREVIEW", backMenu: "Back to menu", backGuides: "All guides", toMenu: "Explore the sample menu", sampleHeading: "Sample menu layouts", detailEyebrow: "SAMPLE PRODUCT DETAILS", detailNote: "This is a layout sample, not an official product available to order.",
-    pages: {
-      menu: { eyebrow: "EXPLORE THE MENU", title: "Make room for a new favorite.", description: "A preview of the Tiny Osaka menu layout. Every slot below is a design sample, not an official catalog item.", label: "Menu" },
-      about: { eyebrow: "A LITTLE INTRODUCTION", title: "Meet Tiny Osaka.", description: "Japanese street food, delivery-only, in Bandung. Our full story is being prepared.", label: "About" },
-      guides: { eyebrow: "NOTES FROM THE KITCHEN", title: "Get to know your next discovery.", description: "A space for takoyaki, okonomiyaki, and burger guides. These pages are still editorial templates.", label: "Food guides" },
-      promos: { eyebrow: "PROMOS & EVENTS", title: "A place for the next update.", description: "A page preview for verified Tiny Osaka promotions and events.", label: "Promos & events" },
-      location: { eyebrow: "LOCATION & SERVICE", title: "Bandung, through delivery.", description: "Tiny Osaka is a delivery-only restaurant in Bandung. Operational details on this page are awaiting verification.", label: "Location & service" },
-    },
-    product: {
-      detailsHeading: "Product information", pending: "Not yet available", fields: ["Official product name", "Price", "Ingredients & allergen information", "Variants, toppings & modifiers"], note: "Options and additional costs are not shown because the official menu rules have not been verified.", related: "More sample slots", relatedIntro: "Explore other sample detail pages to review the catalog layout.",
-    },
-    about: {
-      heading: "A closer look, from Bandung.", body: "Tiny Osaka focuses on Japanese street food with a delivery-only service in Bandung. This website is being prepared to introduce the menu and direct visitors to official ordering platforms.", storyHeading: "Our full story will live here.", storyBody: "This space is reserved for our brand story, original photographs, and confirmed information. This preview includes no claims about our history, awards, or customer reviews.", serviceHeading: "Delivery-only", serviceBody: "Opening hours and delivery coverage will be added after verification.", serviceLink: "View service information",
-    },
-    guides: {
-      heading: "Three topics to explore.", status: "ARTICLE TEMPLATE", summary: "A preview of the guide structure; final article content is not yet available.", read: "View guide template", titlePrefix: "Guide to", articleNote: "An editorial template for reviewing the article layout. This is not a recipe or an official Tiny Osaka product description.", image: "Guide photograph or video pending", sections: [
-        { title: "An introduction", body: "An educational introduction will be added after research and content review. This placeholder does not yet provide factual information about the food." },
-        { title: "Stories and ways to enjoy", body: "A space for reviewed storytelling, photographs, or video. Ingredient, flavor, and serving claims have not been added." },
-        { title: "Connecting with the Tiny Osaka menu", body: "Product recommendations will only be linked once products and their information are available and verified." },
-      ],
-    },
-    promos: { heading: "No promotion information in this preview yet.", body: "This page does not indicate whether promotions are active on merchant platforms. Offers, dates, and terms have not been added.", infoHeading: "Details to come", fields: ["Offer name and details", "Start and end dates", "Terms, conditions, and official platform"], note: "No discount, promo code, or event date is announced here." },
-    location: { heading: "Before you order", entries: [
-      { label: "City", value: "Bandung, Indonesia" }, { label: "Service", value: "Delivery-only" }, { label: "Address", value: "Awaiting verification" }, { label: "Opening hours", value: "Awaiting verification" }, { label: "Delivery coverage", value: "Awaiting verification" },
-    ], note: "This preview includes no visiting directions or map. Address and service details will be added once confirmed." },
-  },
+
 };
 
 export const getPageContent = (locale) => {

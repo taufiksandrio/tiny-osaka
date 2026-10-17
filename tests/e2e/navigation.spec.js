@@ -40,13 +40,10 @@ for (const locale of locales) {
 }
 
 for (const path of publicPaths) {
-  test(`language switch retains ${path || "homepage"}`, async ({ page }) => {
-    await page.goto(`/id${path}`);
-    await page.getByRole("navigation", { name: "Pilih bahasa" }).getByRole("link", { name: "EN", exact: true }).click();
-    await expect(page).toHaveURL(`http://127.0.0.1:3030/en${path}`);
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await page.getByRole("navigation", { name: "Choose language" }).getByRole("link", { name: "ID", exact: true }).click();
-    await expect(page).toHaveURL(`http://127.0.0.1:3030/id${path}`);
-    await expect(page.locator("html")).toHaveAttribute("lang", "id");
+  test('former English address redirects to Indonesian: ' + (path || 'homepage'), async ({ page }) => {
+    await page.goto('/en' + path);
+    await expect(page).toHaveURL('http://127.0.0.1:3030/id' + path);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'id');
+    await expect(page.getByRole('navigation', { name: 'Pilih bahasa' })).toHaveCount(0);
   });
 }

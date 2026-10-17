@@ -46,11 +46,11 @@ test("an empty draft is valid storage but is not structurally ready for review",
   assert.ok(has(validateCatalogReviewReadiness(graph), "EMPTY_CATALOG"));
 });
 
-test("both locales and valid text are required for every localized entity", () => {
+test("Indonesian names and valid text are required for every catalog entity", () => {
   for (const name of ["categoryTranslations", "productTranslations", "variantTranslations", "modifierGroupTranslations", "modifierOptionTranslations"]) {
-    const graph = fixture(); graph[name] = graph[name].filter(row => row.locale !== "en");
+    const graph = fixture(); graph[name] = graph[name].filter(row => row.locale !== "id");
     const report = validateCatalogReviewReadiness(graph);
-    assert.ok(report.issues.some(row => row.code === "MISSING_TRANSLATION" && row.locale === "en"));
+    assert.ok(report.issues.some(row => row.code === "MISSING_TRANSLATION" && row.locale === "id"));
     for (const change of [{ title: " \t\n\u00a0" }, { description: null }, { title: "private-content\0" }]) {
       const invalid = fixture(); Object.assign(invalid[name][0], change);
       const result = validateCatalogReviewReadiness(invalid);

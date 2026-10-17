@@ -23,5 +23,5 @@ const scan = async directory => {
     }
   }
 };
-await scan(".next/static");
+await scan(process.env.QA_NEXT_DIST_DIR === ".next-qa" ? ".next-qa/static" : ".next/static");
 console.log(`Public bundle check passed: ${checked} assets, no loaded database URLs/passwords or auth secret.`);

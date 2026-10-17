@@ -17,9 +17,9 @@ const write = async (page, path, data, method = "post") => {
 const token = row => ({ revisionId: row.id, expectedVersion: row.version, expectedHash: row.contentHash });
 const approved = async page => {
   let row = await write(page, "", { pageKey: "about" });
-  for (const locale of ["id", "en"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
+  for (const locale of ["id"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
   row = await write(page, `/${row.id}/actions`, { action: "submit", revisionId: row.id, expectedVersion: row.version });
-  return write(page, `/${row.id}/actions`, { action: "approve", ...token(row) });
+  return row;
 };
 const errors = new WeakMap();
 test.beforeEach(async ({ page }) => {
@@ -36,11 +36,12 @@ test("Owner schedules exact approved page in WIB, opens queue and cancels access
   await login(page, "owner"); const row = await approved(page);
   expect((await page.request.post("/api/cms/publications", { headers: { origin }, data: { action: "schedule", role: "owner" } })).status()).toBe(400);
   await page.goto(`/admin/pages/about/${row.id}`);
-  await expect(page.getByRole("heading", { name: "Jadwalkan publikasi", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Waktu publikasi", exact: true })).toBeVisible();
   const time = new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 16);
-  await page.getByLabel("Tanggal dan waktu (WIB)").fill(time);
-  await page.getByRole("button", { name: "Simpan jadwal", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Jadwal tersimpan" })).toBeVisible();
+  await page.getByLabel("Jadwal publikasi (opsional, WIB)").fill(time);
+  await page.getByRole("button", { name: "Setujui", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "sesuai jadwal publikasi" })).toBeVisible();
   await page.getByRole("link", { name: "Lihat publikasi terjadwal", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Publikasi terjadwal", exact: true })).toBeVisible();
   await expect(page.locator("main")).toContainText("Terjadwal");
@@ -72,11 +73,11 @@ test("approved catalog shows shadcn schedule form and pending job can be cancell
   };
   let graph = await seedCmsCatalog(catalogWrite);
   graph = await catalogWrite("submit", { revisionId: graph.revision.id, expectedVersion: graph.revision.version });
-  graph = await catalogWrite("approve", token(graph.revision));
   await page.goto(`/admin/catalog/${graph.revision.id}`);
-  await page.getByLabel("Tanggal dan waktu (WIB)").fill(new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 16));
-  await page.getByRole("button", { name: "Simpan jadwal", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Jadwal tersimpan" })).toBeVisible();
+  await page.getByLabel("Jadwal publikasi (opsional, WIB)").fill(new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 16));
+  await page.getByRole("button", { name: "Setujui", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "sesuai jadwal publikasi" })).toBeVisible();
   await page.getByRole("link", { name: "Lihat publikasi terjadwal", exact: true }).click();
   const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("button", { name: "Batalkan jadwal", exact: true }) });
   await expect(card).toContainText("Katalog menu");

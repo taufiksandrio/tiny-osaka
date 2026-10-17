@@ -21,7 +21,7 @@ const HomeContent = ({ fields, locale, catalogContent, mediaContent, orderingCon
         {preview && <Badge variant="outline">{text.draft}</Badge>}
         <p className="home-kicker">{fields.eyebrow}</p>
         <Title id={preview ? "home-preview-title" : "home-title"} className="home-headline">{fields.title || fallback.title}</Title>
-        <p className="home-summary">{fields.summary || fallback.summary}</p>
+        {(fields.summary || preview) && <p className="home-summary">{fields.summary || fallback.summary}</p>}
         <div className="flex flex-wrap gap-3"><Button asChild size="lg"><Link href={`/${locale}/menu`}>{fields.primaryCtaLabel || fallback.primary}<ArrowUpRight aria-hidden="true" /></Link></Button>
           <Button asChild size="lg" variant="outline"><Link href={`/${locale}/about`}>{fields.secondaryCtaLabel || fallback.secondary}<ArrowRight aria-hidden="true" /></Link></Button></div>
       </div>

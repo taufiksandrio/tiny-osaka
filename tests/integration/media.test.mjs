@@ -173,7 +173,7 @@ test("references cap at twelve in both writer and raw SQL without version loss o
 
 test("partial media labels may be drafted but both locales are required before submitting", () => withRollback(async db => {
   const page = await completePage(db), cat = await completeCatalog(db), asset = await registerImage(db);
-  const p = await refs(db).savePage({ ...token(page), assetId: asset.id, ...text, altEn: "" });
+  const p = await refs(db).savePage({ ...token(page), assetId: asset.id, ...text, altId: "" });
   await assert.rejects(pages(db).submit({ revisionId: page.id, expectedVersion: p.version }), error => error.code === "NOT_READY");
   const c = await refs(db).saveCatalog({ ...token(cat.revision), productId: cat.productId, assetId: asset.id, ...text, altId: "" });
   const readiness = await getCatalogReviewReadiness(db, { revisionId: cat.revision.id, expectedVersion: c.version });
@@ -219,7 +219,7 @@ test("page media is approved with content and replaces live media only on explic
   const approval = await pages(db).approve(token(next));
   assert.equal((await getPublishedPage(db, { pageKey: "about", locale: "id" })).media[0].asset.id, first.id);
   await pages(db).publish(token(approval));
-  for (const locale of ["id", "en"]) {
+  for (const locale of ["id"]) {
     const dto = await getPublishedPage(db, { pageKey: "about", locale });
     assert.equal(dto.media[0].asset.id, second.id);
     assert.equal(dto.media[0].alt, locale === "id" ? "QA pengganti" : "QA replacement");

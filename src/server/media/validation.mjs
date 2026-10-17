@@ -35,7 +35,7 @@ export const validateMediaRefText = (input, ready = false) => {
   for (const [key, max] of [["altId", p.altLength], ["altEn", p.altLength],
     ["captionId", p.captionLength], ["captionEn", p.captionLength]]) {
     if (typeof input[key] !== "string" || input[key].length > max || input[key].includes("\0") ||
-      (ready && key.startsWith("alt") && !input[key].trim())) invalid();
+      (ready && key === "altId" && !input[key].trim())) invalid();
   }
   if (!Number.isInteger(input.sortOrder) || input.sortOrder < 0 || input.sortOrder > 2147483647) invalid();
 };

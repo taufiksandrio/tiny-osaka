@@ -22,8 +22,18 @@ const reasonLabels = { OWNER_UNAVAILABLE: "Akun Owner tidak aktif atau tidak lag
   REVISION_UNAVAILABLE: "Revisi tidak tersedia untuk publikasi.", PUBLISH_FAILED: "Publikasi gagal. Periksa kesiapan revisi dan koneksi database.",
   RETRY: "Menunggu percobaan berikutnya.", MANUAL_PUBLICATION: "Digantikan publikasi manual.", CANCELLED: "Dibatalkan Owner." };
 
-export const SchedulePanel = ({ domain, revision, role, disabled }) => {
+export const SchedulePanel = ({ domain, revision, role, disabled, time: approvalTime, onTimeChange }) => {
   const [time, setTime] = useState(""), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  if (role === "owner" && ["draft", "review"].includes(revision.status) && onTimeChange) return <Card className="shadow-none">
+    <CardHeader><h2>Waktu publikasi</h2><CardDescription>Kosongkan agar langsung tampil saat disetujui. Isi hanya untuk menjadwalkan publikasi (WIB).</CardDescription></CardHeader>
+    <CardContent className="space-y-3"><Label htmlFor={`approval-time-${domain}`}>Jadwal publikasi (opsional, WIB)</Label>
+      <Input id={`approval-time-${domain}`} type="datetime-local" disabled={disabled} onChange={event => {
+        try { onTimeChange(event.target.value ? wibToUtc(event.target.value) : ""); setMessage(""); }
+        catch { setMessage(messages.INVALID_TIME); }
+      }} />
+      {approvalTime && <p className="text-sm">Akan terbit {formatSchedule(approvalTime)} setelah disetujui.</p>}
+      <p aria-live="polite" className="text-sm">{message}</p>
+    </CardContent></Card>;
   if (revision.status !== "approved") return null;
   const schedule = async event => {
     event.preventDefault(); setBusy(true); setMessage("");

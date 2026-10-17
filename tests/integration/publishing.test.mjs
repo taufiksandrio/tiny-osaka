@@ -11,6 +11,7 @@ import { createCmsCatalog } from "../../src/server/cms/catalog.mjs";
 import { getCmsDatabaseConfig } from "../../src/server/cms/request-policy.mjs";
 import { createPublishing } from "../../src/server/publishing/service.mjs";
 import { runNextPublication } from "../../src/server/publishing/worker.mjs";
+import { createCatalogWorkflow } from "../../src/server/catalog/workflow.mjs";
 import { createPageWorkflow } from "../../src/server/pages/workflow.mjs";
 import { verifyPublishingProtection } from "../../scripts/lib/publishing-protection.mjs";
 import { cleanupPublicFixture, emptyTracking } from "../fixtures/published-data.mjs";
@@ -31,9 +32,10 @@ const services = db => {
 };
 const approved = async api => {
   let row = await api.pages.write(jars[1], "create", { pageKey: "about" });
-  for (const locale of ["id", "en"]) row = await api.pages.write(jars[1], "save", { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() });
+  for (const locale of ["id"]) row = await api.pages.write(jars[1], "save", { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() });
   row = await api.pages.write(jars[1], "submit", { revisionId: row.id, expectedVersion: row.version });
-  return api.pages.write(jars[0], "approve", token(row));
+  await createPageWorkflow({ db: api.db, resolveActor: async () => ({ subject: fixture.accounts[0].id, role: "owner" }) }).approve(token(row));
+  return api.pages.read(jars[0], row.id);
 };
 const input = (row, delay = 2000, domain = "page") => ({ action: "schedule", domain, ...token(row), dueAt: new Date(Date.now() + delay).toISOString() });
 const waitDue = async data => { await new Promise(resolve => setTimeout(resolve, Math.max(0, new Date(data.dueAt) - Date.now()) + 30)); };
@@ -89,7 +91,8 @@ test("due page publishes once atomically using original enabled Owner; future jo
 test("due catalog uses the same exact approval workflow", () => check(async api => {
   let graph = await seedCmsCatalog((action, data) => api.catalog.write(jars[1], action, data));
   graph = await api.catalog.write(jars[1], "submit", { revisionId: graph.revision.id, expectedVersion: graph.revision.version });
-  graph = await api.catalog.write(jars[0], "approve", token(graph.revision));
+  await createCatalogWorkflow({ db: api.db, resolveActor: async () => ({ subject: fixture.accounts[0].id, role: "owner" }) }).approve(token(graph.revision));
+  graph = await api.catalog.read(jars[0], graph.revision.id);
   const data = input(graph.revision, 2000, "catalog"); await api.publishing.write(jars[0], data); await waitDue(data);
   assert.equal((await runNextPublication(api.db)).status, "succeeded");
   assert.equal((await api.db.execute("SELECT revision_id FROM public.catalog_publication")).rows[0].revision_id, graph.revision.id);

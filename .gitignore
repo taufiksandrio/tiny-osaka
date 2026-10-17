@@ -11,3 +11,6 @@ test-results/
 .DS_Store
 Thumbs.db
 .media/
+
+# Isolated production build used by local browser QA
+/.next-qa/

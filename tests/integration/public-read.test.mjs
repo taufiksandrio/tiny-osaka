@@ -25,7 +25,7 @@ test("application reader exposes exact published content with no table or draft 
     await assert.rejects(app.query("SET ROLE tiny_osaka_test_owner"), error => error.code === "42501");
     await catalogWorkflow(drizzle(owner)).publish(token(fixture.approved));
     await app.query("SET search_path=pg_temp");
-    for (const locale of ["id", "en"]) {
+    for (const locale of ["id"]) {
       const catalog = await readPublicCatalog(app, locale);
       assert.equal(catalog.products[0].title, `QA Product ${locale}`);
       assert.equal(catalog.categories[0].title, `QA Category ${locale}`);
@@ -42,6 +42,8 @@ test("application reader exposes exact published content with no table or draft 
         assert.ok(!JSON.stringify({ catalog, page }).includes(secret));
       }
     }
+    assert.equal(await readPublicCatalog(app, "en"), null);
+    assert.equal(await readPublicPage(app, "about", "en"), null);
     const wf = pageWorkflow(drizzle(owner));
     const draft = await wf.createDraft({ pageKey: "about" }); tracked.pageRevisions.push(draft.id);
     let saved;

@@ -33,7 +33,7 @@ const check = async run => {
 const token = row => ({ revisionId: row.id, expectedVersion: row.version, expectedHash: row.contentHash });
 const complete = async api => {
   let row = await api.write(jars[1], "create", { pageKey: "about" });
-  for (const locale of ["id", "en"]) row = await api.write(jars[1], "save", { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() });
+  for (const locale of ["id"]) row = await api.write(jars[1], "save", { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() });
   return row;
 };
 test("dedicated CMS grants preserve public reader, catalog and auth isolation", async () => verifyCmsProtection(fixture.owner, "tiny_osaka_test_owner"));

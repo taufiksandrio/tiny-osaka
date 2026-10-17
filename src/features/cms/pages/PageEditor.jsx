@@ -1,122 +1,77 @@
 "use client";
-import { SchedulePanel } from "../publishing/Publications";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { pageTemplateFields, pageDefinitions } from "@/server/pages/templates.mjs";
-import RichTextEditor from "./RichTextEditor";
-import PagePreview from "./PagePreview";
-import RevisionActions from "./RevisionActions";
-import { cmsRequest } from "./client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Eye, Save, LoaderCircle, Languages, LockKeyhole } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import RevisionActions from "./RevisionActions";
 import RevisionStatus from "./RevisionStatus";
-import { fillHomeDraft } from "@/features/public-site/home-draft.mjs";
+import PagePreview from "./PagePreview";
+import RichTextEditor from "./RichTextEditor";
 import MediaAttachments from "../media/MediaAttachments";
-const labels = { eyebrow: "Pengantar", title: "Judul", summary: "Ringkasan", seoTitle: "Judul SEO", seoDescription: "Deskripsi SEO", body: "Isi",
-  menuTitle: "Judul menu", menuIntro: "Pengantar menu", aboutTitle: "Judul tentang", aboutBody: "Isi tentang", primaryCtaLabel: "Label tombol utama",
-  secondaryCtaLabel: "Label tombol kedua", storyHeading: "Judul cerita", storyBody: "Isi cerita", serviceHeading: "Judul layanan", serviceBody: "Isi layanan",
-  city: "Kota", service: "Layanan", hours: "Jam", coverage: "Cakupan" };
-const fieldHelp = { eyebrow: "Pengantar singkat di atas judul halaman.", title: "Judul utama yang tampil di website.",
-  summary: "Ringkasan yang memperkenalkan isi halaman.", seoTitle: "Judul metadata halaman.",
-  seoDescription: "Deskripsi metadata halaman.", primaryCtaLabel: "Teks tombol utama. Tujuan tautan mengikuti template.",
-  secondaryCtaLabel: "Teks tombol kedua. Tujuan tautan mengikuti template." };
-const mainFields = ["eyebrow", "title", "summary", "body"];
-const isSeo = name => name.startsWith("seo");
-const isCta = name => name.endsWith("CtaLabel");
+import { SchedulePanel } from "../publishing/Publications";
+import { cmsRequest } from "./client";
+import { homeDraft } from "@/features/public-site/home-draft.mjs";
+const labels = { title: "Judul", summary: "Ringkasan", body: "Isi", eyebrow: "Pengantar", seoTitle: "Judul SEO", seoDescription: "Deskripsi SEO",
+  menuTitle: "Judul menu", menuIntro: "Pengantar menu", aboutTitle: "Judul tentang", aboutBody: "Isi tentang", primaryCtaLabel: "Label tombol utama", secondaryCtaLabel: "Label tombol kedua",
+  storyHeading: "Judul cerita", storyBody: "Isi cerita", serviceHeading: "Judul layanan", serviceBody: "Isi layanan", city: "Kota", service: "Layanan", hours: "Jam", coverage: "Cakupan" };
+const textOf = value => (value?.blocks ?? []).map(block => (block.content ?? block.items?.flat() ?? []).map(span => span.text).join("")).join("\n\n");
+const documentOf = text => ({ blocks: text.split(/\n\s*\n/).filter(part => part.trim()).map(part => ({ type: "paragraph", content: (part.match(/[\s\S]{1,4000}/g) ?? []).map(text => ({ text })) })) });
 const PageEditor = ({ initial, role }) => {
-  const [revision, setRevision] = useState(initial), [locale, setLocale] = useState("id"), [fields, setFields] = useState(() =>
-    Object.fromEntries(["id", "en"].map(language => [language, initial.translations.find(row => row.locale === language)?.fields ?? {}])));
-  const [dirty, setDirty] = useState({ id: false, en: false }), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
-  const [preview, setPreview] = useState(false);
-  const [mediaDirty, setMediaDirty] = useState({});
-  const unsaved = dirty.id || dirty.en || Object.values(mediaDirty).some(Boolean);
-  useEffect(() => {
-    if (!unsaved) return;
-    const warn = event => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [unsaved]);
+  const [publicationTime, setPublicationTime] = useState("");
+  const [revision, setRevision] = useState(initial), [fields, setFields] = useState(initial.translations.find(row => row.locale === "id")?.fields ?? {});
+  const [dirty, setDirty] = useState(false), [media, setMedia] = useState([]), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [issues, setIssues] = useState([]), [preview, setPreview] = useState(false);
+  const form = useRef(null), unsaved = dirty || media.length > 0, frozen = revision.status !== "draft";
+  useEffect(() => { if (!unsaved) return; const warn = event => { event.preventDefault(); event.returnValue = ""; }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [unsaved]);
   const spec = pageTemplateFields[pageDefinitions[initial.pageKey].template];
-  const groups = [
-    { key: "main", title: "Konten utama", description: "Judul, pengantar, dan isi utama halaman.", match: name => mainFields.includes(name) },
-    { key: "sections", title: "Bagian halaman", description: "Konten tambahan sesuai template halaman ini.", match: name => !mainFields.includes(name) && !isSeo(name) && !isCta(name) },
-    { key: "seo", title: "Metadata SEO", description: "Lengkapi judul dan deskripsi metadata dalam bahasa yang sedang dipilih.", match: isSeo },
-    { key: "cta", title: "Tombol dan CTA", description: "Sesuaikan teks tombol. Tujuan tautan tetap mengikuti template website.", match: isCta },
-  ].map(group => ({ ...group, entries: Object.entries(spec).filter(([name]) => group.match(name)) })).filter(group => group.entries.length);
-  const change = (key, value) => {
-    setFields(previous => ({ ...previous, [locale]: { ...previous[locale], [key]: value } }));
-    setDirty(previous => ({ ...previous, [locale]: true })); setMessage("");
-  };
-  const save = async event => {
-    event.preventDefault(); setBusy(true); setMessage("");
+  const change = (key, value) => { setFields(previous => ({ ...previous, [key]: value })); setDirty(true); setMessage(""); setIssues([]); };
+  const save = async () => {
+    setBusy(true); setMessage(""); setIssues([]);
+    const nextFields = { ...fields, seoTitle: fields.seoTitle?.trim() || fields.title || "", seoDescription: fields.seoDescription?.trim() || fields.summary || textOf(fields.body).slice(0, 300) };
     try {
-      const row = await cmsRequest(`/${revision.id}`, { revisionId: revision.id, expectedVersion: revision.version, locale, fields: fields[locale] }, "PATCH");
-      setRevision(previous => ({ ...previous, ...row })); setDirty(previous => ({ ...previous, [locale]: false }));
-      setMessage("Draft " + (locale === "id" ? "Indonesia" : "Inggris") + " tersimpan.");
+      const next = await cmsRequest('/' + revision.id, { revisionId: revision.id, expectedVersion: revision.version,
+        operations: [{ action: "save", data: { locale: "id", fields: nextFields } }, ...media] }, "PATCH");
+      setRevision(next); setFields(nextFields); setDirty(false); setMedia([]); setMessage("Semua perubahan tersimpan.");
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
   };
-  return <div className="cms-editor">
-    <Card className="gap-4 shadow-none"><CardHeader><div className="flex flex-wrap items-center gap-3"><RevisionStatus status={revision.status} />
-        <Badge variant="outline">Versi: {revision.version}</Badge>{revision.isLive && <span className="text-sm text-primary">Sedang tampil di publik</span>}</div>
-      <CardDescription>Konten Indonesia dan Inggris wajib lengkap sebelum dikirim untuk review. Simpan setiap bahasa secara terpisah.</CardDescription>
-    </CardHeader><CardContent className="space-y-4">
-      {revision.pageKey === "home" && revision.status === "draft" && <div className="rounded-lg border p-4 space-y-3">
-        <p className="text-sm">Draf home ID/EN tersedia berdasarkan informasi Tiny Osaka yang sudah tercatat. Isian yang sudah terisi tetap dipertahankan.</p>
-        <Button type="button" variant="outline" disabled={busy} onClick={() => {
-          setFields(previous => fillHomeDraft(previous)); setDirty({ id: true, en: true });
-          setMessage("Draf home dimuat. Tinjau isian, simpan kedua bahasa, lalu ajukan untuk review.");
-        }}>Muat draf konten home</Button>
-      </div>}
-      {revision.status !== "draft" && <p className="flex items-start gap-2 rounded-lg bg-secondary p-3 text-sm"><LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Revisi ini dibekukan. Buat draft dari revisi ini untuk mengubah konten.</p>}
-      <div className="flex flex-wrap items-end justify-between gap-4"><div className="cms-form-field"><Label htmlFor="content-locale">Bahasa konten</Label>
-        <NativeSelect id="content-locale" value={locale} disabled={busy} onChange={event => setLocale(event.target.value)}>
-          <NativeSelectOption value="id">Indonesia</NativeSelectOption><NativeSelectOption value="en">Inggris</NativeSelectOption>
-        </NativeSelect></div>
-        <Button type="button" variant="outline" onClick={() => setPreview(!preview)}><Eye aria-hidden="true" />{preview ? "Kembali ke editor" : "Pratinjau konten"}</Button>
-      </div>
-      <div className="flex flex-wrap gap-2">{["id", "en"].map(language => <Badge key={language} variant="outline">
-        <Languages className="size-3" aria-hidden="true" />{language === "id" ? "Indonesia" : "Inggris"}: {dirty[language] ? "Belum disimpan" : "Tidak ada perubahan"}
-      </Badge>)}</div>
-      <p role="status" aria-live="polite" className="text-sm font-medium">{message || (unsaved ? "Ada perubahan belum disimpan." : "")}</p>
+  const beforeAction = action => {
+    if (!["submit", "approve"].includes(action)) return true;
+    const missing = [!fields.title?.trim() && "Judul wajib diisi.", !textOf(fields.body).trim() && "Isi halaman wajib diisi.",
+      revision.mediaRefs?.some(row => !row.altId?.trim()) && "Deskripsi gambar wajib diisi untuk media yang dipasang."].filter(Boolean);
+    setIssues(missing);
+    if (!missing.length) return true;
+    setPreview(false); setMessage("Lengkapi isian wajib sebelum melanjutkan.");
+    setTimeout(() => form.current?.querySelector(!fields.title?.trim() ? '#page-title' : !textOf(fields.body).trim() ? '#page-body' : 'input[id$=alt]')?.focus(), 0); return false;
+  };
+  return <div ref={form} className="cms-editor grid gap-6">
+    <Card className="shadow-none"><CardHeader><div className="flex flex-wrap gap-3"><RevisionStatus status={revision.status} /><span>Versi {revision.version}</span>{revision.isLive && <span>Sedang tampil di publik</span>}</div>
+      <CardDescription>Isi dalam bahasa Indonesia. Tanda * wajib dilengkapi sebelum disetujui atau dikirim untuk review. Draft boleh disimpan bertahap.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-3">
+      <Button type="button" variant="outline" onClick={() => setPreview(!preview)}>{preview ? "Kembali ke editor" : "Pratinjau konten"}</Button>
+      {revision.pageKey === "home" && !frozen && <Button variant="outline" disabled={busy} onClick={() => { setFields(previous => ({ ...homeDraft.id, ...Object.fromEntries(Object.entries(previous).filter(([, value]) => typeof value === "string" ? value.trim() : textOf(value).trim())) })); setDirty(true); setMessage("Draf home dimuat. Periksa lalu simpan semua perubahan."); }}>Muat draf konten home</Button>}
     </CardContent></Card>
-    {preview ? <PagePreview spec={spec} fields={fields[locale]} locale={locale} labels={labels} unsaved={dirty[locale]} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <form onSubmit={save} lang={locale}>
-      <fieldset disabled={busy || revision.status !== "draft"} className="cms-fields"><legend className="sr-only">Konten {locale === "id" ? "Indonesia" : "Inggris"}</legend>
-        <div className="grid gap-6">{groups.map(group => <Card key={group.key} className="gap-5 shadow-none">
-          <CardHeader><h2>{group.title}</h2><CardDescription>{group.description}</CardDescription></CardHeader>
-          <CardContent className="grid min-w-0 gap-6">{group.entries.map(([key, type]) => {
-            if (type === "rich") return <RichTextEditor key={key} label={labels[key]} value={fields[locale][key] ?? { blocks: [] }}
-              disabled={busy || revision.status !== "draft"} onChange={value => change(key, value)} />;
-            const Control = type === "summary" ? Textarea : Input;
-            const limit = type === "short" ? 160 : type === "title" ? 240 : 2000;
-            const id = `cms-${locale}-${key}`;
-            return <div key={key} className="cms-form-field"><Label htmlFor={id}>{labels[key]}</Label>
-              <Control id={id} value={fields[locale][key] ?? ""} maxLength={limit} aria-describedby={id + "-help"} onChange={event => change(key, event.target.value)} />
-              <div id={id + "-help"} className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                <span>{fieldHelp[key] ?? `Isi ${labels[key].toLowerCase()} untuk bahasa yang dipilih.`}</span><span>{(fields[locale][key] ?? "").length}/{limit}</span>
-              </div>
-            </div>;
-          })}</CardContent>
-        </Card>)}</div>
-        <div className="cms-save-bar"><p className="text-sm text-muted-foreground">{dirty[locale] ? "Perubahan bahasa ini belum disimpan." : "Tidak ada perubahan untuk disimpan."}</p>
-          <Button type="submit" disabled={!dirty[locale]}>{busy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}Simpan draft {locale === "id" ? "Indonesia" : "Inggris"}</Button>
-        </div>
-      </fieldset>
-    </form>}
-    <MediaAttachments domain="page" revisionId={revision.id} version={revision.version} disabled={busy || dirty.id || dirty.en || revision.status !== "draft"}
-      onBusy={setBusy} onChange={async version => {
-        const next = await cmsRequest(`/${revision.id}`, undefined, "GET");
-        if (next.version === version) setRevision(next);
-        else { setRevision(previous => ({ ...previous, version })); setMessage("Revisi berubah lagi. Salin perubahan sebelum memuat ulang."); }
-      }}
-      onDirty={(key, value) => setMediaDirty(previous => ({ ...previous, [key]: value }))} />
-    <SchedulePanel domain="page" revision={revision} role={role} disabled={busy || unsaved} />
-    <RevisionActions revision={revision} role={role} disabled={busy || unsaved} onMessage={setMessage} onBusy={setBusy}
-      onChange={row => setRevision(previous => ({ ...previous, ...row, isLive: row.status === "published" || previous.isLive }))} />
+    {preview ? <PagePreview spec={spec} fields={fields} locale="id" labels={labels} unsaved={unsaved} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <div className="grid gap-6">
+      {frozen && <p className="rounded-lg bg-secondary p-4">Revisi dibekukan. Buat draft dari revisi ini untuk mengubah konten.</p>}
+      <Card className="shadow-none"><CardHeader><h2>Konten halaman</h2></CardHeader><CardContent><fieldset disabled={busy || frozen} className="grid gap-6">
+        <div className="cms-form-field"><Label htmlFor="page-title">Judul * (wajib)</Label><Input id="page-title" required maxLength={240} value={fields.title ?? ""} onChange={event => change("title", event.target.value)} /></div>
+        <div className="cms-form-field"><Label htmlFor="page-summary">Ringkasan (opsional)</Label><Textarea id="page-summary" maxLength={2000} value={fields.summary ?? ""} onChange={event => change("summary", event.target.value)} /></div>
+        <div className="cms-form-field"><Label htmlFor="page-body">Isi * (wajib)</Label><Textarea id="page-body" required className="min-h-60" value={textOf(fields.body)} onChange={event => change("body", documentOf(event.target.value))} /><p className="text-xs text-muted-foreground">Pisahkan paragraf dengan baris kosong.</p></div>
+        <details className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">Pengaturan tambahan (opsional)</summary><div className="mt-6 grid gap-6">
+          <RichTextEditor label="Pemformatan isi" value={fields.body ?? { blocks: [] }} disabled={busy || frozen} onChange={value => change("body", value)} />
+          {Object.entries(spec).filter(([key]) => !["title", "summary", "body"].includes(key)).map(([key, type]) => type === "rich" ?
+            <RichTextEditor key={key} label={labels[key] + " (opsional)"} value={fields[key] ?? { blocks: [] }} disabled={busy || frozen} onChange={value => change(key, value)} /> :
+            <div className="cms-form-field" key={key}><Label htmlFor={'page-' + key}>{labels[key]} (opsional)</Label><Input id={'page-' + key} value={fields[key] ?? ""} maxLength={type === "short" ? 160 : type === "title" ? 240 : 2000} onChange={event => change(key, event.target.value)} /></div>)}
+        </div></details>
+      </fieldset></CardContent></Card>
+    </div>}
+    <Card className="shadow-none"><CardContent><MediaAttachments key={revision.version} initial={revision.mediaRefs} assets={revision.mediaAssets} disabled={busy || frozen} onOperations={setMedia} /></CardContent></Card>
+    <SchedulePanel domain="page" revision={revision} role={role} disabled={busy || unsaved} time={publicationTime} onTimeChange={setPublicationTime} />
+    <RevisionActions revision={revision} role={role} disabled={busy || unsaved} onBusy={setBusy} beforeAction={beforeAction} dueAt={publicationTime || undefined} onMessage={setMessage}
+      onChange={row => setRevision(previous => ({ ...previous, ...row, isLive: row.status === "published" || previous.isLive }))}
+      feedback={<div className="space-y-3"><p role="status" aria-live="polite">{message || (unsaved ? "Ada perubahan belum disimpan." : "Semua perubahan sudah tersimpan.")}</p>{issues.length > 0 && <ul className="list-disc pl-5 text-destructive">{issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}</div>}>
+      {!frozen && <Button type="button" disabled={busy || !unsaved} onClick={save}>{busy ? "Menyimpan..." : "Simpan semua perubahan"}</Button>}
+    </RevisionActions>
   </div>;
 };
 export default PageEditor;

@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 });
 test.afterEach(async ({ page }) => expect(runtimeErrors.get(page)).toEqual([]));
-for (const locale of ["id", "en"]) {
+for (const locale of ["id"]) {
   test(`${locale} empty database shows no examples and returns detail 404`, async ({ page, request }) => {
     expect(process.env.QA_PUBLIC_EMPTY).toBe("1");
     await page.goto(`/${locale}/menu`);

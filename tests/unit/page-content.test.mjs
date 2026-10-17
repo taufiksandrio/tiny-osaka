@@ -23,12 +23,12 @@ test("nine fixed page identities map to existing routes and immutable template d
   for (const key of ["unknown", "__proto__", "constructor", 1, null]) assert.equal(getPageDefinition(key), null);
 });
 
-test("partial drafts are allowed; submission requires all fixed fields and both locales", () => {
+test("partial drafts are allowed; submission requires Indonesian title and body while legacy rows remain valid", () => {
   assert.equal(validatePageFields("about", "id", {}), true);
   badContent(() => validatePageFields("about", "id", {}, { ready: true }));
   for (const key of Object.keys(pageDefinitions)) {
     assert.equal(validatePageReadiness(pageGraph(key)), true);
-    const missing = pageGraph(key); missing.translations.pop();
+    const missing = pageGraph(key); missing.translations = missing.translations.filter(row => row.locale !== "id");
     assert.throws(() => validatePageReadiness(missing), code("NOT_READY"));
   }
 });
@@ -161,7 +161,7 @@ test("invalid revision/version/hash, source and template inputs fail before pers
 test("database failures expose no raw secrets and published reader validates page/locale", async () => {
   await assert.rejects(owner().createDraft({ pageKey: "about" }), code("PERSISTENCE_FAILED"));
   await assert.rejects(owner().submit(token), code("PERSISTENCE_FAILED"));
-  await assert.rejects(getPublishedPage(db, { pageKey: "about", locale: "en" }), code("PERSISTENCE_FAILED"));
+  await assert.rejects(getPublishedPage(db, { pageKey: "about", locale: "id" }), code("PERSISTENCE_FAILED"));
   for (const input of [null, { pageKey: "unknown", locale: "en" }, { pageKey: "about", locale: "jp" }]) {
     await assert.rejects(getPublishedPage(db, input), code("INVALID_INPUT"));
   }

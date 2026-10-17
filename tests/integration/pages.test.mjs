@@ -51,7 +51,7 @@ test("all nine templates complete bilingual review/publication with JSONB-stable
     assert.equal(await published(db, key), null);
     const result = await workflow(db).publish(token(approval));
     assert.deepEqual(await workflow(db).publish(token(result)), result);
-    for (const locale of ["id", "en"]) {
+    for (const locale of ["id"]) {
       const page = await published(db, key, locale);
       assert.equal(page.pageKey, key); assert.equal(page.locale, locale);
       assert.deepEqual(page.fields, fields(key));
@@ -67,9 +67,9 @@ test("all nine templates complete bilingual review/publication with JSONB-stable
 test("partial drafts are stored but incomplete bilingual content cannot submit or fall back", () => withRollback(async db => {
   const draft = await workflow(db, "staff").createDraft({ pageKey: "about" });
   await assert.rejects(workflow(db, "staff").submit(token(draft)), code("NOT_READY"));
-  const saved = await workflow(db, "staff").saveTranslation({ revisionId: draft.id, expectedVersion: 1, locale: "id", fields: fields() });
+  const saved = await workflow(db, "staff").saveTranslation({ revisionId: draft.id, expectedVersion: 1, locale: "id", fields: { title: "Incomplete draft" } });
   await assert.rejects(workflow(db, "staff").submit({ revisionId: draft.id, expectedVersion: saved.version }), code("NOT_READY"));
-  assert.equal(await published(db, "about", "en"), null);
+  await assert.rejects(published(db, "about", "en"), code("INVALID_INPUT"));
   assert.equal((await db.select().from(s.pageSubmissions)).length, 0);
   assert.equal((await root(db, draft.id)).status, "draft");
 }));
@@ -156,7 +156,7 @@ test("clone of frozen content resets approval; draft edits and approval preserve
   await workflow(db).publish(token(approval));
   assert.equal((await published(db)).revisionId, clone.id);
   assert.equal((await published(db)).fields.title, "QA revised title");
-  assert.equal((await published(db, "about", "en")).fields.title, fields().title);
+  await assert.rejects(published(db, "about", "en"), code("INVALID_INPUT"));
   await assert.rejects(workflow(db).archive(token(approval)), code("LIVE_REVISION"));
   await rejectSql(db, client, "DELETE FROM page_publications WHERE page_key='about'");
   await assert.rejects(workflow(db).publish(token(live)), code("REVISION_CONFLICT"));
@@ -379,8 +379,8 @@ test("simultaneous first publication serializes per page and leaves one complete
     await client.query("ROLLBACK");
     const results = await Promise.all(pending); pending = [];
     assert.equal(results.filter(r => r.value).length, 2);
-    const id = await published(drizzle(client)), en = await published(drizzle(client), "about", "en");
-    assert.equal(id.revisionId, en.revisionId);
+    const id = await published(drizzle(client));
+    await assert.rejects(published(drizzle(client), "about", "en"), code("INVALID_INPUT"));
     assert.ok(approved.some(row => row.revisionId === id.revisionId));
     assert.equal((await drizzle(client).select().from(s.pagePublications)).length, 1);
   } finally {

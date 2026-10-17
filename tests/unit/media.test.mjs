@@ -62,12 +62,12 @@ test("YouTube contract accepts only an ID, with no arbitrary URL/iframe or fake 
   assert.throws(() => validateMediaAsset({ ...asset, storageKey: randomUUID() + ".png" }), code("INVALID_MEDIA"));
 });
 
-test("media graph requires scoped references, bilingual labels, exact assets and image posters", () => {
+test("media graph requires scoped references, Indonesian alt labels, exact assets and image posters", () => {
   const g = mediaGraph();
   assert.equal(validateRevisionMedia(g, "page"), true);
   for (const mutate of [
     g => { g.mediaRefs[0].revisionId = randomUUID(); }, g => { g.mediaRefs[0].assetId = randomUUID(); },
-    g => { g.mediaRefs[0].altEn = " "; }, g => { g.mediaRefs[0].captionId = "x\0y"; },
+    g => { g.mediaRefs[0].altId = " "; }, g => { g.mediaRefs[0].captionId = "x\0y"; },
     g => { g.mediaRefs[0].sortOrder = -1; }, g => { g.mediaAssets.push(imageAsset()); },
     g => { g.mediaRefs.push({ ...g.mediaRefs[0] }); }, g => { delete g.mediaAssets; },
     g => { g.mediaRefs = [null]; }, g => { g.revision = null; },

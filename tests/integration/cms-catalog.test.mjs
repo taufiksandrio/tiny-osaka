@@ -46,7 +46,7 @@ test("Staff edits bilingual categories/products/prices/modifiers with atomic aud
   assert.throws(() => calculatePrice(product, { revisionId: graph.revision.id, productId, optionIds: ["foreign"] }));
   const count = Number((await tx.execute("SELECT count(*) FROM public.catalog_workflow_events")).rows[0].count);
   assert.equal(count, graph.revision.version); // One create event and one event per consuming edit.
-  assert.equal((await api.read(jars[0], graph.revision.id)).productTranslations.length, 2);
+  assert.equal((await api.read(jars[0], graph.revision.id)).productTranslations.length, 1);
 }));
 test("Staff cannot forge Owner transitions and database membership overrides resolver role", () => check(async (api, tx) => {
   let graph = await seed(api); graph = await api.write(jars[1], "submit", { revisionId: graph.revision.id, expectedVersion: graph.revision.version });

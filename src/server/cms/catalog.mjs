@@ -1,3 +1,5 @@
+import { saveBatch } from "./batch.mjs";
+import { approveContent } from "./approval.mjs";
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -55,6 +57,7 @@ export const createCmsCatalog = ({ db, authenticate }) => {
     return { ...graph, mediaAssets: graph.mediaAssets.map(assetDto), isLive: live?.revisionId === row.id };
   };
   return Object.freeze({
+    batch: (headers, input) => run(headers, (tx, actor) => saveBatch(tx, actor, input, "catalog", createCmsCatalog({ db: tx, authenticate: async () => actor }))),
     list: headers => run(headers, async tx => {
       const rows = await tx.select().from(s.catalogRevisions).orderBy(desc(s.catalogRevisions.createdAt), desc(s.catalogRevisions.id)).limit(100);
       const [live] = await tx.select().from(s.catalogPublication).where(eq(s.catalogPublication.id, 1));
@@ -64,7 +67,8 @@ export const createCmsCatalog = ({ db, authenticate }) => {
     write: (headers, action, input) => run(headers, async (tx, actor) => {
       if (!Object.hasOwn(operations, action)) cmsFail("INVALID_INPUT");
       const [fields, method] = operations[action];
-      exactInput(input, fields);
+      exactInput(input, [...fields, ...(action === "approve" && Object.hasOwn(input, "dueAt") ? ["dueAt"] : [])]);
+      if (Object.hasOwn(input, "locale") && input.locale !== "id") cmsFail("INVALID_INPUT");
       for (const [key, value] of Object.entries(input)) {
         if (["slug", "code"].includes(key) && (typeof value !== "string" || value.length > 160)) cmsFail("INVALID_INPUT");
         if (key === "title" && (typeof value !== "string" || value.length > 240)) cmsFail("INVALID_INPUT");
@@ -76,7 +80,10 @@ export const createCmsCatalog = ({ db, authenticate }) => {
         result = await drafts[method](tx, input);
         await tx.insert(s.catalogWorkflowEvents).values({ revisionId: result.revisionId ?? result.id,
           action: ["create", "clone"].includes(action) ? action : "save", actorId: actor.subject });
-      } else result = await createCatalogWorkflow({ db: tx, resolveActor: async () => actor })[method](input);
+      } else {
+        const workflow = createCatalogWorkflow({ db: tx, resolveActor: async () => actor });
+        result = action === "approve" ? await approveContent({ tx, actor, domain: "catalog", input, workflow }) : await workflow[method](input);
+      }
       return read(tx, result.revisionId ?? result.id);
     }),
   });

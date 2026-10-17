@@ -1,3 +1,4 @@
+import { MediaError } from "../media/validation.mjs";
 import "server-only";
 import { getAuthService } from "../auth/runtime.mjs";
 import { getAuthConfig } from "../auth/config.mjs";
@@ -10,6 +11,7 @@ export const catalogRoute = async (request, operation) => {
     const input = request.method === "GET" ? null : await readCmsInput(request, getAuthConfig().baseURL);
     return cmsJson(await operation(getCmsCatalog(), input));
   } catch (error) {
+    if (error instanceof MediaError) return cmsJson({ code: error.code }, error.code === "PERSISTENCE_FAILED" ? 503 : 400);
     if (error instanceof CmsRequestError) return cmsJson({ code: error.code }, error.status);
     if (error instanceof CatalogDraftError) {
       const status = error.code === "FORBIDDEN" ? 403 : error.code === "AUTH_REQUIRED" ? 401 :

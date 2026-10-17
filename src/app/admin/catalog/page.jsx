@@ -10,7 +10,7 @@ const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: 
 const CatalogPage = async () => {
   await requireAdmin(); const { rows, publishedRevisionId } = await getCmsCatalog().list(await headers());
   return <main id="main-content" tabIndex={-1} className="space-y-6">
-    <div className="flex flex-wrap items-start justify-between gap-6"><div className="space-y-3"><h1>Katalog menu</h1><p className="text-muted-foreground">Kelola kategori, produk, varian, dan modifier dalam revisi bilingual. Menampilkan paling banyak 100 revisi terbaru.</p></div><CreateCatalogDraft /></div>
+    <div className="flex flex-wrap items-start justify-between gap-6"><div className="space-y-3"><h1>Katalog menu</h1><p className="text-muted-foreground">Kelola kategori, produk, varian, dan modifier dalam revisi bahasa Indonesia. Menampilkan paling banyak 100 revisi terbaru.</p></div><CreateCatalogDraft /></div>
     {!rows.length && <Card className="shadow-none"><CardContent className="py-8"><h2>Belum ada revisi katalog</h2><p className="mt-3 text-muted-foreground">Mulai dengan draft baru, lalu lengkapi kategori dan produk.</p></CardContent></Card>}
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">{rows.map(row => <Card key={row.id} className="min-w-0 shadow-none"><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><h2>Revisi {row.id.slice(0, 8)}</h2><RevisionStatus status={row.status} /></div><CardDescription>Versi {row.version}</CardDescription></CardHeader>
       <CardContent className="grid gap-6">{row.id === publishedRevisionId && <p className="font-medium text-primary">Sedang tampil di publik</p>}
