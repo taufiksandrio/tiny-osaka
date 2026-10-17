@@ -1,5 +1,42 @@
 # Dependency Selection — validation matrix (NOT install instructions)
 
+## Approved CMS shadcn UI dependencies — 2026-10-17
+
+User approved the shadcn admin redesign and these exact packages before installation:
+
+| Package | Pinned version | License | Use |
+|---|---|---|---|
+| radix-ui | 1.8.1 | MIT | Accessible shadcn primitives |
+| class-variance-authority | 0.7.1 | Apache-2.0 | Component variants |
+| clsx | 2.1.1 | MIT | Conditional class names |
+| tailwind-merge | 3.7.0 | MIT | Tailwind class conflict resolution |
+| lucide-react | 1.58.0 | ISC | UI icons |
+| tw-animate-css | 1.4.0 | MIT | Dialog/menu transitions |
+
+Version/license/peer metadata was read with npm view before approval. Radix and
+Lucide declare React19 support. Install used --save-exact --ignore-scripts; no
+previously locked package version changed. Lockfile gains78 dependency entries.
+Existing ESLint peer warnings and optional Windows cleanup EPERM warning remain.
+
+The15 component sources in src/components/ui come from the official shadcn/ui
+new-york-v4 registry, retrieved2026-10-17. Their MIT license is retained in
+src/components/ui/LICENSE. Components were converted in memory to JSX and arrow
+functions using the existing transitive TypeScript compiler; no TypeScript source
+files or new compiler dependency were added. Registry cn/button imports were mapped
+to local aliases. Local adaptations cover responsive native selects, localized
+Sheet close labels, and a named account-menu portal region. These are vendored
+sources; updates require reviewed source diffs, not unpinned CLI overwrites.
+
+components.json has tsx:false/rsc:true. No shadcn CLI was installed or executed.
+The user's explicit shadcn choice selects Radix for this admin UI in place of the
+general Headless UI direction. Existing auth/ORM/Next/React/Tailwind versions stay
+locked. Native server RBAC and exact revision contracts remain authoritative.
+
+Primary references: [JavaScript support](https://ui.shadcn.com/docs/javascript),
+[existing Next.js projects](https://ui.shadcn.com/docs/installation/next),
+[Radix-based shadcn components](https://ui.shadcn.com/docs/components/radix/sidebar).
+Each vendored component records its exact upstream registry URL in its header.
+
 The matrix below is a candidate checklist, not a list of installed packages.
 Approved selections are recorded in ADRs and the sections below; remaining
 choices are pending. Verify official docs, OSS license, project compatibility,

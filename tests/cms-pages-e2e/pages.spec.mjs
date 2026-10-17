@@ -27,12 +27,42 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(async ({ page }) => expect(errors.get(page)).toEqual([]));
 
-test("anonymous CMS redirects and API fails closed", async ({ page }) => {
+test("anonymous CMS redirects and API fails closed", async ({ page }, testInfo) => {
   await page.goto("/admin/pages"); await expect(page).toHaveURL(/\/admin\/login$/);
   expect((await page.request.get("/api/cms/pages")).status()).toBe(401);
   expect((await page.request.post("/api/cms/pages", { headers: { origin }, data: { pageKey: "about" } })).status()).toBe(401);
+  await page.screenshot({ path: testInfo.outputPath("login.png"), fullPage: true });
 });
-test("Staff edits draft with safe preview, accessible fields and incomplete-review validation", async ({ page }) => {
+test("shadcn dashboard navigation, account menu and mobile focus are accessible", async ({ page }, testInfo) => {
+  await login(page, "staff");
+  await expect(page.locator("main")).toContainText("Template halaman");
+  await expect(page.locator('main [data-slot="card"]').first()).toContainText("9");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("dashboard.png"), fullPage: true });
+  await page.getByRole("button", { name: "Menu akun" }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Menu akun" })).toBeFocused();
+  if (testInfo.project.name !== "desktop") {
+    const trigger = page.getByRole("button", { name: "Buka navigasi" });
+    await trigger.click(); const dialog = page.getByRole("dialog", { name: "Tiny Osaka CMS" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Keamanan", exact: true })).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await page.keyboard.press("Escape"); await expect(trigger).toBeFocused();
+    await trigger.click(); await dialog.getByRole("link", { name: "Halaman website", exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+  } else {
+    await page.getByRole("navigation", { name: "Navigasi CMS" }).getByRole("link", { name: "Halaman website", exact: true }).click();
+  }
+  await expect(page).toHaveURL(/\/admin\/pages$/);
+  await expect(page.locator("aside").getByRole("link", { name: "Halaman website", exact: true, includeHidden: true })).toHaveAttribute("aria-current", "page");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("pages.png"), fullPage: true });
+});
+test("Staff edits draft with safe preview, accessible fields and incomplete-review validation", async ({ page }, testInfo) => {
   await login(page, "staff"); await page.getByRole("link", { name: "Kelola halaman website" }).click();
   await page.getByRole("link", { name: "about", exact: true }).click();
   await page.getByRole("button", { name: "Buat draft baru" }).click();
@@ -44,11 +74,17 @@ test("Staff edits draft with safe preview, accessible fields and incomplete-revi
   await body.getByLabel("Tebal", { exact: true }).check();
   await body.getByLabel("Tautan internal").selectOption("/id/menu");
   await expect(page.getByRole("button", { name: "Kirim untuk review" })).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath("editor.png"), fullPage: true });
   await page.getByRole("button", { name: "Simpan draft Indonesia" }).click();
   await expect(page.getByRole("status")).toContainText("tersimpan");
   await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
   await expect(page.getByRole("link", { name: "<script>literal preview</script>" })).toHaveAttribute("href", "/id/menu");
   expect(await page.locator(".cms-preview script").count()).toBe(0);
+  await page.getByRole("button", { name: "Kirim untuk review" }).click();
+  const dialog = page.getByRole("alertdialog"); await expect(dialog).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.keyboard.press("Escape"); await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Kirim untuk review" })).toBeFocused();
   await act(page, "Kirim untuk review"); await expect(page.getByRole("status")).toContainText("Lengkapi");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
