@@ -88,6 +88,25 @@ test("Staff edits draft with safe preview, accessible fields and incomplete-revi
   await list.getByLabel("Teks", { exact: true }).nth(1).fill("QA second item");
   await list.getByRole("button", { name: "Hapus item 2", exact: true }).click();
   await list.getByRole("button", { name: "Naikkan blok 2", exact: true }).click();
+  const spacing = await page.locator(".cms-editor").evaluate(editor => {
+    const fields = [...editor.querySelectorAll(".cms-form-field > label")].map(label => {
+      const control = label.control;
+      return control.getBoundingClientRect().top - label.getBoundingClientRect().bottom;
+    });
+    const pairs = [...editor.querySelectorAll(".cms-button-row")].flatMap(row => {
+      const buttons = [...row.querySelectorAll(":scope > button")];
+      return buttons.slice(1).map((button, index) => {
+        const previous = buttons[index].getBoundingClientRect(), current = button.getBoundingClientRect();
+        return Math.abs(current.top - previous.top) < 1 ? current.left - previous.right : current.top - previous.bottom;
+      });
+    });
+    return { fields, pairs };
+  });
+  expect(spacing.fields.length).toBeGreaterThan(0);
+  expect(spacing.pairs.length).toBeGreaterThan(0);
+  expect(spacing.fields.every(gap => gap >= 11.5)).toBe(true);
+  expect(spacing.pairs.every(gap => gap >= 11.5)).toBe(true);
+  await body.getByRole("group", { name: "Blok 1", exact: true }).screenshot({ path: testInfo.outputPath("list-spacing.png") });
   await expect(page.getByRole("button", { name: "Kirim untuk review" })).toBeDisabled();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

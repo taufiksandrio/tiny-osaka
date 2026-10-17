@@ -1080,3 +1080,8 @@ editing/preview, revision navigation, permission denials and stale-save conflict
 Rollback: revert this UI commit and rebuild. Preserve content, private credentials
 and applied SQL history; no dependency or database rollback is required. Commit/
 push follows standing approval; merge and deployment need separate authorization.
+
+Approved follow-up: increase label/control spacing to12px, field spacing to24px,
+and group action buttons in wrapping rows with12px gaps. List item removal sits
+beside text-part addition; block actions remain in the Card footer. The change
+stays on fix/cms-revision-ui, reuses shadcn and does not alter content operations.
