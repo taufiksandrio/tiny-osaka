@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-export const verifyPublicReadProtection = async (client, owner) => {
-  const source = readFileSync(new URL("../../drizzle/0006_public_read_path.sql", import.meta.url), "utf8");
+export const verifyPublicReadProtection = async (client, owner, { media = true } = {}) => {
+  const source = readFileSync(new URL("../../drizzle/0006_public_read_path.sql", import.meta.url), "utf8") +
+    (media ? readFileSync(new URL("../../drizzle/0010_cms_media_access.sql", import.meta.url), "utf8") : "");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(public_read_\w+)\(([^)]*)\) RETURNS jsonb\s+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
   const app = owner.replace("_owner", "_app");
   const { rows } = await client.query(`
@@ -12,7 +13,7 @@ export const verifyPublicReadProtection = async (client, owner) => {
     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang
     WHERE n.nspname='public' AND p.proname LIKE 'public_read_%'
   `);
-  assert.equal(expected.length, 2); assert.equal(rows.length, 2);
+  assert.equal(expected.length, media ? 3 : 2); assert.equal(rows.length, expected.length);
   for (const [, name, args, body] of expected) {
     const fn = rows.find(row => row.proname === name);
     assert.ok(fn); assert.equal(fn.prosrc.replaceAll("\r\n", "\n"), body.replaceAll("\r\n", "\n"));

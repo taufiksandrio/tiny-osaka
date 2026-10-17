@@ -1,6 +1,6 @@
 export const cmsRequest = async (path, data, method = "POST") => {
   const response = await fetch("/api/cms/pages" + path, { method, credentials: "same-origin", cache: "no-store",
-    headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    ...(method === "GET" ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }) });
   const result = await response.json();
   if (!response.ok) {
     if (response.status === 401) throw new Error("Sesi berakhir. Masuk kembali sebelum melanjutkan.");

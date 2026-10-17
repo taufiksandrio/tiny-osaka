@@ -5,6 +5,7 @@ import { MediaError, mediaFail, validMediaUuid, validStorageKey, validYoutubeId,
 
 export const mediaPersistence = error => {
   if (error instanceof MediaError) throw error;
+  if ([error?.code, error?.cause?.code].some(code => ["40001", "40P01"].includes(code))) mediaFail("REVISION_CONFLICT", "Draft changed concurrently.");
   mediaFail("PERSISTENCE_FAILED", "Media operation failed; no driver details exposed.");
 };
 export const resolveMediaActor = async resolveActor => {
@@ -24,7 +25,9 @@ export const createMediaAssets = ({ db, resolveActor, inspectFile } = {}) => {
     try {
       return await db.transaction(async tx => {
         if (values.posterId) {
-          const [poster] = await tx.select().from(s.mediaAssets).where(eq(s.mediaAssets.id, values.posterId)).for("share");
+          // Assets cannot be updated/deleted. A plain read plus the FK is enough;
+          // FOR SHARE would unnecessarily require UPDATE privilege on originals.
+          const [poster] = await tx.select().from(s.mediaAssets).where(eq(s.mediaAssets.id, values.posterId));
           if (!poster || poster.kind !== "image") mediaFail("INVALID_POSTER", "Video requires a registered image poster.");
         }
         const [asset] = await tx.insert(s.mediaAssets).values(values).returning();

@@ -36,6 +36,8 @@ test("rejects altered SQL hashes, timestamps, order and extra/missing files", ()
     a => { a.files[6].hash = "untrusted-secret"; },
     a => { a.files[8].hash = "untrusted-secret"; },
     a => { a.files[9].hash = "untrusted-secret"; },
+    a => { a.files[10].hash = "untrusted-secret"; },
+    a => { a.files[11].hash = "untrusted-secret"; },
     a => { a.files[1].folderMillis++; },
     a => { a.files.reverse(); }, a => { a.files.pop(); }, a => { a.files.push(a.files[1]); },
   ]) {
@@ -57,8 +59,8 @@ test("rejects altered journal identity, ordering, timestamps and extra entries",
   }
 });
 
-test("accepts reviewed CMS page baseline and catalog final state", () => {
-  assert.equal(validateTestMigrationState(state(9)), 9);
+test("accepts reviewed catalog baseline and media final state", () => {
+  assert.equal(validateTestMigrationState(state(12)), 12);
   assert.equal(validateTestMigrationState(state(10)), 10);
 });
 
@@ -68,7 +70,7 @@ test("rejects absent, reordered, partial or modified migration history", () => {
     s => { s.history[1].created_at = "1"; }, s => { s.history.push(s.history[1]); },
     s => { s.history = [s.history[1]]; }, s => { s.history.pop(); s.history.pop(); },
   ]) {
-    const s = state(9); mutate(s);
+    const s = state(10); mutate(s);
     reject(() => validateTestMigrationState(s));
   }
 });
@@ -80,7 +82,7 @@ test("rejects ownership, relation kind and unexpected/missing objects", () => {
     s => { s.relations[0].owner = "postgres"; }, s => { s.relations[1].kind = "r"; },
     s => { s.relations.pop(); }, s => { s.metadataOwner = "postgres"; },
   ]) {
-    const s = state(9); mutate(s);
+    const s = state(10); mutate(s);
     reject(() => validateTestMigrationState(s));
   }
 });

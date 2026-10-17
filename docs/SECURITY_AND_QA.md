@@ -1036,3 +1036,63 @@ production are not claimed. No merge, deployment or merchant call performed.
 Rollback this application/asset commit together and rebuild; retain CMS revisions,
 private configuration and SQL history. Saved preset content is an ordinary CMS
 revision and follows normal review/publication; never delete live data to undo UI.
+## Phase 3.4 media library and original branding — 2026-10-17
+
+Approved implementation on `feat/phase3-4-cms-media`. Changes cover private local
+uploads, bounded full-file inspection, library/picker shadcn forms, bilingual
+revision references, public delivery restricted to live approved references,
+streamed byte ranges, and original-logo display derivatives. Original source
+assets are untouched. Upload is not publication; Staff cannot approve or publish.
+
+Executed successfully on the final relevant code:
+
+- `npm.cmd run lint`: zero warnings/errors.
+- `npm.cmd run build`: production build passed, including media and PNG icon routes.
+- `node --conditions=react-server --test tests/unit/*.test.mjs`: 116 passed.
+- `node --conditions=react-server --env-file=.env.local --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/*.test.mjs`: 179 passed.
+- `npm.cmd run test:cms-media-e2e`: 6 passed across 1440/390/320px.
+- `npm.cmd run test:cms-pages-e2e`: 18 passed.
+- `npm.cmd run test:cms-catalog-e2e`: 12 passed.
+- `npm.cmd run test:auth-e2e`: 18 passed.
+- `npm.cmd run test:published-e2e`: 72 published + 6 empty-database cases passed.
+- `npm.cmd run test:e2e`: 222 fixture public cases passed.
+- Browser totals: 354 expected, zero unexpected/flaky/skipped cases, retries zero.
+- Local test/dev reviewed migrations 0010/0011 applied; repeat runs were no-ops.
+  Dev runner verified unchanged public content counts under locks. Existing SQL
+  history is preserved; final history is 12 entries, with 28 public/9 auth tables.
+- Final public-bundle secret scan passed: 31 assets, no loaded database URLs,
+  passwords or auth secret. Staged diff/asset integrity checks passed.
+- `npm.cmd audit --json`: 9 advisories (5 high, 4 moderate), retained as release
+  blockers. No unrelated dependency upgrade or audit-fix command was applied.
+- Media prerequisite check: Sharp 0.35.5; video configuration and executables
+  unavailable. Actual FFmpeg/ffprobe decoding/playback was NOT exercised.
+
+New tests cover corrupt/unsupported/oversize image input, full decoding, MIME
+mismatch, path rejection, checksums and original byte preservation, bounded
+single ranges, anonymous/foreign-origin denials, private previews, no key/checksum
+in browser DTOs, frozen/stale revisions, catalog product scope, poster publication,
+Staff denial of Owner actions, live-reference revocation and ambiguous commit
+acknowledgement. That last case retains possibly committed original bytes.
+QA fixtures and physical test files are cleaned by exact tracked identities.
+Screenshots were inspected for the new media library and logo presentation.
+
+Initial failures were corrected before final verification: a misplaced client
+directive, an anonymous-export lint warning, stale history-count assertions and
+missing dev env in the first full test invocation, test action payload shape,
+separate route pools exhausting the CMS connection limit, and a redundant poster
+FOR SHARE lock requiring UPDATE privilege. Forward migration 0011 fixes that
+lock without granting asset UPDATE/DELETE or rewriting applied migration 0010.
+
+No live merchant calls, real email, automatic content publication, production
+migration, staging QA, Lighthouse or deployment was performed. Native video upload
+remains disabled until trusted operator-installed tools are configured and tested.
+Images are original bytes, not responsive recompressions; performance of large
+real uploads still needs release QA. Local disk persistence/backups and possible
+crash/ambiguous-commit orphans require the operational care in OPERATIONS.md.
+Current noindex, server RBAC, session limits and publication rules are preserved.
+
+Rollback application/UI changes and rebuild while preserving `.media`, private
+configuration, content and applied 0010/0011 SQL, journal/snapshots, manifests and
+protection verifiers. Do not delete applied migrations or revert the entire Git
+change blindly. Any database privilege reversal requires a separately reviewed
+forward migration. Merge/deployment still require separate authorization.

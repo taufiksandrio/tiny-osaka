@@ -37,7 +37,7 @@ for (const locale of ["id", "en"]) {
         await expect.poll(() => hero.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
         await expect(page.locator(".home-art figcaption")).toHaveText("Takoyaki Shio Negi · Tiny Osaka");
         await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", `/${locale}/menu`);
-        const icon = await request.get("/icon.svg"); expect(await icon.text()).not.toContain(">TO<");
+        const icon = await request.get("/icon.png"); expect(icon.status()).toBe(200); expect(icon.headers()["content-type"]).toContain("image/png");
         await expect(hero).toHaveAttribute("src", "/images/02a - Takoyaki Shio Negi.jpeg");
         expect(await hero.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([1600, 1200]);
         const photo = await request.get("/images/02a%20-%20Takoyaki%20Shio%20Negi.jpeg");

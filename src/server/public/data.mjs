@@ -7,14 +7,19 @@ import { validatePageFields } from "../pages/validation.mjs";
 
 export const usesPublishedContent = () => getPublicSource() === "published";
 let pool;
+const poolKey = Symbol.for("tiny-osaka.public.pool");
 const connection = () => {
   if (!pool) {
-    pool = new pg.Pool(getPublicDatabaseConfig());
-    pool.on("error", () => console.error("Public database connection failed."));
+    pool = globalThis[poolKey];
+    if (!pool) {
+      pool = new pg.Pool(getPublicDatabaseConfig());
+      pool.on("error", () => console.error("Public database connection failed."));
+      globalThis[poolKey] = pool;
+    }
   }
   return pool;
 };
-// Only the two reviewed SQL functions are reachable through this reader.
+// Only reviewed SQL capabilities are reachable through this reader.
 // React cache deduplicates within one server request, never between requests.
 export const readPublicCatalog = async (client, locale) => {
   if (!isPageLocale(locale)) return null;
@@ -28,3 +33,5 @@ export const readPublicPage = async (client, key, locale) => {
 };
 export const publicCatalog = cache(locale => readPublicCatalog(connection(), locale));
 export const publicPage = cache((key, locale) => readPublicPage(connection(), key, locale));
+// Storage keys returned here stay server-only; browser responses contain bytes.
+export const publicMedia = async id => (await connection().query("SELECT public.public_read_media($1::uuid) AS content", [id])).rows[0].content;

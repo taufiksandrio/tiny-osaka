@@ -28,7 +28,7 @@
 .home-theme .home-about { padding-block: 1rem 5rem; }
 .home-theme .home-about-card { max-width: 50rem; padding-block: 2rem; }
 .home-theme [data-slot="button"] { min-height: 44px; max-width: 100%; height: auto; white-space: normal; padding: .75rem 1.25rem; border-radius: .625rem; }
-.site-brand-mark { width: 48px; height: 48px; flex-shrink: 0; }
+.site-brand-mark { width: 64px; height: 64px; flex-shrink: 0; }
 .footer-brand-lockup { display: inline-flex; align-items: center; gap: .75rem; }
 @media (max-width: 767px) {
   .home-theme .home-hero { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-block: 2.5rem 2rem; }

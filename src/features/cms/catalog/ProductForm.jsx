@@ -1,7 +1,12 @@
+"use client";
+import { useContext } from "react";
+import { CatalogContext } from "./client";
+import MediaAttachments from "../media/MediaAttachments";
 import { CatalogForm, TranslationForms, orderField } from "./CatalogForm";
 import VariantForm from "./VariantForm";
 import ModifierForm from "./ModifierForm";
 const ProductForm = ({ product, graph }) => {
+  const context = useContext(CatalogContext);
   const scope = { productId: product.id }, entry = graph.productEntries.find(row => row.productId === product.id);
   return <div className="grid gap-6">
     <TranslationForms title="Produk" action="productTranslation" scope={scope} match={scope} rows={graph.productTranslations} table="productTranslations" />
@@ -14,6 +19,9 @@ const ProductForm = ({ product, graph }) => {
     <h3>Modifier dan topping</h3>
     {graph.modifierGroups.filter(row => row.productId === product.id).sort((a, b) => a.sortOrder - b.sortOrder).map(group => <ModifierForm key={group.id} group={group} productId={product.id} graph={graph} />)}
     <ModifierForm productId={product.id} graph={graph} />
+    <MediaAttachments domain="catalog" revisionId={graph.revision.id} version={graph.revision.version} productId={product.id}
+      disabled={context.disabled} onBusy={context.media.onBusy} onChange={context.media.onChange}
+      onDirty={(key, value) => context.setDirty(`media-${product.id}-${key}`, value)} />
   </div>;
 };
 export default ProductForm;

@@ -21,6 +21,10 @@ export const reviewedMigrations = Object.freeze([
     hash: "58d3eccd13fb7a677e55f1bd93ace040beed1b6f46b14c39cee4b8ff171ca573" }),
   Object.freeze({ tag: "0009_cms_catalog_access", when: 1792206000000,
     hash: "c4f74b9e47b7bce5326ffca6c23bd7d32d35404b2c21877513c1c104c3ed1cb6" }),
+  Object.freeze({ tag: "0010_cms_media_access", when: 1792212000000,
+    hash: "f3190657dac792572dbaa38fab48dcaf0ececeac7a9d8c8e537b4711c40ad956" }),
+  Object.freeze({ tag: "0011_media_poster_read", when: 1792212600000,
+    hash: "bbe0e9ba1926850c601e99063a1f8d4fe7a4fd3fa76f4db7810c41a367bdd14f" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -30,11 +34,11 @@ export const workflowTables = Object.freeze([...pricingTables, "catalog_submissi
 export const contentTables = Object.freeze([...workflowTables, "pages", "page_revisions", "page_translations", "page_submissions", "page_approvals", "page_publications", "page_workflow_events"].sort());
 export const allTables = Object.freeze([...contentTables, "media_assets", "media_events", "catalog_media_refs", "page_media_refs"].sort());
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0009 plan."); };
+const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0011 plan."); };
 
 export const validateDevMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 10 || !Array.isArray(files) || files.length !== 10) refuse();
+    journal.entries?.length !== 12 || !Array.isArray(files) || files.length !== 12) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -44,10 +48,10 @@ export const validateDevMigrationFiles = (journal, files) => {
   }
 };
 
-// Only the reviewed CMS page baseline or fully applied CMS catalog state is allowed.
+// Only reviewed catalog/media states (including the forward intermediate) are allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateDevMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![9, 10].includes(history.length) ||
+  if (!Array.isArray(history) || ![10, 11, 12].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_dev_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();

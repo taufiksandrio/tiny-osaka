@@ -12,6 +12,25 @@ Target < Rp250,000/month, not guaranteed. Propose compact Linux VPS + Node.js Ne
 Durable scheduled publishing, retry queue and observability. Record job state in DB, run via cron/worker with locking; idempotent jobs; alert when scheduled publication is late or sync failed. Avoid duplicate job dispatch after restart.
 
 ## Backup
+
+Phase 3.4 local media lives under `.media/dev` (development) and `.media/test`
+(isolated QA), outside public assets and ignored by Git. Preserve the development
+directory across app rebuilds/checkouts. A future approved production backup must
+capture both database and media bytes consistently; Git is not a media backup.
+Do not prune immutable files automatically. A process crash between immutable
+file creation and metadata commit can leave an orphan; investigate against the
+database before any separately approved cleanup. Rejected uploads and failures
+before completed metadata registration remove only their own new files. If a
+COMMIT acknowledgement is lost, retain the bytes for reconciliation rather than
+delete a possibly committed asset.
+
+Video is optional until the operator installs trusted FFmpeg and ffprobe and sets
+absolute `FFMPEG_PATH` / `FFPROBE_PATH` in private `.env.local`. The application
+never downloads binaries. Check with
+`node --conditions=react-server --env-file=.env.local scripts/check-media-prerequisites.mjs`.
+Missing tools disable video upload; fake MIME metadata cannot bypass inspection.
+Supported delivery codecs are H.264/AAC in MP4 and VP8/VP9/AV1 with Opus/Vorbis
+in WebM; no transcoding is performed. Poster images must be uploaded first.
 Confirmed weekly backup on SAME production VPS. This does not protect against VPS loss, disk failure or total compromise. Mark as accepted HIGH risk. Set retention/restore plan, verify restore in isolated environment and monitor disk capacity; recommend revisiting offsite later, but do not override owner requirement.
 
 ## Monitoring

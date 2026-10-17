@@ -42,6 +42,13 @@ const CatalogEditor = ({ initial, role }) => {
       [...rows, { revisionId: revision.id, ...change.create, ...change.values }];
   }
   const context = { disabled: busy || revision.status !== "draft", mutate,
+    media: { version: revision.version, status: revision.status, revisionId: revision.id, onBusy: setBusy,
+      onChange: async version => {
+        const next = await catalogRequest(`/${revision.id}`, undefined, "GET");
+        if (next.revision.version === version) setGraph(next);
+        else { setGraph(previous => ({ ...previous, revision: { ...previous.revision, version } })); setMessage("Revisi berubah lagi. Salin perubahan sebelum memuat ulang."); }
+        setReadiness(null);
+      } },
     setDirty: (id, value) => setDirty(previous => ({ ...previous, [id]: value })),
     overlay: (id, value) => setChanges(previous => ({ ...previous, [id]: value })) };
   return <CatalogContext.Provider value={context}><div className="cms-editor grid gap-6">

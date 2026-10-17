@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { ImageIcon } from "lucide-react";
+import MediaView from "../media/MediaView";
 const money = value => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 const name = (rows, match, locale, fallback) => rows.find(row => row.locale === locale && Object.entries(match).every(([key, value]) => row[key] === value))?.title || fallback;
 const ProductPreview = ({ product, graph, locale }) => {
@@ -21,8 +22,10 @@ const ProductPreview = ({ product, graph, locale }) => {
     { revisionId: graph.revision.id, productId: product.id, variantId: selectedVariant, optionIds }); } catch { /* Incomplete draft or selection has no valid total. */ }
   const translation = graph.productTranslations.find(row => row.productId === product.id && row.locale === locale);
   const categoryId = graph.productEntries.find(row => row.productId === product.id)?.categoryId;
+  const media = graph.mediaRefs?.filter(ref => ref.productId === product.id).sort((a, b) => a.sortOrder - b.sortOrder)[0];
+  const asset = graph.mediaAssets?.find(row => row.id === media?.assetId);
   return <Card className="min-w-0 overflow-hidden gap-0 py-0 shadow-none">
-    <div className="flex min-h-32 flex-col items-center justify-center gap-2 border-b bg-secondary p-6 text-muted-foreground"><ImageIcon className="size-8" aria-hidden="true" /><span className="text-xs">Preview gambar belum tersedia</span></div>
+    {asset ? <div className="border-b p-4"><MediaView asset={asset} alt={media[locale === "id" ? "altId" : "altEn"] || "Media draft"} /></div> : <div className="flex min-h-32 flex-col items-center justify-center gap-2 border-b bg-secondary p-6 text-muted-foreground"><ImageIcon className="size-8" aria-hidden="true" /><span className="text-xs">Belum ada media produk</span></div>}
     <CardHeader className="py-6"><Badge variant="outline" className="max-w-full whitespace-normal break-words">{name(graph.categoryTranslations, { categoryId }, locale, "Kategori belum diberi nama")}</Badge>
       <h3 className="break-words text-lg">{translation?.title || "Nama produk belum diisi"}</h3>
       <CardDescription className="whitespace-pre-wrap break-words">{translation?.description || "Deskripsi belum diisi untuk bahasa ini."}</CardDescription>

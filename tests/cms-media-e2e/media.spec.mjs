@@ -1,0 +1,71 @@
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import sharp from "sharp";
+import { fields } from "../fixtures/page-content.mjs";
+const origin = "http://127.0.0.1:3033";
+const login = async (page, role) => {
+  await page.goto("/admin/login");
+  await page.getByLabel("Email akun internal", { exact: true }).fill(process.env[role === "owner" ? "QA_AUTH_OWNER_EMAIL" : "QA_AUTH_STAFF_EMAIL"]);
+  await page.getByLabel("Password", { exact: true }).fill(process.env.QA_AUTH_PASSWORD);
+  await page.getByRole("button", { name: "Masuk", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 15000 });
+};
+const write = async (page, path, data, method = "post") => {
+  const response = await page.request[method]("/api/cms/pages" + path, { headers: { origin }, data });
+  expect(response.ok(), await response.text()).toBe(true); return response.json();
+};
+test("anonymous cannot read the library, upload or preview a file", async ({ page }) => {
+  await page.goto("/admin/media"); await expect(page).toHaveURL(/\/admin\/login$/);
+  for (const route of ["/api/cms/media", "/api/cms/media/00000000-0000-0000-0000-000000000000"]) expect((await page.request.get(route)).status()).toBe(401);
+  expect((await page.request.post("/api/cms/media/upload", { headers: { origin }, data: "bad" })).status()).toBe(401);
+});
+test("original upload, draft picker, Owner publication and public revocation work on every viewport", async ({ page, browser }, testInfo) => {
+  test.setTimeout(90000);
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
+  await login(page, "staff"); await page.goto("/admin/media");
+  const bytes = await sharp({ create: { width: 32, height: 24, channels: 3, background: "red" } }).png().toBuffer();
+  await page.getByLabel("File media", { exact: true }).setInputFiles({ name: "synthetic.png", mimeType: "image/png", buffer: bytes });
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Media tersimpan");
+  const list = await (await page.request.get("/api/cms/media")).json();
+  const asset = list.rows[0]; expect(asset.kind).toBe("image"); expect(JSON.stringify(list)).not.toMatch(/storageKey|checksum/);
+  expect(Buffer.compare(await (await page.request.get(`/api/cms/media/${asset.id}`)).body(), bytes)).toBe(0);
+  expect((await page.request.get(`/media/${asset.id}`)).status()).toBe(404);
+  expect((await page.request.post("/api/cms/media/upload", { headers: { origin: "https://foreign.invalid", "content-type": "image/png" }, data: bytes })).status()).toBe(403);
+  expect((await page.request.post("/api/cms/media/upload", { headers: { origin, "content-type": "image/png" }, data: Buffer.from("corrupt") })).status()).toBe(400);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("media-library.png"), fullPage: true });
+  let row = await write(page, "", { pageKey: "about" });
+  for (const locale of ["id", "en"]) row = await write(page, `/${row.id}`, { revisionId: row.id, expectedVersion: row.version, locale, fields: fields() }, "patch");
+  await page.goto(`/admin/pages/about/${row.id}`);
+  await page.getByLabel("Pilih media", { exact: true }).selectOption(asset.id);
+  await page.getByLabel("Alt Indonesia", { exact: true }).fill("Gambar sintetis QA");
+  await page.getByLabel("Alt Inggris", { exact: true }).fill("Synthetic QA image");
+  await expect(page.getByRole("button", { name: "Kirim untuk review", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Simpan media", exact: true }).click();
+  await expect(page.getByText("Media draft tersimpan.", { exact: true })).toBeVisible();
+  row = await (await page.request.get(`/api/cms/pages/${row.id}`)).json();
+  await page.getByRole("button", { name: "Pratinjau konten", exact: true }).click();
+  const preview = page.locator(".cms-page-preview");
+  await expect(preview.getByRole("img", { name: "Gambar sintetis QA", exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  row = await write(page, `/${row.id}/actions`, { action: "submit", revisionId: row.id, expectedVersion: row.version });
+  expect((await page.request.post(`/api/cms/pages/${row.id}/actions`, { headers: { origin }, data: { action: "approve", revisionId: row.id, expectedVersion: row.version, expectedHash: row.contentHash } })).status()).toBe(403);
+  const owner = await browser.newPage();
+  try {
+    await login(owner, "owner");
+    for (const action of ["approve", "publish"]) row = await write(owner, `/${row.id}/actions`, { action, revisionId: row.id, expectedVersion: row.version, expectedHash: row.contentHash });
+    const publicFile = await page.request.get(`/media/${asset.id}`); expect(publicFile.status()).toBe(200);
+    expect(Buffer.compare(await publicFile.body(), bytes)).toBe(0); expect(publicFile.headers()["cache-control"]).toContain("no-store");
+    await page.goto("/id/about");
+    const photo = page.getByRole("img", { name: "Gambar sintetis QA", exact: true }); await expect(photo).toBeVisible();
+    await expect.poll(() => photo.evaluate(img => img.naturalWidth)).toBe(32);
+    let clone = await write(owner, "", { pageKey: "about" });
+    for (const locale of ["id", "en"]) clone = await write(owner, `/${clone.id}`, { revisionId: clone.id, expectedVersion: clone.version, locale, fields: fields() }, "patch");
+    for (const action of ["submit", "approve", "publish"]) clone = await write(owner, `/${clone.id}/actions`, { action, revisionId: clone.id, expectedVersion: clone.version, ...(action === "submit" ? {} : { expectedHash: clone.contentHash }) });
+    expect((await page.request.get(`/media/${asset.id}`)).status()).toBe(404);
+  } finally { await owner.close(); }
+  expect(errors).toEqual([]);
+});

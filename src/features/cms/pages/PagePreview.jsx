@@ -2,7 +2,8 @@ import { Card, CardHeader, CardContent, CardDescription } from "@/components/ui/
 import { Badge } from "@/components/ui/badge";
 import { RichPreview } from "./RichTextEditor";
 import HomeContent from "@/features/public-site/components/HomeContent";
-const PagePreview = ({ spec, fields, locale, labels, unsaved, pageKey }) => <section aria-label="Pratinjau konten" lang={locale} className="cms-page-preview grid gap-6">
+import MediaView from "../media/MediaView";
+const PagePreview = ({ spec, fields, locale, labels, unsaved, pageKey, mediaRefs = [], mediaAssets = [] }) => <section aria-label="Pratinjau konten" lang={locale} className="cms-page-preview grid gap-6">
   {pageKey === "home" && <HomeContent fields={fields} locale={locale} preview />}
   {pageKey !== "home" && <Card className="shadow-none"><CardHeader><div className="flex flex-wrap items-center gap-3"><h2>Pratinjau konten</h2><Badge variant="secondary">{locale === "id" ? "Indonesia" : "Inggris"}</Badge><Badge variant="outline">{unsaved ? "Belum disimpan" : "Revisi tersimpan"}</Badge></div>
     <CardDescription>Pratinjau isi kolom. Susunan website publik mengikuti template halaman tetap.</CardDescription></CardHeader>
@@ -14,5 +15,7 @@ const PagePreview = ({ spec, fields, locale, labels, unsaved, pageKey }) => <sec
     <Card className="min-w-0 shadow-none"><CardHeader><h3>Metadata SEO</h3><CardDescription>Preview metadata dari kolom yang diisi; tampilan mesin pencari dapat berbeda.</CardDescription></CardHeader><CardContent className="grid gap-4 break-words">
       <p className="text-lg font-medium">{fields.seoTitle || "Judul SEO belum diisi"}</p><p className="whitespace-pre-wrap text-sm text-muted-foreground">{fields.seoDescription || "Deskripsi SEO belum diisi"}</p>
     </CardContent></Card></div>
+  {mediaRefs.map(ref => <figure key={ref.id} className="rounded-xl border bg-card p-4"><MediaView asset={mediaAssets.find(asset => asset.id === ref.assetId)} alt={ref[locale === "id" ? "altId" : "altEn"] || "Media draft"} />
+    <figcaption className="mt-3 text-sm">{ref[locale === "id" ? "captionId" : "captionEn"]}</figcaption></figure>)}
 </section>;
 export default PagePreview;

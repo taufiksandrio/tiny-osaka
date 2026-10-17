@@ -5,7 +5,7 @@ const SiteFooter = ({ locale, copy }) => (
   <footer className="site-footer">
     <div className="container footer-inner">
       <div>
-        <Link className="footer-brand footer-brand-lockup" href={`/${locale}`}><Image src="/brand/tiny-osaka-mark.svg" alt="" width={36} height={36} />TINY OSAKA.</Link>
+        <Link className="footer-brand footer-brand-lockup" href={`/${locale}`}><Image src="/brand/tiny-osaka-logo.png" alt="" width={56} height={56} unoptimized />TINY OSAKA.</Link>
         <p>{copy.footerNote}</p>
         <p className="footer-preview">{copy.footerPreview}</p>
       </div>
