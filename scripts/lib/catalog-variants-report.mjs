@@ -24,7 +24,7 @@ export const reportQueries = Object.freeze({
   products: `SELECT e.product_id, p.slug, t.title, c.slug AS category_slug FROM public.product_entries e
     JOIN public.products p ON p.id = e.product_id JOIN public.category_entries ce ON ce.revision_id = e.revision_id AND ce.category_id = e.category_id
     JOIN public.categories c ON c.id = ce.category_id
-    LEFT JOIN public.product_translations t ON t.revision_id = e.revision_id AND t.product_id = e.product_id AND t.locale = 'id'
+    LEFT JOIN public.product_translations t ON t.revision_id = e.revision_id AND t.product_id = e.product_id
     WHERE e.revision_id = $1::uuid ORDER BY p.slug`,
   variants: `SELECT product_id, code, base_price FROM public.product_variants WHERE revision_id = $1::uuid ORDER BY product_id, sort_order, code`,
   groups: `SELECT g.product_id, g.code AS group_code, count(o.id)::int AS options, coalesce(max(o.price_delta), 0)::text AS max_price_delta,

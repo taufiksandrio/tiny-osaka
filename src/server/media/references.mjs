@@ -5,7 +5,7 @@ import { mediaPolicy } from "./policy.mjs";
 import { mediaPersistence, resolveMediaActor } from "./assets.mjs";
 import { mediaFail, validMediaUuid, validMediaVersion, validateMediaRefText } from "./validation.mjs";
 
-// API shape of a stored reference: Indonesian labels only (legacy English columns are never exposed).
+// API shape of a stored reference: Indonesian labels only.
 export const mediaRefDto = ref => ({ id: ref.id, revisionId: ref.revisionId, ...(ref.productId ? { productId: ref.productId } : {}),
   assetId: ref.assetId, altId: ref.altId, captionId: ref.captionId, sortOrder: ref.sortOrder });
 

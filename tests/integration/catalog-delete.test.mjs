@@ -36,7 +36,7 @@ const pgError = pattern => error => pattern.test(error.cause?.message ?? error.m
 const productTables = ["products", "product_entries", "product_translations", "product_variants", "variant_translations", "catalog_media_refs"];
 
 test("migration 0014 objects match the reviewed definitions and privileges", async () => {
-  await verifyCatalogProtection(fixture.owner, "tiny_osaka_test_owner", 15);
+  await verifyCatalogProtection(fixture.owner, "tiny_osaka_test_owner", 17);
   await verifyCmsProtection(fixture.owner, "tiny_osaka_test_owner", { deletion: true });
 });
 test("Owner deletes permanently: one snapshot left, no product rows anywhere, log written, slug reusable", () => check(async (api, tx) => {

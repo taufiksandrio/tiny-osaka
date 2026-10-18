@@ -8,7 +8,7 @@ import { createMediaAssets } from "../../src/server/media/assets.mjs";
 import { createMediaReferences } from "../../src/server/media/references.mjs";
 import { hashCatalogContent, catalogContentFields } from "../../src/server/catalog/content-hash.mjs";
 import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
-import { legacyPageGraph, pageGraph } from "../fixtures/page-content.mjs";
+import { pageGraph } from "../fixtures/page-content.mjs";
 import { imageAsset, inspectedImage, reference } from "../fixtures/media.mjs";
 
 const code = expected => error => error instanceof MediaError && error.code === expected;
@@ -96,15 +96,15 @@ test("references enforce twelve per page/product and cannot target another produ
   assert.throws(() => validateRevisionMedia(c, "catalog"), code("INVALID_MEDIA"));
 });
 
-test("legacy catalog/page hash constants remain unchanged with empty or absent media", () => {
+test("catalog/page hash constants are stable with empty or absent media", () => {
   const c = { revision: { id: "revision", version: 1, status: "draft" },
     ...Object.fromEntries(Object.entries(catalogContentFields).map(([table, fields]) => [table,
       [1, 2].map(n => Object.fromEntries(fields.map(field => [field, field + n])))])) };
-  const p = legacyPageGraph(); p.revision.id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const p = pageGraph(); p.revision.id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
   for (const row of p.translations) row.revisionId = p.revision.id;
   for (const empty of [{}, { mediaRefs: [], mediaAssets: [] }]) {
-    assert.equal(hashCatalogContent({ ...c, ...empty }), "5a34ea627645ae1f1b7c033fd77db669275027c57a2f77c8c7a204bf6181fb3e");
-    assert.equal(hashPageContent({ ...p, ...empty }), "f3a9b7c579098c61387c2e8921f9fb133e65d6334b91e4198762be0b134e6f89");
+    assert.equal(hashCatalogContent({ ...c, ...empty }), "a741f0ac947c0cbf9da81ee2f7289f358c8d7adc5613280086606ef19d61afb7");
+    assert.equal(hashPageContent({ ...p, ...empty }), "b7fc022c8fb9c2a802eb8d978bc915b513e66befa6e4b5d40a33bf39095777a8");
   }
 });
 
@@ -112,8 +112,8 @@ test("media hash binds labels, captions, order, asset metadata and inspector che
   const g = mediaGraph(), expected = hashPageContent(g);
   assert.notEqual(expected, hashPageContent({ ...g, mediaRefs: [], mediaAssets: [] }));
   for (const mutate of [
-    g => { g.mediaRefs[0].altId += " changed"; }, g => { g.mediaRefs[0].altEn += " changed"; },
-    g => { g.mediaRefs[0].captionId = "caption"; }, g => { g.mediaRefs[0].captionEn = "caption"; },
+    g => { g.mediaRefs[0].altId += " changed"; },
+    g => { g.mediaRefs[0].captionId = "caption"; },
     g => { g.mediaRefs[0].sortOrder = 1; }, g => { g.mediaRefs[0].id = randomUUID(); },
     g => { g.mediaAssets[0].checksum = "b".repeat(64); }, g => { g.mediaAssets[0].storageKey = randomUUID() + ".png"; },
     g => { g.mediaAssets[0].byteSize++; }, g => { g.mediaAssets[0].width++; }, g => { g.mediaAssets[0].height++; },
@@ -123,13 +123,12 @@ test("media hash binds labels, captions, order, asset metadata and inspector che
   assert.ok(mediaHashSnapshot(g, "page"));
 });
 
-test("public media DTO exposes Indonesian labels and omits storage/checksum/actor metadata and legacy English text", () => {
+test("public media DTO exposes Indonesian labels and omits storage/checksum/actor metadata metadata", () => {
   const g = mediaGraph();
-  g.mediaRefs[0].altEn = "legacy English alt"; g.mediaRefs[0].captionEn = "legacy English caption";
   const dto = publicRevisionMedia(g, "page");
   assert.equal(dto[0].alt, "QA gambar");
   assert.equal(dto[0].caption, "");
-  for (const secret of ["storageKey", "checksum", "createdAt", "actorId", "altEn", "captionEn", "legacy English"]) assert.ok(!JSON.stringify(dto).includes(secret));
+  for (const secret of ["storageKey", "checksum", "createdAt", "actorId"]) assert.ok(!JSON.stringify(dto).includes(secret));
 });
 
 test("all media operations require trusted identity, ignoring forged request roles", async () => {

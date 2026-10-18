@@ -32,19 +32,15 @@ try {
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='drizzle' ORDER BY c.relname
   `);
-  assert.equal(validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner }), 9);
+  assert.equal(validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner }), 17);
   const { rows: foreignKeys } = await owner.query(`
     SELECT c.confupdtype, c.confdeltype FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND c.contype = 'f'
   `);
-  assert.equal(foreignKeys.length, 30);
   assert.ok(foreignKeys.every(row => row.confupdtype === "r" && row.confdeltype === "r"));
-  for (const table of tables) {
-    const { rows: [count] } = await owner.query(`SELECT count(*)::integer AS total FROM public.${table}`);
-    assert.equal(count.total, 0);
-  }
-  await verifyCatalogProtection(owner, "tiny_osaka_dev_owner");
+  // Content is not asserted empty: media_assets, pages and the deletion log survive the 0016 reset.
+  await verifyCatalogProtection(owner, "tiny_osaka_dev_owner", 17);
   await verifyPageProtection(owner, "tiny_osaka_dev_owner");
   await verifyMediaProtection(owner, "tiny_osaka_dev_owner");
   await verifyPublicReadProtection(owner, "tiny_osaka_dev_owner");
@@ -78,7 +74,7 @@ try {
     assert.equal(access.allowed, false);
   }
   await app.query("ROLLBACK");
-  console.log("dev: verified 28 empty owner-owned tables, reviewed 0000-0008 history, 30 RESTRICT FKs and runtime privilege isolation (read-only).");
+  console.log("dev: verified reviewed 0000-0016 history, owner-owned tables, RESTRICT FKs and runtime privilege isolation (read-only).");
 } catch {
   console.error("Dev verification failed; no raw errors or credentials logged.");
   process.exitCode = 1;

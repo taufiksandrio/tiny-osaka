@@ -3,7 +3,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { catalogRevisions, categories, products, productVariants, variantTranslations, categoryEntries, categoryTranslations,
   productEntries, productTranslations, modifierGroups, modifierOptions,
   modifierGroupTranslations, modifierOptionTranslations } from "../db/schema.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 // Internal persistence only: callers must supply an authorized server DB context.
 // No route, role grant, approval or published-content operation is exposed here.
@@ -83,8 +82,8 @@ const saveTranslation = async (db, input, entry, translations, identityKey) => {
         .where(and(eq(entry.revisionId, revisionId), eq(entry[identityKey], identity))).limit(1);
       if (!parent) throw new CatalogDraftError("ENTRY_NOT_FOUND", "Category or product does not belong to this draft.");
       // Explicit fields only. Text is stored literally, never interpreted as HTML.
-      const [saved] = await tx.insert(translations).values({ revisionId, [identityKey]: identity, locale: STORED_LOCALE, title, description })
-        .onConflictDoUpdate({ target: [translations.revisionId, translations[identityKey], translations.locale],
+      const [saved] = await tx.insert(translations).values({ revisionId, [identityKey]: identity, title, description })
+        .onConflictDoUpdate({ target: [translations.revisionId, translations[identityKey]],
           set: { title, description } })
         .returning({ title: translations.title, description: translations.description });
       return { revisionId, version, [identityKey]: identity, ...saved };
@@ -146,8 +145,8 @@ export const saveVariantTranslation = async (db, input) => {
         .where(and(eq(productVariants.revisionId, revisionId), eq(productVariants.productId, productId),
           eq(productVariants.id, variantId))).limit(1);
       if (!variant) throw new CatalogDraftError("VARIANT_NOT_FOUND", "Variant does not belong to the selected draft and product.");
-      const [saved] = await tx.insert(variantTranslations).values({ revisionId, productId, variantId, locale: STORED_LOCALE, title, description })
-        .onConflictDoUpdate({ target: [variantTranslations.revisionId, variantTranslations.productId, variantTranslations.variantId, variantTranslations.locale],
+      const [saved] = await tx.insert(variantTranslations).values({ revisionId, productId, variantId, title, description })
+        .onConflictDoUpdate({ target: [variantTranslations.revisionId, variantTranslations.productId, variantTranslations.variantId],
           set: { title, description } }).returning({ title: variantTranslations.title, description: variantTranslations.description });
       return { revisionId, version, productId, variantId: variant.id, ...saved };
     });
@@ -240,10 +239,9 @@ const saveModifierTranslation = async (db, input, isOption) => {
       if (isOption) conditions.push(eq(modifierOptions.groupId, groupId));
       const [row] = await tx.select({ id: parent.id }).from(parent).where(and(...conditions)).limit(1);
       if (!row) throw new CatalogDraftError(isOption ? "MODIFIER_OPTION_NOT_FOUND" : "MODIFIER_GROUP_NOT_FOUND", "Modifier translation parent does not belong to the selected draft scope.");
-      const values = { revisionId, productId, groupId: isOption ? groupId : row.id, locale: STORED_LOCALE, title, description };
+      const values = { revisionId, productId, groupId: isOption ? groupId : row.id, title, description };
       const target = [translations.revisionId, translations.productId, translations.groupId];
       if (isOption) { values.optionId = row.id; target.push(modifierOptionTranslations.optionId); }
-      target.push(translations.locale);
       const [saved] = await tx.insert(translations).values(values)
         .onConflictDoUpdate({ target, set: { title, description } }).returning({ title: translations.title, description: translations.description });
       return { revisionId, version, productId, groupId: values.groupId, ...(isOption ? { optionId: row.id } : {}), ...saved };
@@ -321,15 +319,15 @@ export const updateProductPlacement = (db, input) => updateCatalogPlacement(db, 
 // and any future approval fields are not copied by this operation.
 const cloneChildren = [
   ["category_entries", ["category_id", "sort_order"]],
-  ["category_translations", ["category_id", "locale", "title", "description"]],
+  ["category_translations", ["category_id", "title", "description"]],
   ["product_entries", ["product_id", "category_id", "sort_order", "grabfood_url", "gofood_url", "shopeefood_url"]],
-  ["product_translations", ["product_id", "locale", "title", "description"]],
+  ["product_translations", ["product_id", "title", "description"]],
   ["product_variants", ["product_id", "id", "code", "base_price", "sort_order"]],
-  ["variant_translations", ["product_id", "variant_id", "locale", "title", "description"]],
+  ["variant_translations", ["product_id", "variant_id", "title", "description"]],
   ["modifier_groups", ["product_id", "id", "code", "selection_type", "min_selections", "max_selections", "sort_order"]],
-  ["modifier_group_translations", ["product_id", "group_id", "locale", "title", "description"]],
+  ["modifier_group_translations", ["product_id", "group_id", "title", "description"]],
   ["modifier_options", ["product_id", "group_id", "id", "code", "price_delta", "sort_order"]],
-  ["modifier_option_translations", ["product_id", "group_id", "option_id", "locale", "title", "description"]],
+  ["modifier_option_translations", ["product_id", "group_id", "option_id", "title", "description"]],
   ["catalog_media_refs", ["id", "product_id", "asset_id", "alt_id", "caption_id", "sort_order"]],
 ];
 
@@ -355,10 +353,8 @@ export const cloneCatalogDraft = async (db, input) => {
         const table = sql`${sql.identifier("public")}.${sql.identifier(name)}`;
         const fields = sql.join(columns.map(column => sql.identifier(column)), sql`, `);
         const skip = excludeProductId && columns.includes("product_id") ? sql` AND product_id <> ${excludeProductId}::uuid` : sql``;
-        // Legacy non-Indonesian translation rows stay in the old snapshot; the new draft carries Indonesian rows only.
-        const only = columns.includes("locale") ? sql` AND locale = ${STORED_LOCALE}` : sql``;
         await tx.execute(sql`INSERT INTO ${table} (revision_id, ${fields})
-          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid${skip}${only}`);
+          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid${skip}`);
       }
       return draft;
     });

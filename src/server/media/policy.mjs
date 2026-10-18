@@ -10,5 +10,5 @@ export const mediaMimeExtensions = Object.freeze({
 });
 export const mediaAssetFields = Object.freeze(["id", "kind", "storageKey", "mime", "byteSize", "width", "height",
   "durationMs", "checksum", "externalId", "posterId"]);
-export const mediaRefFields = Object.freeze(["revisionId", "id", "assetId", "altId", "altEn", "captionId", "captionEn", "sortOrder"]);
+export const mediaRefFields = Object.freeze(["revisionId", "id", "assetId", "altId", "captionId", "sortOrder"]);
 

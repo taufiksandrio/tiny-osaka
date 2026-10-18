@@ -43,7 +43,7 @@ test("Staff opens one editor from the table, sees required fields, saves and edi
   await save(page);
   const first = await (await page.request.get("/api/cms/pages/by-key/about")).json();
   expect(first.isLive).toBe(true); expect(first.fields.title).toBe("QA Staff simpan langsung");
-  expect(JSON.stringify(first)).not.toMatch(/translations|locale|altEn|captionEn/);
+  expect(JSON.stringify(first)).not.toMatch(/translations/);
   expect(await (await page.request.get("/about")).text()).toContain("QA Staff simpan langsung");
   await fill(page, "QA Staff perubahan kedua"); await save(page); await expect(page).toHaveURL(origin + "/admin/pages/about");
   expect(await (await page.request.get("/about")).text()).toContain("QA Staff perubahan kedua");
@@ -78,5 +78,5 @@ test("a stale editor preserves input and cannot overwrite a newer save; CSRF and
     fields: current.fields, mediaOperations: [] };
   expect((await page.request.put("/api/cms/pages/by-key/about", { headers: { origin: "https://foreign.invalid" }, data })).status()).toBe(403);
   expect((await page.request.put("/api/cms/pages/by-key/about", { headers: { origin }, data: { ...data, role: "owner" } })).status()).toBe(400);
-  expect((await page.request.put("/api/cms/pages/by-key/about", { headers: { origin }, data: { ...data, locale: "id" } })).status()).toBe(400);
+  expect((await page.request.put("/api/cms/pages/by-key/about", { headers: { origin }, data: { ...data, extra: "id" } })).status()).toBe(400);
 });

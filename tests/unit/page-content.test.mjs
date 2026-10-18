@@ -5,7 +5,7 @@ import { PageContentError, validatePageFields, validatePageReadiness } from "../
 import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
 import { createPageWorkflow } from "../../src/server/pages/workflow.mjs";
 import { getPublishedPage } from "../../src/server/pages/published.mjs";
-import { fields, legacyPageGraph, pageGraph, rich } from "../fixtures/page-content.mjs";
+import { fields, pageGraph, rich } from "../fixtures/page-content.mjs";
 
 const code = expected => error => error instanceof PageContentError && error.code === expected;
 const badContent = run => assert.throws(run, code("INVALID_CONTENT"));
@@ -25,23 +25,13 @@ test("nine fixed page identities map to existing routes and immutable template d
   for (const key of ["unknown", "__proto__", "constructor", 1, null]) assert.equal(getPageDefinition(key), null);
 });
 
-test("partial drafts are allowed; submission requires Indonesian title and body while legacy rows remain valid", () => {
+test("partial drafts are allowed; submission requires Indonesian title and body", () => {
   assert.equal(validatePageFields("about", {}), true);
   badContent(() => validatePageFields("about", {}, { ready: true }));
   for (const key of Object.keys(pageDefinitions)) {
     assert.equal(validatePageReadiness(pageGraph(key)), true);
-    const missing = pageGraph(key); missing.translations = missing.translations.filter(row => row.locale !== "id");
+    const missing = pageGraph(key); missing.translations = [];
     assert.throws(() => validatePageReadiness(missing), code("NOT_READY"));
-  }
-});
-
-test("legacy English rows are ignored by readiness, never required or rejected", () => {
-  for (const key of Object.keys(pageDefinitions)) {
-    assert.equal(validatePageReadiness(legacyPageGraph(key)), true);
-    const broken = legacyPageGraph(key); broken.translations[1].fields = { forged: "x" };
-    assert.equal(validatePageReadiness(broken), true);
-    const onlyLegacy = legacyPageGraph(key); onlyLegacy.translations.shift();
-    assert.throws(() => validatePageReadiness(onlyLegacy), code("NOT_READY"));
   }
 });
 
@@ -121,9 +111,8 @@ test("readiness refuses duplicate Indonesian rows, foreign scopes, wrong templat
   ]) { const g = pageGraph(); mutate(g); assert.throws(() => validatePageReadiness(g), code("NOT_READY")); }
 });
 
-test("hash tolerates JSON object/locale order and excludes workflow metadata", () => {
-  const a = legacyPageGraph(), b = structuredClone(a);
-  b.translations.reverse();
+test("hash tolerates JSON object key order and excludes workflow metadata", () => {
+  const a = pageGraph(), b = structuredClone(a);
   for (const row of b.translations) row.fields = Object.fromEntries(Object.entries(row.fields).reverse());
   b.revision.status = "published"; b.revision.createdAt = new Date(); b.revision.contentHash = "ignored";
   assert.equal(hashPageContent(a), hashPageContent(b));
@@ -139,7 +128,7 @@ test("hash binds all fields, ordered rich content, identities, scope and version
   for (const mutate of [
     g => { g.revision.id = "changed"; }, g => { g.revision.pageKey = "home"; }, g => { g.revision.version++; },
     g => { g.page.template = "home"; }, g => { g.page.key = "home"; },
-    g => { g.translations[0].revisionId = "changed"; }, g => { g.translations[0].locale = "jp"; },
+    g => { g.translations[0].revisionId = "changed"; },
   ]) { const b = structuredClone(a); mutate(b); assert.notEqual(hashPageContent(b), expected); }
   a.translations[0].fields.body.blocks.push(rich("second").blocks[0]);
   const b = structuredClone(a); b.translations[0].fields.body.blocks.reverse();

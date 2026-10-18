@@ -2,7 +2,6 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
 import { getPageDefinition } from "./templates.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 import { loadPageGraph, pagePersistence } from "./drafts.mjs";
 import { hashPageContent } from "./content-hash.mjs";
 import { pageFail, validatePageReadiness } from "./validation.mjs";
@@ -23,7 +22,7 @@ export const getPublishedPage = async (db, input) => {
       const graph = await loadPageGraph(tx, row.revision);
       validatePageReadiness(graph);
       if (hashPageContent(graph) !== row.revision.contentHash) pageFail("HASH_CONFLICT", "Published page integrity differs.");
-      const translation = graph.translations.find(row => row.locale === STORED_LOCALE);
+      const translation = graph.translations[0];
       return { pageKey: graph.page.key, template: graph.page.template, revisionId: row.revision.id,
         version: row.revision.version, fields: translation.fields,
         media: publicRevisionMedia(graph, "page") };

@@ -8,7 +8,6 @@ import { pageDefinitions } from "../pages/templates.mjs";
 import { validPageUuid } from "../pages/validation.mjs";
 import { cmsFail } from "./request-policy.mjs";
 import { loadRevisionMedia, mediaRefDto } from "../media/references.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 import { assetDto } from "./media.mjs";
 
 export const createCmsPages = ({ db, authenticate }) => {
@@ -36,7 +35,7 @@ export const createCmsPages = ({ db, authenticate }) => {
       const translations = await tx.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, id));
       const [live] = await tx.select().from(s.pagePublications).where(eq(s.pagePublications.pageKey, row.pageKey));
       const media = await loadRevisionMedia(tx, id, "page");
-      return { ...row, fields: translations.find(item => item.locale === STORED_LOCALE)?.fields ?? {}, mediaRefs: media.mediaRefs.map(mediaRefDto), mediaAssets: media.mediaAssets.map(assetDto), isLive: live?.revisionId === id };
+      return { ...row, fields: translations[0]?.fields ?? {}, mediaRefs: media.mediaRefs.map(mediaRefDto), mediaAssets: media.mediaAssets.map(assetDto), isLive: live?.revisionId === id };
     }),
     current: (headers, pageKey) => run(headers, (tx, actor) => readCurrentPage(tx, pageKey, createCmsPages({ db: tx, authenticate: async () => actor }))),
     saveCurrent: (headers, input) => run(headers, (tx, actor) => saveCurrentPage(tx, actor, input, createCmsPages({ db: tx, authenticate: async () => actor }))),

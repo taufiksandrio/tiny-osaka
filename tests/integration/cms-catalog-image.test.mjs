@@ -54,7 +54,7 @@ const count = async (tx, table) => Number((await rows(tx, `SELECT count(*) AS n 
 const stream = bytes => new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } });
 const png = (color = "red") => sharp({ create: { width: 40, height: 30, channels: 3, background: color } }).png().toBuffer();
 const upload = async (media, jar, color) => (await media.upload(jar, stream(await png(color)), "image/png")).id;
-const liveRefs = (tx, slug) => rows(tx, `SELECT r.asset_id, r.alt_id, r.alt_en, r.caption_id, r.caption_en, r.sort_order FROM public.catalog_media_refs r
+const liveRefs = (tx, slug) => rows(tx, `SELECT r.asset_id, r.alt_id, r.caption_id, r.sort_order FROM public.catalog_media_refs r
   JOIN public.catalog_publication p ON p.revision_id = r.revision_id JOIN public.products pr ON pr.id = r.product_id WHERE pr.slug = '${slug}' ORDER BY r.sort_order`);
 const assetCount = async (tx, ids) => Number((await rows(tx, `SELECT count(*) AS n FROM public.media_assets WHERE id IN (${ids.map(id => `'${id}'`).join(",")})`))[0].n);
 const body = (card, extra) => ({ name: card.name, description: card.description, price: card.price, expectedVersion: card.version, ...extra });
@@ -65,7 +65,7 @@ test("Staff uploads and attaches an image on create; alt is stored in alt_id and
   assert.deepEqual(product.image, { assetId: asset, alt: "Takoyaki di piring" });
   assert.deepEqual((await api.list(jars[OWNER])).products[0].image, product.image);
   const refs = await liveRefs(tx, product.slug);
-  assert.deepEqual(refs.map(row => [row.asset_id, row.alt_id, row.alt_en, row.caption_id, row.caption_en, row.sort_order]), [[asset, "Takoyaki di piring", "", "", "", 0]]);
+  assert.deepEqual(refs.map(row => [row.asset_id, row.alt_id, row.caption_id, row.sort_order]), [[asset, "Takoyaki di piring", "", 0]]);
   assert.equal((await api.create(jars[OWNER], input("QA Tanpa Gambar"))).product.image, null);
   assert.equal((await api.create(jars[OWNER], input("QA Null", 1, { imageAssetId: null }))).product.image, null);
 }));

@@ -71,15 +71,14 @@ const withFixture = async (run, seed = true) => {
           [ids.source, ids.product, ids.group, option, code, price, sort]);
       }
       {
-        const locale = "id";
-        await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title,description) VALUES ($1,$2,$3,$4,$5)", [ids.source, ids.category, locale, `QA category ${locale}`, `QA category description ${locale}`]);
-        await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title,description) VALUES ($1,$2,$3,$4,$5)", [ids.source, ids.product, locale, `QA product ${locale}`, `QA product description ${locale}`]);
+        await client.query("INSERT INTO category_translations(revision_id,category_id,title,description) VALUES ($1,$2,$3,$4)", [ids.source, ids.category, "QA category", "QA category description"]);
+        await client.query("INSERT INTO product_translations(revision_id,product_id,title,description) VALUES ($1,$2,$3,$4)", [ids.source, ids.product, "QA product", "QA product description"]);
         for (const variant of [ids.variant, ids.large]) {
-          await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,locale,title,description) VALUES ($1,$2,$3,$4,$5,$6)", [ids.source, ids.product, variant, locale, `QA variant ${locale}`, `QA variant description ${locale}`]);
+          await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,title,description) VALUES ($1,$2,$3,$4,$5)", [ids.source, ids.product, variant, "QA variant", "QA variant description"]);
         }
-        await client.query("INSERT INTO modifier_group_translations(revision_id,product_id,group_id,locale,title,description) VALUES ($1,$2,$3,$4,$5,$6)", [ids.source, ids.product, ids.group, locale, `QA group ${locale}`, `QA group description ${locale}`]);
+        await client.query("INSERT INTO modifier_group_translations(revision_id,product_id,group_id,title,description) VALUES ($1,$2,$3,$4,$5)", [ids.source, ids.product, ids.group, "QA group", "QA group description"]);
         for (const option of [ids.option, ids.freeOption]) {
-          await client.query("INSERT INTO modifier_option_translations(revision_id,product_id,group_id,option_id,locale,title,description) VALUES ($1,$2,$3,$4,$5,$6,$7)", [ids.source, ids.product, ids.group, option, locale, `QA option ${locale}`, `QA option description ${locale}`]);
+          await client.query("INSERT INTO modifier_option_translations(revision_id,product_id,group_id,option_id,title,description) VALUES ($1,$2,$3,$4,$5,$6)", [ids.source, ids.product, ids.group, option, "QA option", "QA option description"]);
         }
       }
     }
@@ -154,25 +153,6 @@ test("incomplete localized drafts retain exactly the missing fields", () => with
   const draft = await trackedClone();
   assert.deepEqual(await snapshot(client, draft.id), before);
   assert.equal(before.variant_translations.length, 1);
-}));
-
-test("legacy English translation rows stay in the source snapshot and are not copied to the new draft", () => withFixture(async ({ client, ids, trackedClone }) => {
-  const indonesianOnly = await snapshot(client, ids.source);
-  const legacy = "'en','QA legacy English','QA legacy English description'";
-  await client.query(`INSERT INTO category_translations(revision_id,category_id,locale,title,description) VALUES ($1,$2,${legacy})`, [ids.source, ids.category]);
-  await client.query(`INSERT INTO product_translations(revision_id,product_id,locale,title,description) VALUES ($1,$2,${legacy})`, [ids.source, ids.product]);
-  for (const variant of [ids.variant, ids.large]) {
-    await client.query(`INSERT INTO variant_translations(revision_id,product_id,variant_id,locale,title,description) VALUES ($1,$2,$3,${legacy})`, [ids.source, ids.product, variant]);
-  }
-  await client.query(`INSERT INTO modifier_group_translations(revision_id,product_id,group_id,locale,title,description) VALUES ($1,$2,$3,${legacy})`, [ids.source, ids.product, ids.group]);
-  for (const option of [ids.option, ids.freeOption]) {
-    await client.query(`INSERT INTO modifier_option_translations(revision_id,product_id,group_id,option_id,locale,title,description) VALUES ($1,$2,$3,$4,${legacy})`, [ids.source, ids.product, ids.group, option]);
-  }
-  const withLegacy = await snapshot(client, ids.source);
-  assert.notDeepEqual(withLegacy, indonesianOnly);
-  const draft = await trackedClone();
-  assert.deepEqual(await snapshot(client, draft.id), indonesianOnly, "the new draft carries Indonesian rows only");
-  assert.deepEqual(await snapshot(client, ids.source), withLegacy, "the source snapshot keeps its English rows");
 }));
 
 test("an exhausted source version can be copied into a fresh version-one draft", () => withFixture(async ({ client, ids, trackedClone }) => {

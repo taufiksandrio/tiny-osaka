@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { pricingTables, workflowTables } from "./test-migration-plan.mjs";
+import { verifyLanguageColumnsRemoved } from "./language-removal-protection.mjs";
 
 // Hash-pinned SQL remains the source of truth for hand-written functions.
 // ADR-037 objects (migration 0014). The purge function is the only guard bypass.
@@ -38,7 +39,8 @@ const verifyOrderLinkColumns = async client => {
   for (const row of checks) assert.ok(row.def.includes("https://") && row.def.includes("2048"));
 };
 
-export const verifyCatalogProtection = async (client, owner, state = 4) => {
+// state = length of the applied migration history; callers without it check the latest reviewed state.
+export const verifyCatalogProtection = async (client, owner, state = 17) => {
   const source = readFileSync(new URL("../../drizzle/0002_catalog_publication.sql", import.meta.url), "utf8");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(catalog_\w+)\(\) RETURNS trigger\s+LANGUAGE plpgsql SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
   if (state >= 4) {
@@ -66,6 +68,7 @@ export const verifyCatalogProtection = async (client, owner, state = 4) => {
   }
   if (state >= 15) await verifyDeletionObjects(client, owner);
   if (state >= 16) await verifyOrderLinkColumns(client);
+  if (state >= 17) await verifyLanguageColumnsRemoved(client);
   const wanted = [];
   const add = (table, name, fn, type = 31, deferred = false) => wanted.push({
     table, name, fn, type, deferred, initially: deferred, enabled: "O",

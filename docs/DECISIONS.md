@@ -1189,6 +1189,8 @@ Standing verified commit/push workflow applies; merge/deploy remain separate.
 
 ## ADR-034 - Indonesian-only website and simple atomic CMS forms (2026-10-17)
 
+Status update (2026-10-18, ADR-039): klausa retensi "legacy English rows, immutable hashes/receipts, published pointers dan nilai field lama dipertahankan; algoritma hash tidak berubah" diamandemen oleh ADR-039: kolom bahasa dihapus dan konten ber-hash DB test/dev direset (bukan dihitung ulang).
+
 Status update (2026-10-18): Diamandemen ADR-037 (katalog) dan ADR-038 (URL: `/en` dan `/id` kini sama-sama 404 biasa tanpa alihan; lihat catatan penghapusan kode bahasa di akhir ADR-038).
 
 Explicitly approved by the user after replacing the bilingual/translation proposal.
@@ -1565,3 +1567,28 @@ kolom/baris/fungsi tersebut (yang mengubah hash dan melanggar retensi ADR-034) m
 terpisah. Tautan rich text lama berprefiks pada data tersimpan dibiarkan (hasilnya 404). Kontrak: docs/DATA_CONTRACTS.md
 bagian "Kontrak satu bahasa". Rollback: revert kode/test/dokumen; tidak ada perubahan data atau skema.
 
+## ADR-039 - Hapus kolom locale, alt_en, caption_en; reset konten uji (2026-10-18)
+
+Status: Disetujui user (2026-10-18; "kolom locale hapus saja", "jangan ada /id /eng apapun caranya"). Mengamandemen ADR-034
+(klausa retensi legacy English rows / hash / receipt dan "algoritma hash tidak berubah") dan melengkapi ADR-038.
+
+Konteks: situs hanya berbahasa Indonesia. Kolom bahasa (di 6 tabel terjemahan, ikut PK), alt_en/caption_en (2 tabel media ref),
+serta argumen bahasa pada fungsi public_read_* tidak berfungsi. Hash snapshot immutable memuat kolom-kolom itu, sehingga
+menghapusnya membatalkan verifikasi semua snapshot, approval, dan receipt lama. Seluruh data di DB tiny_osaka_test dan
+tiny_osaka_dev adalah data uji; tidak ada data nyata, DB produksi, atau VPS.
+
+Keputusan: (1) Migrasi 0016 (drizzle/0016_drop_language_columns.sql, struktural saja) menghapus kolom tersebut, mengubah PK,
+CHECK, dan fungsi public_read_* (tanpa argumen bahasa) serta catalog_purge_product. Berkas 0016 gagal bila 10 tabel terkait berisi
+konten. (2) Konten ber-hash di DB test/dev (revisi, terjemahan, approval, submission, event, pointer publikasi, job, lampiran
+media, identitas produk/kategori) DIHAPUS dalam transaksi yang sama lewat hook prepare runner (scripts/lib/reset-local-content.mjs),
+bukan dihitung ulang; tidak ada hash/approval/receipt lama yang ditulis ulang. cms_auth, media_assets, media_events, pages,
+catalog_deletion_log dan riwayat migrasi dipertahankan. (3) Semua hash sesudah 0016 dihitung dari daftar field tanpa
+locale/altEn/captionEn; format tidak diberi penanda versi baru; golden test mengunci format. (4) Runner menolak reset tanpa
+TINY_OSAKA_CONFIRM_CONTENT_RESET=0016, di luar role owner lokal/host loopback, atau dari state selain 16; ia mencetak jumlah baris
+yang akan dihapus dan berhenti sebelum BEGIN bila variabel tidak ada. (5) Nama tabel *_translations dipertahankan. (6) Tidak berlaku
+untuk produksi: migrasi produksi nanti butuh ADR, backup, dan persetujuan terpisah, dan hash lama TIDAK boleh ditulis ulang.
+
+Konsekuensi: invariant "hash/receipt immutable" tetap untuk semua snapshot yang dibuat sesudah 0016; tidak ada snapshot sebelum
+0016 yang dapat diverifikasi karena sudah dihapus (termasuk jejak workflow events di DB test/dev). Situs dev tidak punya konten
+terbit sampai Owner membuat dan mempublikasi ulang. Pemulihan hanya lewat backup DB (pg_dump sebelum migrasi). Kode, test, dan
+dokumen kehilangan konsep bahasa (stored-language.mjs dihapus). Spec: docs/specs/drop-locale-column.md.

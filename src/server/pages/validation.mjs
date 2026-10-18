@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer";
 import { validateRevisionMedia } from "../media/validation.mjs";
 import { getPageDefinition, isInternalPageLink, pageTemplateFields } from "./templates.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 export class PageContentError extends Error {
   constructor(code, message) { super(message); this.name = "PageContentError"; this.code = code; }
@@ -77,8 +76,7 @@ export const validatePageReadiness = graph => {
     !validPageVersion(graph.revision.version) || !Array.isArray(graph.translations) || graph.translations.length < 1) {
     pageFail("NOT_READY", "Require an Indonesian page revision.");
   }
-  // Frozen snapshots may still hold legacy non-Indonesian rows: they stay in the graph for hashing but are ignored here.
-  const rows = graph.translations.filter(row => row.locale === STORED_LOCALE);
+  const rows = graph.translations;
   try {
     if (rows.length !== 1) invalid();
     if (rows[0].revisionId !== graph.revision.id) invalid();

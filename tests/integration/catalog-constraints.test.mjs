@@ -17,8 +17,8 @@ const withGraph = async (run) => {
     await client.query("INSERT INTO products(id,slug) VALUES ($1,$2)", [ids.product, slug]);
     await client.query("INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [ids.revision, ids.category]);
     await client.query("INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [ids.revision, ids.product, ids.category]);
-    await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title) VALUES ($1,$2,'id','QA category only')", [ids.revision, ids.category]);
-    await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title) VALUES ($1,$2,'id','QA product only')", [ids.revision, ids.product]);
+    await client.query("INSERT INTO category_translations(revision_id,category_id,title) VALUES ($1,$2,'QA category only')", [ids.revision, ids.category]);
+    await client.query("INSERT INTO product_translations(revision_id,product_id,title) VALUES ($1,$2,'QA product only')", [ids.revision, ids.product]);
     await run(client, ids, slug);
   } finally {
     try {
@@ -55,11 +55,11 @@ test("accepts a valid draft graph with expected defaults", () => withGraph(async
   assert.equal(revision.status, "draft");
   assert.equal(revision.version, 1);
   assert.ok(revision.created_at instanceof Date);
-  const { rows } = await client.query(`SELECT t.locale,t.title,t.description FROM product_entries p
+  const { rows } = await client.query(`SELECT t.title,t.description FROM product_entries p
     JOIN category_entries c ON c.revision_id=p.revision_id AND c.category_id=p.category_id
     JOIN product_translations t ON t.revision_id=p.revision_id AND t.product_id=p.product_id
-    WHERE p.revision_id=$1 ORDER BY t.locale`, [ids.revision]);
-  assert.deepEqual(rows.map(row => row.locale), ["id"]);
+    WHERE p.revision_id=$1`, [ids.revision]);
+  assert.equal(rows.length, 1);
   assert.ok(rows.every(row => row.title === "QA product only" && row.description === ""));
 }));
 
@@ -69,23 +69,22 @@ test("rejects duplicate identities/entries/translations", () => withGraph(async 
   }
   await reject(client, "INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [ids.revision, ids.category], "23505", "category_entries_pk");
   await reject(client, "INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [ids.revision, ids.product, ids.category], "23505", "product_entries_pk");
-  await reject(client, "INSERT INTO product_translations(revision_id,product_id,locale,title) VALUES ($1,$2,'id','QA duplicate')", [ids.revision, ids.product], "23505", "product_translations_pk");
+  await reject(client, "INSERT INTO product_translations(revision_id,product_id,title) VALUES ($1,$2,'QA duplicate')", [ids.revision, ids.product], "23505", "product_translations_pk");
 }));
 
-test("rejects invalid locale and blank localized names", () => withGraph(async (client, ids) => {
+test("rejects blank localized names", () => withGraph(async (client, ids) => {
   for (const [table, key, id] of [
     ["category_translations", "category_id", ids.category], ["product_translations", "product_id", ids.product],
   ]) {
-    await reject(client, `INSERT INTO ${table}(revision_id,${key},locale,title) VALUES ($1,$2,'jp','QA only')`, [ids.revision, id], "23514", `${table}_locale`);
-    await reject(client, `UPDATE ${table} SET title='   ' WHERE revision_id=$1 AND ${key}=$2 AND locale='id'`, [ids.revision, id], "23514", `${table}_title_nonempty`);
+    await reject(client, `UPDATE ${table} SET title='   ' WHERE revision_id=$1 AND ${key}=$2`, [ids.revision, id], "23514", `${table}_title_nonempty`);
   }
 }));
 
 test("rejects orphaned and cross-revision relationships", () => withGraph(async (client, ids) => {
   await reject(client, "INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [ids.revision, randomUUID()], "23503", "category_entries_category_id_categories_id_fk");
   await reject(client, "INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [ids.otherRevision, ids.product, ids.category], "23503", "product_entries_category_in_revision_fk");
-  await reject(client, "INSERT INTO product_translations(revision_id,product_id,locale,title) VALUES ($1,$2,'id','QA only')", [ids.otherRevision, ids.product], "23503", "product_translations_entry_fk");
-  await reject(client, "INSERT INTO category_translations(revision_id,category_id,locale,title) VALUES ($1,$2,'id','QA only')", [ids.otherRevision, ids.category], "23503", "category_translations_entry_fk");
+  await reject(client, "INSERT INTO product_translations(revision_id,product_id,title) VALUES ($1,$2,'QA only')", [ids.otherRevision, ids.product], "23503", "product_translations_entry_fk");
+  await reject(client, "INSERT INTO category_translations(revision_id,category_id,title) VALUES ($1,$2,'QA only')", [ids.otherRevision, ids.category], "23503", "category_translations_entry_fk");
 }));
 
 test("rejects unsafe ranges/status and malformed slugs", () => withGraph(async (client, ids) => {

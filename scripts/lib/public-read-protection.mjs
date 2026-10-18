@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-export const verifyPublicReadProtection = async (client, owner, { media = true } = {}) => {
-  const source = readFileSync(new URL("../../drizzle/0006_public_read_path.sql", import.meta.url), "utf8") +
+export const verifyPublicReadProtection = async (client, owner, { media = true, preDrop = false } = {}) => {
+  // 0016 replaced the 0006 functions (ADR-039); preDrop checks the intermediate states 7..16 against 0006.
+  const source = readFileSync(new URL(preDrop ? "../../drizzle/0006_public_read_path.sql" : "../../drizzle/0016_drop_language_columns.sql", import.meta.url), "utf8") +
     (media ? readFileSync(new URL("../../drizzle/0010_cms_media_access.sql", import.meta.url), "utf8") : "");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(public_read_\w+)\(([^)]*)\) RETURNS jsonb\s+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
   const app = owner.replace("_owner", "_app");

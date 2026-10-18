@@ -13,10 +13,10 @@
 - API CMS halaman: `PUT /api/cms/pages/by-key/:key` dan batch tidak menerima `locale`; operasi media tidak menerima `altEn`/`captionEn` (field tak dikenal ditolak 400 oleh `exactInput`). Pembacaan halaman mengembalikan `fields` (objek template) sebagai pengganti `translations`; `mediaRefs` hanya memuat `id, revisionId, productId?, assetId, altId, captionId, sortOrder`.
 - Keluaran publik: halaman `{ pageKey, template, revisionId, version, fields, media }`; media `{ id, productId?, sortOrder, alt, caption, asset, poster }`. Tanpa `locale`, `altEn`, `captionEn`.
 - Tautan internal rich text hanya path kode tanpa prefix (`/menu`, `/about`, `/`). `/id/...` dan `/en/...` ditolak validasi (tautan lama pada data tersimpan dibiarkan dan menghasilkan 404).
-- Lapisan data yang terkunci skema (tanpa migrasi): kolom `locale text NOT NULL` pada enam tabel terjemahan (nilai selalu `'id'`, satu konstanta `src/server/db/stored-language.mjs`), kolom `alt_en`/`caption_en` (default `''`), serta fungsi SQL `public_read_catalog(p_locale)`/`public_read_page(p_key, p_locale)` yang dipanggil dengan `'id'`.
-- Baris `en` dan `alt_en`/`caption_en` terisi pada snapshot lama: loader graf tetap memuatnya dan daftar kolom hash tidak berubah (hash tidak berubah, dijaga test golden `tests/unit/legacy-hash-golden.test.mjs`); validasi/kesiapan mengabaikan baris non-`id` (tidak menolak); klon draft menyalin baris `id` dan teks `id` saja; keluaran API/publik tidak memuatnya.
+- Skema (migrasi 0016, ADR-039): kolom bahasa pada enam tabel terjemahan, `alt_en`/`caption_en`, dan argumen bahasa pada fungsi SQL sudah dihapus. PK: `category_translations (revision_id, category_id)`, `product_translations (revision_id, product_id)`, `variant_translations (revision_id, product_id, variant_id)`, `modifier_group_translations (revision_id, product_id, group_id)`, `modifier_option_translations (revision_id, product_id, group_id, option_id)`, `page_translations (revision_id)`. Fungsi SQL: `public.public_read_catalog()` dan `public.public_read_page(p_key text)`. `catalog_purge_product(uuid, text)` mengambil nama dari baris terjemahan terbaru.
+- Hash (ADR-039): dihitung dari baris tanpa kolom bahasa; format tidak diberi penanda versi baru karena tidak ada snapshot lama yang tersisa (konten ber-hash DB test/dev dihapus oleh hook reset runner migrasi 0016, bukan dihitung ulang). Format dikunci golden `tests/unit/content-hash-golden.test.mjs`. Hash lama TIDAK boleh ditulis ulang di lingkungan mana pun; produksi nanti butuh ADR dan persetujuan terpisah.
 
-Public content and CMS authoring are Indonesian-only. No English switch, alternate language output or automatic translation provider is used. Legacy English rows remain within immutable snapshots and hashes; new content requires only Indonesian. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
+Public content and CMS authoring are Indonesian-only. No English switch, alternate language output or automatic translation provider is used. New content requires only Indonesian; no language column exists after migration 0016. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
 
 > USANG untuk katalog (ADR-037) dan halaman (ADR-036): Approval ADR-035, jadwal, dan "Schedules use Asia/Jakarta" tidak berlaku; scheduling dihapus. Staff dan Owner menyimpan langsung tayang; Hapus produk hanya Owner.
 
@@ -126,8 +126,8 @@ No public read path uses them yet.
 | products | UUID id, globally unique product slug |
 | category_entries | Composite PK (revision_id, category_id), nonnegative integer sort_order |
 | product_entries | Composite PK (revision_id, product_id), category_id, nonnegative integer sort_order |
-| category_translations | Composite PK (revision_id, category_id, locale), title, description |
-| product_translations | Composite PK (revision_id, product_id, locale), title, description |
+| category_translations | Composite PK (revision_id, category_id), title, description |
+| product_translations | Composite PK (revision_id, product_id), title, description |
 
 UUID identities default to PostgreSQL's gen_random_uuid(). Slugs use lowercase
 ASCII letters/digits separated by single hyphens, matching existing shared-route
@@ -141,7 +141,7 @@ from crossing revisions. All six foreign keys use RESTRICT for update/delete;
 removal must explicitly handle children. Product/category lookup has a composite
 index on product_entries(revision_id, category_id).
 
-The stored locale value is always id (the schema still allows id/en). Titles must contain content after PostgreSQL btrim
+Translation tables hold one row per entry (no language column since 0016). Titles must contain content after PostgreSQL btrim
 removes ordinary surrounding spaces; description defaults to empty text. This
 is not full Unicode whitespace validation, rich-text sanitization, translation
 verification or proof that a translation exists. A future submit/publish validator
@@ -179,11 +179,11 @@ Six revision-owned tables extend the draft foundation:
 | Table | Contract |
 |---|---|
 | product_variants | PK revision/product/id; code unique per product revision; base_price; sort_order |
-| variant_translations | title/description (stored locale id); FK revision/product/variant |
+| variant_translations | title/description; FK revision/product/variant |
 | modifier_groups | PK revision/product/id; unique code; single/multiple; min/max selections; sort_order |
-| modifier_group_translations | title/description (stored locale id); FK revision/product/group |
+| modifier_group_translations | title/description; FK revision/product/group |
 | modifier_options | PK revision/product/group/id; code unique per group; option ID also unique per product revision; price_delta; sort_order |
-| modifier_option_translations | title/description (stored locale id); FK revision/product/group/option |
+| modifier_option_translations | title/description; FK revision/product/group/option |
 
 All six new FKs use RESTRICT update/delete and include revision/product scope.
 Groups apply to every variant of their product. There is no product-level base
@@ -297,8 +297,8 @@ or HTML sanitization; future rendering must escape text and never insert it as H
 A shared advanceDraftVersion helper is used by price and both translation writers.
 Inside a transaction, compare/increment the draft root, check that the referenced
 category/product entry exists in that revision, then upsert only title/description
-for the exact revision/identity composite key (stored locale id). Legacy rows of other locales and
-other revisions, root status and shared identity/slug stay unchanged.
+for the exact revision/identity composite key. Other revisions,
+root status and shared identity/slug stay unchanged.
 Unknown extra input properties are not persisted. Missing parent returns
 ENTRY_NOT_FOUND with root increment rolled back. Stale/missing root conflicts and
 all SQL failures likewise preserve data/version atomically. Every successful save
@@ -334,7 +334,7 @@ saveVariantTranslation(db, { revisionId, productId, variantId, expectedVersion,
 title, description }) validates full scope, version and the same plain-text
 rules as category/product translations. Parent variant must exist in this exact
 product/revision. Upsert only title/description for the composite key;
-legacy other-locale rows, other revisions and variant identity/prices/code/order remain unchanged.
+other revisions and variant identity/prices/code/order remain unchanged.
 Return version and saved fields. Shared text validation preserves literal content,
 rejects empty names/NUL and permits an explicit empty description; not HTML parsing.
 
@@ -484,7 +484,7 @@ No checkout, merchant API, sync, business price cap or verified content is added
 
 Seven tables extend the catalog schema without altering applied 0000-0003:
 pages(key,template); page_revisions(id,page_key,status,version,content_hash,created_at);
-page_translations(revision_id,locale,fields jsonb); page_submissions; page_approvals;
+page_translations(revision_id,fields jsonb); page_submissions; page_approvals;
 page_publications(page_key PK,revision_id,content_hash,published_at); page_workflow_events.
 All eight new FKs use RESTRICT. Publication has composite FKs to both the exact
 page/revision/hash and its approval, preventing cross-page pointer substitution.
@@ -536,9 +536,9 @@ FOR UPDATE in the same transaction. Missing/stale/frozen revisions conflict. Clo
 locks exact source FOR SHARE, copies only the Indonesian translation row (and Indonesian media text) to a new draft UUID/version 1
 with hash NULL and no inherited receipt/approval/audit. Exhausted versions can clone.
 
-Submission validates the Indonesian row (legacy rows ignored) then freezes exact root version and computes SHA256.
+Submission validates the single page row then freezes exact root version and computes SHA256.
 Hash format 1 binds page key/template, revision ID/pageKey/version and every stored
-translation row including its locale column and fields (unchanged format; old snapshots with English rows keep their hash). JSON object keys and rows sort deterministically;
+translation row (revision_id and fields; no language column since 0016, ADR-039). JSON object keys and rows sort deterministically;
 block/span/list order remains meaningful. Status/timestamps/actors are excluded.
 Every workflow transition and published read revalidates structure and integrity.
 
@@ -607,8 +607,7 @@ keys, byte integrity and ownership enforcement; database guards protect metadata
 only and cannot stop privileged external storage changes.
 
 catalog_media_refs and page_media_refs use composite (revision_id,id) PK and asset
-FK, alt_id/alt_en (<=500), caption_id/caption_en (<=2000), sort_order nonnegative.
-(alt_en/caption_en are legacy columns: never written by the application, default empty, still part of the media hash.)
+FK, alt_id (<=500), caption_id (<=2000), sort_order nonnegative (alt_en/caption_en removed by 0016).
 Catalog additionally has product_id and composite FK to exact revision/product.
 No numeric inventory or media tokens/styles enter templates. Alt labels apply to
 images and accessible video labels/posters; caption may be empty. The alt label
@@ -653,8 +652,7 @@ physical storage, image optimization, custom iframe HTML or automatic network sy
 
 ## Phase 2 public application read boundary
 
-Runtime calls public.public_read_catalog(locale) and public.public_read_page(key,
-locale) with parameters; the application always passes the stored value id from one constant. Both return null without a matching live publication,
+Runtime calls public.public_read_catalog() and public.public_read_page(key) (no language argument since 0016). Both return null without a matching live publication,
 published revision and approval hash. No arbitrary revision
 lookup is accepted. Catalog DTO has categories/products/variant and
 modifier labels; page DTO has fixed fields and media labels. Media omits

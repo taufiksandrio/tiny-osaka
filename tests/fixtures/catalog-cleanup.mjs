@@ -11,7 +11,7 @@ export const removeQaDeletionLog = async owner => {
     await owner.query("ALTER TABLE public.catalog_deletion_log DISABLE TRIGGER USER");
     await owner.query("DELETE FROM public.catalog_deletion_log WHERE product_name LIKE 'QA %'");
     await owner.query("ALTER TABLE public.catalog_deletion_log ENABLE TRIGGER USER");
-    await verifyCatalogProtection(owner, "tiny_osaka_test_owner", 15);
+    await verifyCatalogProtection(owner, "tiny_osaka_test_owner", 17);
     await owner.query("COMMIT");
   } catch (error) { await owner.query("ROLLBACK"); throw error; }
 };

@@ -38,10 +38,6 @@ const complete = async (db, key = "about") => {
   await staff.saveTranslation({ revisionId: revision.id, expectedVersion: 1, fields: fields(key) });
   return root(db, revision.id);
 };
-// Reproduces a snapshot written before the single-language change: it still has an English row.
-// Written straight to the draft table because no application writer accepts English any more.
-const addLegacyEnglish = (db, revisionId, key = "about") =>
-  db.insert(s.pageTranslations).values({ revisionId, locale: "en", fields: { ...fields(key), title: "QA legacy English title" } });
 const approve = async (db, revision) => workflow(db).approve(token(await workflow(db, "staff").submit(token(revision))));
 const rejectSql = async (db, client, statement, params = [], expected = "23514") => {
   await assert.rejects(db.transaction(() => client.query(statement, params)),
@@ -57,7 +53,7 @@ test("all nine templates complete review/publication with JSONB-stable hashes", 
     const result = await workflow(db).publish(token(approval));
     assert.deepEqual(await workflow(db).publish(token(result)), result);
     const page = await published(db, key);
-    assert.equal(page.pageKey, key); assert.ok(!Object.hasOwn(page, "locale"));
+    assert.equal(page.pageKey, key);
     assert.deepEqual(page.fields, fields(key));
     assert.ok(!JSON.stringify(page).includes("qa-owner-subject"));
     assert.ok(!Object.hasOwn(page, "contentHash"));
@@ -91,23 +87,20 @@ test("page saves overwrite the single Indonesian row and reject invalid content 
   await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 2, fields: fields() }), code("REVISION_CONFLICT"));
 }));
 
-test("legacy English rows stay hashable, are ignored by readiness/publication and are not cloned", () => withRollback(async db => {
+test("the stored hash is reproducible from the loader and a clone carries the single content row", () => withRollback(async db => {
   const revision = await complete(db);
-  await addLegacyEnglish(db, revision.id);
   const live = await workflow(db).publish(token(await approve(db, await root(db, revision.id))));
   const frozen = await root(db, revision.id);
   assert.equal(frozen.status, "published");
-  // The stored hash covers both rows and is still reproducible by the loader + unchanged hash format.
   const graph = await loadPageGraph(db, frozen);
-  assert.deepEqual(graph.translations.map(row => row.locale).sort(), ["en", "id"]);
+  assert.equal(graph.translations.length, 1);
   assert.equal(hashPageContent(graph), live.contentHash);
   const page = await published(db);
   assert.deepEqual(page.fields, fields());
-  assert.ok(!JSON.stringify(page).includes("legacy English"));
   const clone = await workflow(db, "staff").cloneDraft({ sourceRevisionId: revision.id, expectedSourceVersion: frozen.version });
   const cloned = await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, clone.id));
-  assert.deepEqual(cloned.map(row => row.locale), ["id"]);
-  assert.equal((await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, revision.id))).length, 2);
+  assert.equal(cloned.length, 1);
+  assert.deepEqual(cloned[0].fields, fields());
   await workflow(db).publish(token(await approve(db, await root(db, clone.id))));
   assert.equal((await published(db)).revisionId, clone.id);
   // The old snapshot hash is untouched by the replacement.
@@ -126,12 +119,12 @@ test("unwired identity denies all writes; Staff cannot forge Owner approval/publ
   await assert.rejects(workflow(db).publish(token(submitted)), code("REVISION_CONFLICT"));
 }));
 
-test("database rejects unsupported templates/locales, oversized JSON and cross-page pointers", () => withRollback(async (db, client) => {
+test("database rejects unsupported templates, a second content row, oversized JSON and cross-page pointers", () => withRollback(async (db, client) => {
   const a = await complete(db, "about"), b = await complete(db, "home");
   await rejectSql(db, client, "INSERT INTO pages(key,template) VALUES ('evil','about')");
   await rejectSql(db, client, "UPDATE pages SET template='home' WHERE key='about'");
   await rejectSql(db, client, "UPDATE page_revisions SET page_key='home' WHERE id=$1", [a.id]);
-  await rejectSql(db, client, "INSERT INTO page_translations(revision_id,locale,fields) VALUES ($1,'jp','{}')", [a.id]);
+  await rejectSql(db, client, "INSERT INTO page_translations(revision_id,fields) VALUES ($1,'{}')", [a.id], "23505");
   await rejectSql(db, client, "UPDATE page_translations SET fields=jsonb_build_object('title',repeat('x',131073)) WHERE revision_id=$1", [a.id]);
   await rejectSql(db, client, "UPDATE page_translations SET fields='[]'::jsonb WHERE revision_id=$1", [a.id]);
   const live = await workflow(db).publish(token(await approve(db, a)));
@@ -142,7 +135,7 @@ test("database rejects unsupported templates/locales, oversized JSON and cross-p
 test("direct draft JSON outside the template is caught before submission", () => withRollback(async db => {
   const revision = await complete(db);
   await db.update(s.pageTranslations).set({ fields: { ...fields(), style: "forged" } })
-    .where(and(eq(s.pageTranslations.revisionId, revision.id), eq(s.pageTranslations.locale, "id")));
+    .where(eq(s.pageTranslations.revisionId, revision.id));
   await assert.rejects(workflow(db).submit(token(revision)), code("NOT_READY"));
   assert.equal((await root(db, revision.id)).status, "draft");
   assert.equal((await db.select().from(s.pageSubmissions)).length, 0);
@@ -258,8 +251,7 @@ test("draft create, translation save and clone roll back actual SQL errors after
     revisionId: revision.id, expectedVersion: revision.version, fields: { ...fields(), title: "QA losing write" },
   }), code("PERSISTENCE_FAILED"));
   assert.deepEqual(await root(db, revision.id), before);
-  assert.deepEqual((await db.select().from(s.pageTranslations).where(and(eq(s.pageTranslations.revisionId, revision.id),
-    eq(s.pageTranslations.locale, "id"))))[0].fields, fields());
+  assert.deepEqual((await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, revision.id)))[0].fields, fields());
   await assert.rejects(workflow(broken, "staff").cloneDraft({
     sourceRevisionId: revision.id, expectedSourceVersion: revision.version,
   }), code("PERSISTENCE_FAILED"));
@@ -419,8 +411,8 @@ test("all twenty-four tables remain empty with exact protection definitions and 
     for (const table of contentTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
-    // Tepat 16: migrasi 0001..0015 (0015 = link order) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 16);
+    // Tepat 17: migrasi 0001..0016 (0016 = kolom bahasa dihapus) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 17);
   } finally { await client.end(); }
 });
 

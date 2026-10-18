@@ -1,6 +1,6 @@
 # Spec: Tahap B - hapus kolom `locale`, `alt_en`, `caption_en` dari skema (migrasi 0016)
 
-Status: MENUNGGU PERSETUJUAN USER. Belum ada kode, migrasi, skrip, atau dokumen lain yang diubah (hanya file spec ini).
+Status: DISETUJUI dan DITERAPKAN di kode (Tahap B, ADR-039). Berkas migrasi: drizzle/0016_drop_language_columns.sql. Eksekusi ke DB test/dev dicatat di laporan implementasi; ubah baris ini menjadi SELESAI setelah migrasi test dan dev dijalankan.
 Tanggal: 2026-10-18. Penulis: PM. Lanjutan `docs/specs/remove-all-locale-code.md` (opsi B2 DISETUJUI user: "kolom locale hapus saja ga berguna"; sebelumnya: "pokoknya jangan ada /id /eng apapun caranya lakukan").
 Prasyarat keras: Tahap A (kode/test/dokumen tanpa locale) selesai dan hijau. Tahap B mengubah skema, hash, dan data; kode dan DB harus berpindah bersamaan (lihat bagian 9, risiko R2).
 

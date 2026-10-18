@@ -2,7 +2,6 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, asc, eq, sql } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 import { cmsFail } from "../cms/request-policy.mjs";
 import { publishingLock } from "../publishing/locks.mjs";
 import * as drafts from "./drafts.mjs";
@@ -48,7 +47,7 @@ const priceOf = variants => {
 export const buildCards = graph => {
   const cards = graph.productEntries.map(entry => {
     const identity = graph.products.find(row => row.id === entry.productId);
-    const translation = graph.productTranslations.find(row => row.productId === entry.productId && row.locale === STORED_LOCALE);
+    const translation = graph.productTranslations.find(row => row.productId === entry.productId);
     const ref = graph.mediaRefs.filter(row => row.productId === entry.productId)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))[0];
     const asset = ref ? graph.mediaAssets.find(row => row.id === ref.assetId) : null;

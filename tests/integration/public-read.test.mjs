@@ -39,7 +39,7 @@ test("application reader exposes exact published content with no table or draft 
       assert.deepEqual(Object.keys(listed).filter(key => /modifier|option/i.test(key)), []);
       const page = await readPublicPage(app, "about");
       assert.equal(page.fields.title, "QA about");
-      assert.ok(!("locale" in page), "public page payload carries no language field");
+      assert.deepEqual(Object.keys(page).sort(), ["fields", "media", "pageKey", "revisionId", "template", "version"]);
       assert.equal(page.media[0].asset.kind, "youtube");
       assert.equal(page.media[0].poster.kind, "image");
       for (const secret of ["contentHash", "storageKey", "checksum", "approvedBy", "qa-public-owner"]) {
@@ -74,7 +74,7 @@ test("application reader exposes exact published content with no table or draft 
     await wf.publish(token(approved));
     assert.equal((await readPublicPage(app, "about")).fields.title, "Replacement", "fresh query sees replacement");
     assert.equal(await readPublicPage(app, "about');DROP TABLE pages;--"), null);
-    assert.equal((await app.query("SELECT public.public_read_page($1,$2) AS value", ["unknown", "id"])).rows[0].value, null);
+    assert.equal((await app.query("SELECT public.public_read_page($1) AS value", ["unknown"])).rows[0].value, null);
   } finally {
     await app.end();
     try { await cleanupPublicFixture(owner, tracked); await assertEmptyTestDatabase(owner); } finally { await owner.end(); }

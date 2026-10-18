@@ -43,7 +43,7 @@ const stored = (tx, slug) => rows(tx, `SELECT e.grabfood_url, e.gofood_url, e.sh
 const pgError = pattern => error => pattern.test(error.cause?.message ?? error.message);
 
 test("migration 0015 columns and CHECK constraints match the reviewed definition", async () => {
-  await verifyCatalogProtection(fixture.owner, "tiny_osaka_test_owner", 16);
+  await verifyCatalogProtection(fixture.owner, "tiny_osaka_test_owner", 17);
 });
 test("create with and without links; GET returns all three fields (null when empty); trimming applies", () => check(async (api, tx) => {
   const plain = (await api.create(jars[STAFF], input("QA Polos"))).product;
