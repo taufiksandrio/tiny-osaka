@@ -1,6 +1,5 @@
 import { validatePricingProduct } from "./pricing.mjs";
 import { validateRevisionMedia } from "../media/validation.mjs";
-import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 export const catalogReviewTables = Object.freeze(["categoryEntries", "productEntries", "categoryTranslations", "productTranslations",
   "productVariants", "variantTranslations", "modifierGroups", "modifierGroupTranslations", "modifierOptions", "modifierOptionTranslations"]);
@@ -73,8 +72,7 @@ export const validateCatalogReviewReadiness = (graph, { allowEmpty = false } = {
     for (const row of map.values()) if (!int4(row.sortOrder)) issue("INVALID_SORT", type, row[idKey]);
   }
   const localized = (name, parents, parentKeys, childKeys, type) => {
-    // Legacy non-Indonesian rows of old snapshots are ignored, never rejected.
-    const translations = index(rows[name].filter(row => row?.locale === STORED_LOCALE), childKeys, type);
+    const translations = index(rows[name], childKeys, type);
     for (const row of translations.values()) {
       if (!parents.has(childKeys.map(key => row[key]).join(":"))) issue("ORPHAN_TRANSLATION", type, row[childKeys.at(-1)]);
       if (typeof row.title !== "string" || !row.title.trim() || typeof row.description !== "string" ||

@@ -81,40 +81,36 @@ export const productEntries = pgTable("product_entries", {
 export const categoryTranslations = pgTable("category_translations", {
   revisionId: uuid("revision_id").notNull(),
   categoryId: uuid("category_id").notNull(),
-  locale: text("locale").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
 }, (table) => [
   primaryKey({
     name: "category_translations_pk",
-    columns: [table.revisionId, table.categoryId, table.locale],
+    columns: [table.revisionId, table.categoryId],
   }),
   foreignKey({
     name: "category_translations_entry_fk",
     columns: [table.revisionId, table.categoryId],
     foreignColumns: [categoryEntries.revisionId, categoryEntries.categoryId],
   }).onDelete("restrict").onUpdate("restrict"),
-  check("category_translations_locale", sql`${table.locale} IN ('id', 'en')`),
   check("category_translations_title_nonempty", sql`length(btrim(${table.title})) > 0`),
 ]);
 
 export const productTranslations = pgTable("product_translations", {
   revisionId: uuid("revision_id").notNull(),
   productId: uuid("product_id").notNull(),
-  locale: text("locale").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
 }, (table) => [
   primaryKey({
     name: "product_translations_pk",
-    columns: [table.revisionId, table.productId, table.locale],
+    columns: [table.revisionId, table.productId],
   }),
   foreignKey({
     name: "product_translations_entry_fk",
     columns: [table.revisionId, table.productId],
     foreignColumns: [productEntries.revisionId, productEntries.productId],
   }).onDelete("restrict").onUpdate("restrict"),
-  check("product_translations_locale", sql`${table.locale} IN ('id', 'en')`),
   check("product_translations_title_nonempty", sql`length(btrim(${table.title})) > 0`),
 ]);
 
@@ -142,15 +138,13 @@ export const variantTranslations = pgTable("variant_translations", {
   revisionId: uuid("revision_id").notNull(),
   productId: uuid("product_id").notNull(),
   variantId: uuid("variant_id").notNull(),
-  locale: text("locale").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
 }, (table) => [
-  primaryKey({ name: "variant_translations_pk", columns: [table.revisionId, table.productId, table.variantId, table.locale] }),
+  primaryKey({ name: "variant_translations_pk", columns: [table.revisionId, table.productId, table.variantId] }),
   foreignKey({ name: "variant_translations_variant_fk", columns: [table.revisionId, table.productId, table.variantId],
     foreignColumns: [productVariants.revisionId, productVariants.productId, productVariants.id],
   }).onDelete("restrict").onUpdate("restrict"),
-  check("variant_translations_locale", sql`${table.locale} IN ('id', 'en')`),
   check("variant_translations_title_nonempty", sql`length(btrim(${table.title})) > 0`),
 ]);
 
@@ -180,15 +174,13 @@ export const modifierGroupTranslations = pgTable("modifier_group_translations", 
   revisionId: uuid("revision_id").notNull(),
   productId: uuid("product_id").notNull(),
   groupId: uuid("group_id").notNull(),
-  locale: text("locale").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
 }, (table) => [
-  primaryKey({ name: "modifier_group_translations_pk", columns: [table.revisionId, table.productId, table.groupId, table.locale] }),
+  primaryKey({ name: "modifier_group_translations_pk", columns: [table.revisionId, table.productId, table.groupId] }),
   foreignKey({ name: "modifier_group_translations_group_fk", columns: [table.revisionId, table.productId, table.groupId],
     foreignColumns: [modifierGroups.revisionId, modifierGroups.productId, modifierGroups.id],
   }).onDelete("restrict").onUpdate("restrict"),
-  check("modifier_group_translations_locale", sql`${table.locale} IN ('id', 'en')`),
   check("modifier_group_translations_title_nonempty", sql`length(btrim(${table.title})) > 0`),
 ]);
 
@@ -218,15 +210,13 @@ export const modifierOptionTranslations = pgTable("modifier_option_translations"
   productId: uuid("product_id").notNull(),
   groupId: uuid("group_id").notNull(),
   optionId: uuid("option_id").notNull(),
-  locale: text("locale").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
 }, (table) => [
-  primaryKey({ name: "modifier_option_translations_pk", columns: [table.revisionId, table.productId, table.groupId, table.optionId, table.locale] }),
+  primaryKey({ name: "modifier_option_translations_pk", columns: [table.revisionId, table.productId, table.groupId, table.optionId] }),
   foreignKey({ name: "modifier_option_translations_option_fk", columns: [table.revisionId, table.productId, table.groupId, table.optionId],
     foreignColumns: [modifierOptions.revisionId, modifierOptions.productId, modifierOptions.groupId, modifierOptions.id],
   }).onDelete("restrict").onUpdate("restrict"),
-  check("modifier_option_translations_locale", sql`${table.locale} IN ('id', 'en')`),
   check("modifier_option_translations_title_nonempty", sql`length(btrim(${table.title})) > 0`),
 ]);
 
@@ -317,11 +307,9 @@ export const pageRevisions = pgTable("page_revisions", {
 
 export const pageTranslations = pgTable("page_translations", {
   revisionId: uuid("revision_id").notNull().references(() => pageRevisions.id, { onDelete: "restrict", onUpdate: "restrict" }),
-  locale: text("locale").notNull(),
   fields: jsonb("fields").notNull(),
 }, table => [
-  primaryKey({ name: "page_translations_pk", columns: [table.revisionId, table.locale] }),
-  check("page_translations_locale", sql`${table.locale} IN ('id','en')`),
+  primaryKey({ name: "page_translations_pk", columns: [table.revisionId] }),
   check("page_translations_object", sql`jsonb_typeof(${table.fields}) = 'object'`),
   check("page_translations_size", sql`octet_length(${table.fields}::text) <= 131072`),
 ]);
@@ -425,13 +413,11 @@ const mediaReferenceFields = () => ({
   id: uuid("id").defaultRandom().notNull(),
   assetId: uuid("asset_id").notNull().references(() => mediaAssets.id, { onDelete: "restrict", onUpdate: "restrict" }),
   altId: text("alt_id").notNull().default(""),
-  altEn: text("alt_en").notNull().default(""),
   captionId: text("caption_id").notNull().default(""),
-  captionEn: text("caption_en").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 const mediaReferenceChecks = (table, prefix) => [
-  check(prefix + "_text", sql`length(${table.altId}) <= 500 AND length(${table.altEn}) <= 500 AND length(${table.captionId}) <= 2000 AND length(${table.captionEn}) <= 2000`),
+  check(prefix + "_text", sql`length(${table.altId}) <= 500 AND length(${table.captionId}) <= 2000`),
   check(prefix + "_sort", sql`${table.sortOrder} >= 0`),
 ];
 export const catalogMediaRefs = pgTable("catalog_media_refs", {

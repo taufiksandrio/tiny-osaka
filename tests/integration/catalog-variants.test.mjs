@@ -88,7 +88,7 @@ const versionOf = async (client, ids) => (await client.query("SELECT version FRO
 const variantsOf = async (client, ids, revision = ids.revision) => (await client.query(
   "SELECT id,code,base_price,sort_order FROM product_variants WHERE revision_id=$1 AND product_id=$2 ORDER BY code", [revision, ids.product])).rows;
 const textsOf = async (client, ids, variantId, revision = ids.revision) => (await client.query(
-  "SELECT locale,title,description FROM variant_translations WHERE revision_id=$1 AND product_id=$2 AND variant_id=$3 ORDER BY locale", [revision, ids.product, variantId])).rows;
+  "SELECT title,description FROM variant_translations WHERE revision_id=$1 AND product_id=$2 AND variant_id=$3", [revision, ids.product, variantId])).rows;
 
 test("first/sole variant requires standard; IDs are generated and zero/safe-limit prices and int4 sort work", () => withFixture(async ({ client, db, ids }) => {
   await assert.rejects(createProductVariant(db, variantInput(ids, { code: "large" })), rejectCode("VARIANT_RULE_VIOLATION"));
@@ -159,16 +159,13 @@ test("edit/translation composite scope rejects foreign variants and rolls back t
   assert.deepEqual(await textsOf(client, ids, standard.variantId), []);
 }));
 
-test("variant text upserts leave other revisions and legacy English rows untouched and keep exact literal text", () => withFixture(async ({ client, db, ids }) => {
+test("variant text upserts leave other revisions untouched and keep exact literal text", () => withFixture(async ({ client, db, ids }) => {
   const standard = await createProductVariant(db, variantInput(ids));
   await saveVariantTranslation(db, textInput(ids, standard.variantId));
-  // A row written before the single-language change; the application can no longer create one.
-  await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,locale,title,description) VALUES ($1,$2,$3,'en','QA legacy English','QA legacy English description')",
-    [ids.revision, ids.product, standard.variantId]);
   const before = await textsOf(client, ids, standard.variantId);
-  assert.deepEqual(before.map(row => row.locale), ["en", "id"]);
+  assert.equal(before.length, 1);
   await saveVariantTranslation(db, textInput(ids, standard.variantId, { expectedVersion: 3, title: "  QA <literal> 日本語  ", description: "" }));
-  assert.deepEqual(await textsOf(client, ids, standard.variantId), [before[0], { locale: "id", title: "  QA <literal> 日本語  ", description: "" }]);
+  assert.deepEqual(await textsOf(client, ids, standard.variantId), [{ title: "  QA <literal> 日本語  ", description: "" }]);
   assert.deepEqual(await textsOf(client, ids, ids.otherRevisionVariant, ids.otherRevision), []);
   assert.equal(await versionOf(client, ids), 4);
 }));
@@ -256,7 +253,7 @@ test("variant creation and product text compete for the same root token", () => 
       db => saveProductTranslation(db, { revisionId: ids.revision, productId: ids.product, expectedVersion: 1, title: "QA concurrent", description: "" })]);
     assert.equal(await versionOf(client, ids), 2);
     assert.equal((await variantsOf(client, ids)).length, results[0].status === "fulfilled" ? 1 : 0);
-    const rows = (await client.query("SELECT title FROM product_translations WHERE revision_id=$1 AND product_id=$2 AND locale='id'", [ids.revision, ids.product])).rows;
+    const rows = (await client.query("SELECT title FROM product_translations WHERE revision_id=$1 AND product_id=$2", [ids.revision, ids.product])).rows;
     assert.equal(rows.length, results[1].status === "fulfilled" ? 1 : 0);
   } finally { for (const worker of workers) await worker.end(); }
 }));

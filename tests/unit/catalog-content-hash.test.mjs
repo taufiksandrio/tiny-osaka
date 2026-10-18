@@ -9,19 +9,19 @@ const graph = () => ({
 });
 
 // Order links (migration 0015) must not change the hash of any snapshot that has no link.
-test("snapshots without order links keep their pre-0015 hash; any link changes it", () => {
+test("snapshots without order links keep the link-free hash; any link changes it", () => {
   const fixed = { revision: { id: "00000000-0000-4000-8000-000000000001", version: 3, status: "published" } };
   const numeric = ["sortOrder", "basePrice", "priceDelta", "minSelections", "maxSelections"];
   for (const [table, fields] of Object.entries(catalogContentFields)) {
     fixed[table] = [1, 2].map(n => Object.fromEntries(fields.map(field => [field, numeric.includes(field) ? n : field + n])));
   }
-  // Pinned digest produced by the content-hash implementation that predates the link columns.
-  const legacy = "779e1b848adef17ad5caf4149408b4ddf601599017f6167448aaa31a47344b7d";
-  assert.equal(hashCatalogContent(fixed), legacy);
+  // Pinned digest (ADR-039 format, no language fields) for a snapshot without order links.
+  const linkFree = "2dfcf639461f9fd7a420038d72e5f65f0c5fa718391773592e65a4456aefa936";
+  assert.equal(hashCatalogContent(fixed), linkFree);
   const nulls = structuredClone(fixed);
   for (const row of nulls.productEntries) Object.assign(row, { grabfoodUrl: null, gofoodUrl: null, shopeefoodUrl: null });
-  assert.equal(hashCatalogContent(nulls), legacy);
-  const seen = new Set([legacy]);
+  assert.equal(hashCatalogContent(nulls), linkFree);
+  const seen = new Set([linkFree]);
   for (const key of ["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]) {
     const linked = structuredClone(nulls); linked.productEntries[0][key] = "https://a.example/x";
     const digest = hashCatalogContent(linked);

@@ -34,9 +34,9 @@ const withGraph = async (run) => {
       VALUES ($1,$2,$3,'toppings','single',0,1),($1,$2,$4,'other','multiple',0,0)`, [ids.revision, ids.product, ids.group, ids.otherGroup]);
     await client.query("INSERT INTO modifier_options(revision_id,product_id,group_id,id,code,price_delta) VALUES ($1,$2,$3,$4,'qa-option',150000)",
       [ids.revision, ids.product, ids.group, ids.option]);
-    await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,locale,title) VALUES ($1,$2,$3,'id','QA variant only')", [ids.revision, ids.product, ids.variant]);
-    await client.query("INSERT INTO modifier_group_translations(revision_id,product_id,group_id,locale,title) VALUES ($1,$2,$3,'id','QA group only')", [ids.revision, ids.product, ids.group]);
-    await client.query("INSERT INTO modifier_option_translations(revision_id,product_id,group_id,option_id,locale,title) VALUES ($1,$2,$3,$4,'id','QA option only')", [ids.revision, ids.product, ids.group, ids.option]);
+    await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,title) VALUES ($1,$2,$3,'QA variant only')", [ids.revision, ids.product, ids.variant]);
+    await client.query("INSERT INTO modifier_group_translations(revision_id,product_id,group_id,title) VALUES ($1,$2,$3,'QA group only')", [ids.revision, ids.product, ids.group]);
+    await client.query("INSERT INTO modifier_option_translations(revision_id,product_id,group_id,option_id,title) VALUES ($1,$2,$3,$4,'QA option only')", [ids.revision, ids.product, ids.group, ids.option]);
     await run(client, ids);
   } finally {
     try {
@@ -84,8 +84,8 @@ test("persists pricing rows and maps bigint to exact Drizzle numbers above 10000
   assert.equal(product.variants[0].sortOrder, 0);
   assert.equal(calculatePrice(product, { revisionId: ids.revision, productId: ids.product, optionIds: [ids.option] }), 400000);
   for (const table of ["variant_translations", "modifier_group_translations", "modifier_option_translations"]) {
-    const { rows } = await client.query(`SELECT locale,description FROM ${table} WHERE revision_id=$1 ORDER BY locale`, [ids.revision]);
-    assert.deepEqual(rows.map(row => row.locale), ["id"]);
+    const { rows } = await client.query(`SELECT description FROM ${table} WHERE revision_id=$1`, [ids.revision]);
+    assert.equal(rows.length, 1);
     assert.ok(rows.every(row => row.description === ""));
   }
 }));
@@ -141,9 +141,8 @@ test("incomplete drafts may persist but pricing readiness rejects insufficient o
   assert.throws(() => validatePricingProduct(awaitedProduct), CatalogPricingError);
 }));
 
-test("translation locale/title/uniqueness rules apply to all three new entities", () => withGraph(async (client, ids) => {
+test("translation title/uniqueness rules apply to all three new entities", () => withGraph(async (client, ids) => {
   for (const table of ["variant_translations", "modifier_group_translations", "modifier_option_translations"]) {
-    await reject(client, `UPDATE ${table} SET locale='jp' WHERE revision_id=$1 AND locale='id'`, [ids.revision], "23514", `${table}_locale`);
     await reject(client, `UPDATE ${table} SET title='   ' WHERE revision_id=$1`, [ids.revision], "23514", `${table}_title_nonempty`);
     await reject(client, `INSERT INTO ${table} SELECT * FROM ${table} WHERE revision_id=$1`, [ids.revision], "23505", `${table}_pk`);
   }

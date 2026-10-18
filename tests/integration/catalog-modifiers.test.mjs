@@ -195,21 +195,16 @@ test("full parent/product/revision/group scopes prevent moving groups/options or
   assert.deepEqual(await snapshot(client, ids.revision), before);
 }));
 
-test("group/option label upserts keep legacy English rows and literal text", () => withFixture(async context => {
+test("group/option label upserts update the single row and keep literal text", () => withFixture(async context => {
   const { client, db, ids } = context;
   const graph = await buildGraph(context);
   let expectedVersion = 7;
   for (const [save, table, fields] of [[saveModifierGroupTranslation, "modifier_group_translations", {}],
     [saveModifierOptionTranslation, "modifier_option_translations", { optionId: graph.paid.optionId }]]) {
     await save(db, labelInput(ids, graph.group.groupId, { ...fields, expectedVersion: expectedVersion++ }));
-    // A row written before the single-language change; the application can no longer create one.
-    const columns = table === "modifier_group_translations" ? "group_id" : "group_id,option_id";
-    const values = table === "modifier_group_translations" ? "$3" : "$3,$4";
-    await client.query(`INSERT INTO ${table}(revision_id,product_id,${columns},locale,title,description) VALUES ($1,$2,${values},'en','QA EN','QA English')`,
-      [ids.revision, ids.product, graph.group.groupId, ...(fields.optionId ? [fields.optionId] : [])]);
     await save(db, labelInput(ids, graph.group.groupId, { ...fields, expectedVersion: expectedVersion++, title: "  QA <literal> 日本語  ", description: "" }));
-    const { rows } = await client.query(`SELECT locale,title,description FROM ${table} WHERE revision_id=$1 ORDER BY locale`, [ids.revision]);
-    assert.deepEqual(rows, [{ locale: "en", title: "QA EN", description: "QA English" }, { locale: "id", title: "  QA <literal> 日本語  ", description: "" }]);
+    const { rows } = await client.query(`SELECT title,description FROM ${table} WHERE revision_id=$1`, [ids.revision]);
+    assert.deepEqual(rows, [{ title: "  QA <literal> 日本語  ", description: "" }]);
   }
   assert.equal(await versionOf(client, ids), 11);
 }));

@@ -3,7 +3,7 @@ import { verifyCmsProtection } from "./lib/cms-protection.mjs";
 import { verifyAuthProtection } from "./lib/auth-protection.mjs";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { applyReviewedMigration } from "./lib/apply-reviewed-migration.mjs";
+import { applyDropLanguageMigration, ContentResetError } from "./lib/reset-local-content.mjs";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { connectTestOwner, TestDatabaseGuardError } from "./lib/test-db.mjs";
 import { validateTestMigrationFiles, validateTestMigrationState, TestMigrationPlanError } from "./lib/test-migration-plan.mjs";
@@ -35,7 +35,7 @@ const checkHistory = async (client) => {
   if (state >= 3) await verifyCatalogProtection(client, "tiny_osaka_test_owner", state);
   if (state >= 5) await verifyPageProtection(client, "tiny_osaka_test_owner");
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner", { posterRead: state >= 12 });
-  if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner", { media: state >= 11 });
+  if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner", { media: state >= 11, preDrop: state < 17 });
   await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7 });
   await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13, deletion: state >= 15 });
   if (state >= 13) await verifyPublishingProtection(client, "tiny_osaka_test_owner", { identityRestrict: state >= 14 });
@@ -51,19 +51,14 @@ try {
   // Preserve the original test lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210982)");
   const initialState = await checkHistory(client);
-  if (initialState === 16) {
-    console.log("test: reviewed 0000-0015 already applied; no changes made.");
+  if (initialState === 17) {
+    console.log("test: reviewed 0000-0016 already applied; no changes made.");
   } else {
-    // Check the known starting state again inside the migration transaction.
-    await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 16) throw new TestMigrationPlanError("Migration final state verification failed.");
-    }, async () => {
-      if (await checkHistory(client) !== initialState) throw new TestMigrationPlanError("Migration starting state changed.");
-    });
-    console.log("test: applied reviewed catalog card CRUD plan up to 0015 (order links); 31 public and 9 auth tables owned by tiny_osaka_test_owner.");
+    await applyDropLanguageMigration({ client, files, initialState, owner: "tiny_osaka_test_owner", label: "test", checkHistory });
+    console.log("test: applied reviewed plan up to 0016 (language columns removed; hashed local content reset); 31 public and 9 auth tables owned by tiny_osaka_test_owner.");
   }
 } catch (error) {
-  console.error(error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError
+  console.error(error instanceof ContentResetError || error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError
     ? error.message : "Test migration failed; no raw error/credentials logged.");
   process.exitCode = 1;
 } finally {

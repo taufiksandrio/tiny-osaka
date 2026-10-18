@@ -5,15 +5,15 @@ import { mediaHashSnapshot } from "../media/validation.mjs";
 export const catalogContentFields = Object.freeze({
   categories: ["id", "slug"], products: ["id", "slug"],
   categoryEntries: ["revisionId", "categoryId", "sortOrder"],
-  categoryTranslations: ["revisionId", "categoryId", "locale", "title", "description"],
+  categoryTranslations: ["revisionId", "categoryId", "title", "description"],
   productEntries: ["revisionId", "productId", "categoryId", "sortOrder"],
-  productTranslations: ["revisionId", "productId", "locale", "title", "description"],
+  productTranslations: ["revisionId", "productId", "title", "description"],
   productVariants: ["revisionId", "productId", "id", "code", "basePrice", "sortOrder"],
-  variantTranslations: ["revisionId", "productId", "variantId", "locale", "title", "description"],
+  variantTranslations: ["revisionId", "productId", "variantId", "title", "description"],
   modifierGroups: ["revisionId", "productId", "id", "code", "selectionType", "minSelections", "maxSelections", "sortOrder"],
-  modifierGroupTranslations: ["revisionId", "productId", "groupId", "locale", "title", "description"],
+  modifierGroupTranslations: ["revisionId", "productId", "groupId", "title", "description"],
   modifierOptions: ["revisionId", "productId", "groupId", "id", "code", "priceDelta", "sortOrder"],
-  modifierOptionTranslations: ["revisionId", "productId", "groupId", "optionId", "locale", "title", "description"],
+  modifierOptionTranslations: ["revisionId", "productId", "groupId", "optionId", "title", "description"],
 });
 
 // Order links (migration 0015) join the hash only when a snapshot actually has one, so every snapshot

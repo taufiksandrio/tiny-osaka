@@ -224,21 +224,17 @@ test("page media is approved with content and replaces live media only on explic
   assert.ok(!JSON.stringify(dto).includes("storageKey")); assert.ok(!JSON.stringify(dto).includes("checksum"));
 }));
 
-test("legacy English alt/caption stay in the immutable hash, never reach output and are not cloned", () => withRollback(async db => {
+test("the stored hash equals the recomputed hash, output has only reviewed keys and a clone copies the Indonesian text", () => withRollback(async db => {
   const revision = await completePage(db), asset = await registerImage(db);
   const saved = await refs(db).savePage({ ...token(revision), assetId: asset.id, ...text });
-  // A snapshot from before the single-language change: English columns filled directly in the draft.
-  await db.update(s.pageMediaRefs).set({ altEn: "legacy English alt", captionEn: "legacy English caption" })
-    .where(eq(s.pageMediaRefs.id, saved.id));
   const live = await publish(pages(db), { id: revision.id, version: saved.version });
   const frozen = await root(db, revision.id);
-  assert.equal(hashPageContent(await loadPageGraph(db, frozen)), live.contentHash, "legacy columns are still hashed");
+  assert.equal(hashPageContent(await loadPageGraph(db, frozen)), live.contentHash, "stored hash matches the recomputed hash");
   const dto = await getPublishedPage(db, { pageKey: "about" });
-  assert.ok(!JSON.stringify(dto).includes("legacy English"));
   assert.deepEqual(dto.media.map(row => Object.keys(row).sort()), [["alt", "asset", "caption", "id", "poster", "sortOrder"]]);
   const clone = await pages(db).cloneDraft({ sourceRevisionId: revision.id, expectedSourceVersion: saved.version });
   const [copied] = (await loadRevisionMedia(db, clone.id, "page")).mediaRefs;
-  assert.equal(copied.altId, text.altId); assert.equal(copied.altEn, ""); assert.equal(copied.captionEn, "");
+  assert.equal(copied.altId, text.altId); assert.equal(copied.captionId, text.captionId);
   assert.equal(hashPageContent(await loadPageGraph(db, await root(db, revision.id))), live.contentHash, "old hash unchanged");
 }));
 
@@ -366,7 +362,7 @@ test("two raw inserts at eleven references cannot bypass the database twelve-med
     });
     const pids = [(await a.query("SELECT pg_backend_pid() AS pid")).rows[0].pid, (await b.query("SELECT pg_backend_pid() AS pid")).rows[0].pid];
     await client.query("BEGIN"); await client.query("SELECT id FROM page_revisions WHERE id=$1 FOR UPDATE", [fixture.page.id]);
-    pending = [a, b].map(worker => worker.query("INSERT INTO page_media_refs(revision_id,asset_id,alt_id,alt_en) VALUES ($1,$2,'QA id','QA en')",
+    pending = [a, b].map(worker => worker.query("INSERT INTO page_media_refs(revision_id,asset_id,alt_id) VALUES ($1,$2,'QA id')",
       [fixture.page.id, fixture.asset.id]).then(value => ({ value }), error => ({ error })));
     await blocked(client, pids); await client.query("ROLLBACK");
     const results = await Promise.all(pending); pending = [];
@@ -386,8 +382,8 @@ test("all thirty tables are empty and guard definitions, ownership and fourteen 
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
     await verifyMediaProtection(client, "tiny_osaka_test_owner");
-    // Tepat 16: migrasi 0001..0015 (0015 = link order) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 16);
+    // Tepat 17: migrasi 0001..0016 (0016 = kolom bahasa dihapus) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 17);
   } finally { await client.end(); }
 });
 

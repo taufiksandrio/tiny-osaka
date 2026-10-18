@@ -87,7 +87,7 @@ const input = (ids, writer, fields = {}) => ({ revisionId: ids.revision, [writer
 const rejectCode = code => error => error instanceof CatalogDraftError && error.code === code;
 const versionOf = async (client, revision) => (await client.query("SELECT version FROM catalog_revisions WHERE id=$1", [revision])).rows[0].version;
 const translations = async (client, writer, ids, revision = ids.revision) => (await client.query(
-  `SELECT locale,title,description FROM ${writer.table} WHERE revision_id=$1 AND ${writer.column}=$2 ORDER BY locale`,
+  `SELECT title,description FROM ${writer.table} WHERE revision_id=$1 AND ${writer.column}=$2`,
   [revision, ids[writer.id]])).rows;
 
 test("inserts then updates the Indonesian row for category/product, with exact text and one version increment per save", () => withFixture(async ({ client, db, ids }) => {
@@ -100,7 +100,7 @@ test("inserts then updates the Indonesian row for category/product, with exact t
       title: data.title, description: data.description });
     await writer.save(db, input(ids, writer, { expectedVersion: expectedVersion++, title: "QA updated", description: "" }));
     const after = await translations(client, writer, ids);
-    assert.deepEqual(after, [...before, { locale: "id", title: "QA updated", description: "" }]);
+    assert.deepEqual(after, [...before, { title: "QA updated", description: "" }]);
     assert.equal(await versionOf(client, ids.revision), expectedVersion);
   }
   assert.equal((await client.query("SELECT status FROM catalog_revisions WHERE id=$1", [ids.revision])).rows[0].status, "draft");
@@ -108,18 +108,15 @@ test("inserts then updates the Indonesian row for category/product, with exact t
   assert.equal((await client.query("SELECT slug FROM categories WHERE id=$1", [ids.category])).rows[0].slug, `qa-draft-${ids.category}`);
 }));
 
-test("revisions stay isolated, legacy English rows are untouched; HTML-like characters are literal text", () => withFixture(async ({ client, db, ids }) => {
+test("revisions stay isolated; HTML-like characters are literal text", () => withFixture(async ({ client, db, ids }) => {
   let expectedVersion = 1;
   for (const writer of writers) {
-    // A row written before the single-language change; the application can no longer create one.
-    await client.query(`INSERT INTO ${writer.table}(revision_id,${writer.column},locale,title,description) VALUES ($1,$2,'en','QA legacy English','QA legacy English description')`, [ids.revision, ids[writer.id]]);
     const otherBefore = await translations(client, writer, ids, ids.otherRevision);
-    const legacyBefore = (await translations(client, writer, ids)).find(row => row.locale === "en");
     const text = '<script>alert("QA")</script> & <b>literal text</b>';
     await writer.save(db, input(ids, writer, { expectedVersion: expectedVersion++, title: "  QA literal <tag>  ", description: text }));
     const rows = await translations(client, writer, ids);
-    assert.deepEqual(rows.find(row => row.locale === "en"), legacyBefore);
-    const saved = rows.find(row => row.locale === "id");
+    assert.equal(rows.length, 1);
+    const saved = rows[0];
     assert.equal(saved.description, text);
     assert.equal(saved.title, "  QA literal <tag>  ");
     assert.deepEqual(await translations(client, writer, ids, ids.otherRevision), otherBefore);
@@ -231,7 +228,7 @@ test("concurrent text and price edits compete for one shared root version", () =
     assert.ok(rejectCode("REVISION_CONFLICT")(loser?.reason));
     assert.equal(await versionOf(client, ids.revision), 2);
     const price = Number((await client.query("SELECT base_price FROM product_variants WHERE revision_id=$1 AND id=$2", [ids.revision, ids.variant])).rows[0].base_price);
-    const savedText = (await translations(client, writers[1], ids)).find(row => row.locale === "id");
+    const savedText = (await translations(client, writers[1], ids))[0];
     if (results[0].status === "fulfilled") {
       assert.equal(savedText.title, input(ids, writers[1]).title);
       assert.equal(price, 250000);

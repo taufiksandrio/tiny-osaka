@@ -15,9 +15,7 @@ export const hashPageContent = graph => {
     ...(media ? { media } : {}),
     page: { key: graph.page.key, template: graph.page.template },
     revision: { id: graph.revision.id, pageKey: graph.revision.pageKey, version: graph.revision.version },
-    translations: graph.translations.map(row => ({
-      revisionId: row.revisionId, locale: row.locale, fields: row.fields,
-    })).sort((a, b) => a.locale < b.locale ? -1 : a.locale > b.locale ? 1 : 0),
+    translations: graph.translations.map(row => ({ revisionId: row.revisionId, fields: row.fields })),
   }))).digest("hex");
 };
 

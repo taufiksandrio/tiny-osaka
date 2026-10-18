@@ -27,7 +27,7 @@ const scanClientBundle = async () => {
 const owner = await connectTestOwner();
 try {
   await verifyCmsProtection(owner, "tiny_osaka_test_owner");
-  await verifyCatalogProtection(owner, "tiny_osaka_test_owner", 15);
+  await verifyCatalogProtection(owner, "tiny_osaka_test_owner", 17);
   console.log("OK: CMS role privileges and catalog protection verified on the test database.");
 } finally { await owner.end(); }
 const scanned = await scanClientBundle();

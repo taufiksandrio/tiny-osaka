@@ -32,7 +32,6 @@ export const validateMediaAsset = asset => {
   return true;
 };
 export const validateMediaRefText = (input, ready = false) => {
-  // Legacy English columns are never validated or written; they only feed the immutable hash of old snapshots.
   for (const [key, max] of [["altId", p.altLength], ["captionId", p.captionLength]]) {
     if (typeof input[key] !== "string" || input[key].length > max || input[key].includes("\0") ||
       (ready && key === "altId" && !input[key].trim())) invalid();

@@ -89,25 +89,18 @@ test("published reader is empty until an approved revision is explicitly publish
   assert.equal((await db.select().from(s.catalogWorkflowEvents)).length, 3);
 }));
 
-test("legacy English translation rows are ignored by readiness, stay in the verified hash and are not cloned", () => withRollback(async db => {
+test("the stored hash equals the recomputed hash and a clone carries one translation row per entity", () => withRollback(async db => {
   const fixture = await complete(db);
-  // Rows written before the single-language change; no application writer can create them any more.
-  const legacy = { revisionId: fixture.revision.id, locale: "en", title: "QA legacy English", description: "" };
-  await db.insert(s.categoryTranslations).values({ ...legacy, categoryId: fixture.category.categoryId });
-  await db.insert(s.productTranslations).values({ ...legacy, productId: fixture.product.productId });
-  await db.insert(s.variantTranslations).values({ ...legacy, productId: fixture.product.productId, variantId: fixture.variant.variantId });
-  await db.insert(s.modifierGroupTranslations).values({ ...legacy, productId: fixture.product.productId, groupId: fixture.group.groupId });
-  await db.insert(s.modifierOptionTranslations).values({ ...legacy, productId: fixture.product.productId, groupId: fixture.group.groupId, optionId: fixture.option.optionId });
   const submitted = await staff(db).submit(sourceToken(fixture));
   const published = await owner(db).publish(token(await owner(db).approve(token(submitted))));
   const frozen = await root(db, fixture.revision.id);
   const graph = await loadCatalogGraph(db, frozen);
-  assert.equal(graph.productTranslations.length, 2, "the loader still returns the legacy row");
-  assert.equal(hashCatalogContent(graph), published.contentHash, "the stored hash still covers both rows");
+  assert.equal(graph.productTranslations.length, 1);
+  assert.equal(hashCatalogContent(graph), published.contentHash, "the stored hash matches the recomputed hash");
   const clone = await w.cloneCatalogDraft(db, { sourceRevisionId: fixture.revision.id, expectedSourceVersion: frozen.version });
   const cloned = await loadCatalogGraph(db, await root(db, clone.id));
   for (const name of ["categoryTranslations", "productTranslations", "variantTranslations", "modifierGroupTranslations", "modifierOptionTranslations"]) {
-    assert.deepEqual(cloned[name].map(row => row.locale), ["id"], name);
+    assert.equal(cloned[name].length, 1, name);
   }
   assert.equal(hashCatalogContent(await loadCatalogGraph(db, await root(db, fixture.revision.id))), published.contentHash, "old hash unchanged");
 }));
@@ -397,8 +390,8 @@ test("all seventeen tables are empty and all protection functions/triggers remai
   try {
     for (const table of workflowTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
-    // Tepat 16: migrasi 0001..0015 (0015 = link order) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 16);
+    // Tepat 17: migrasi 0001..0016 (0016 = kolom bahasa dihapus) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 17);
   } finally { await client.end(); }
 });
 

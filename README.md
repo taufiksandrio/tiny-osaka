@@ -508,11 +508,11 @@ dokumen tidak lagi memodelkan bahasa. Semua penyebutan bilingual, ID/EN, `locale
 `captionEn` di bagian historis README ini (Phase 1A sampai Phase 3.x) sudah tidak berlaku; kontrak terbaru ada
 di bagian ini dan `docs/DATA_CONTRACTS.md`.
 
-- Tanpa migrasi dan tanpa perubahan hash: kolom `locale` (selalu `'id'`), `alt_en`/`caption_en`, dan fungsi SQL
-  `public_read_*` tetap ada di skema. Satu konstanta internal `src/server/db/stored-language.mjs` menyuplai nilai `'id'`.
-- Daftar kolom hash (`catalog/content-hash.mjs`, `pages/content-hash.mjs`, `mediaRefFields`) tidak berubah. Baris `en`
-  dan teks alt/caption Inggris pada snapshot lama tetap dimuat dan di-hash, diabaikan oleh validasi, tidak dikeluarkan
-  oleh API atau pembaca publik, dan tidak disalin ke draft hasil klon.
+- Diperbarui oleh ADR-039 (migrasi 0016): kolom bahasa, `alt_en`/`caption_en`, dan argumen bahasa pada `public_read_*`
+  dihapus dari skema; `src/server/db/stored-language.mjs` dihapus. Konten ber-hash di DB test/dev direset dalam transaksi
+  migrasi (hook `scripts/lib/reset-local-content.mjs`, butuh `TINY_OSAKA_CONFIRM_CONTENT_RESET=0016`), bukan dihitung ulang.
+- Daftar kolom hash (`catalog/content-hash.mjs`, `pages/content-hash.mjs`, `mediaRefFields`) tidak lagi memuat kolom bahasa;
+  golden test: `tests/unit/content-hash-golden.test.mjs`.
 - API: simpan halaman/batch tidak lagi menerima `locale`; referensi media tidak menerima `altEn`/`captionEn`
   (field tak dikenal ditolak 400). Pembacaan halaman CMS mengembalikan `fields` (bukan `translations`); referensi
   media hanya memuat `altId`/`captionId`; keluaran publik memakai `alt`/`caption`.
