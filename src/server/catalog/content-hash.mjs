@@ -16,6 +16,11 @@ export const catalogContentFields = Object.freeze({
   modifierOptionTranslations: ["revisionId", "productId", "groupId", "optionId", "locale", "title", "description"],
 });
 
+// Order links (migration 0015) join the hash only when a snapshot actually has one, so every snapshot
+// without links keeps the exact hash it had before the columns existed.
+const LINK_FIELDS = ["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"];
+const withLinks = row => LINK_FIELDS.some(field => row[field] != null) ? LINK_FIELDS.map(field => row[field] ?? null) : null;
+
 export const hashCatalogContent = graph => {
   const media = mediaHashSnapshot(graph, "catalog");
   const rows = Object.entries(catalogContentFields).map(([table, fields]) => {
@@ -23,7 +28,7 @@ export const hashCatalogContent = graph => {
     const encoded = graph[table].map(row => JSON.stringify(fields.map(field => {
       if (row[field] === undefined) throw new Error("Incomplete catalog row.");
       return row[field];
-    }))).sort();
+    }).concat(table === "productEntries" ? [withLinks(row)].filter(Boolean) : []))).sort();
     return [table, encoded];
   });
   return createHash("sha256").update(JSON.stringify({

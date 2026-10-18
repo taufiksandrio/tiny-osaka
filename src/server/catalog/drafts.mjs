@@ -322,7 +322,7 @@ export const updateProductPlacement = (db, input) => updateCatalogPlacement(db, 
 const cloneChildren = [
   ["category_entries", ["category_id", "sort_order"]],
   ["category_translations", ["category_id", "locale", "title", "description"]],
-  ["product_entries", ["product_id", "category_id", "sort_order"]],
+  ["product_entries", ["product_id", "category_id", "sort_order", "grabfood_url", "gofood_url", "shopeefood_url"]],
   ["product_translations", ["product_id", "locale", "title", "description"]],
   ["product_variants", ["product_id", "id", "code", "base_price", "sort_order"]],
   ["variant_translations", ["product_id", "variant_id", "locale", "title", "description"]],

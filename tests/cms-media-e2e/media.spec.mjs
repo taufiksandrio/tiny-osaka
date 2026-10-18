@@ -58,7 +58,7 @@ test("original upload, Staff direct save and public revocation work on every vie
   await expect(preview.getByRole("img", { name: "Gambar sintetis QA", exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   const publicFile = await page.request.get(`/media/${asset.id}`); expect(publicFile.status()).toBe(200);
-  expect(Buffer.compare(await publicFile.body(), bytes)).toBe(0); expect(publicFile.headers()["cache-control"]).toContain("no-store");
+  expect(Buffer.compare(await publicFile.body(), bytes)).toBe(0); expect(publicFile.headers()["cache-control"]).toBe("public, max-age=3600"); expect(publicFile.headers()["vary"] ?? "").not.toMatch(/cookie/i); // Next adds its own RSC Vary; the spec only forbids Vary: Cookie
   await page.goto("/about");
   const photo = page.getByRole("img", { name: "Gambar sintetis QA", exact: true }); await expect(photo).toBeVisible();
   await expect.poll(() => photo.evaluate(img => img.naturalWidth)).toBe(32);

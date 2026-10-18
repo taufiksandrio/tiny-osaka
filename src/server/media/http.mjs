@@ -4,12 +4,14 @@ import { getAuthConfig } from "../auth/config.mjs";
 import { getCmsMedia } from "../cms/runtime.mjs";
 import { CmsRequestError, cmsJson, cmsFail, readCmsInput } from "../cms/request-policy.mjs";
 import { MediaError } from "./validation.mjs";
+import { adminMediaHeaders, publicMediaHeaders } from "./cache-headers.mjs";
 
-export const fileResponse = ({ asset, bytes, openRange }, request) => {
+// visibility "public" is used only by the live /media/<id> route (Cache-Control public + ETag);
+// everything else, including the admin route, stays private and uncached.
+export const fileResponse = ({ asset, bytes, openRange }, request, { visibility = "private" } = {}) => {
   const length = bytes ? bytes.length : Number(asset.byteSize);
   const body = (start, end) => bytes ? bytes.subarray(start, end + 1) : openRange(start, end);
-  const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Type": asset.mime,
-    "Content-Disposition": "inline", "Accept-Ranges": "bytes", "Vary": "Cookie", "Content-Security-Policy": "default-src 'none'; sandbox" };
+  const headers = visibility === "public" ? publicMediaHeaders(asset) : adminMediaHeaders(asset);
   const range = request.headers.get("range");
   if (range) {
     const match = /^bytes=(\d*)-(\d*)$/.exec(range);

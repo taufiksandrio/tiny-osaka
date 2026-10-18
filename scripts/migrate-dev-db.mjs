@@ -51,12 +51,12 @@ try {
   // Preserve the original dev lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210983)");
   const initialState = await checkHistory(client);
-  if (initialState === 15) {
-    console.log("dev: reviewed 0000-0014 already applied; no changes made.");
+  if (initialState === 16) {
+    console.log("dev: reviewed 0000-0015 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 15) throw new DevMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 16) throw new DevMigrationPlanError("Migration final state verification failed.");
       for (const [table, count] of contentCounts) {
         const { rows: [row] } = await client.query(`SELECT count(*)::text AS count FROM public.${table}`);
         if (row.count !== count) throw new DevMigrationPlanError("Migration did not preserve content row counts.");
@@ -73,7 +73,7 @@ try {
         contentCounts.set(table, row.count);
       }
     });
-    console.log("dev: applied reviewed catalog card CRUD plan up to 0014; 31 public and 9 auth tables owned by tiny_osaka_dev_owner.");
+    console.log("dev: applied reviewed catalog card CRUD plan up to 0015 (order links); 31 public and 9 auth tables owned by tiny_osaka_dev_owner.");
   }
 } catch (error) {
   console.error(error instanceof DevDatabaseGuardError || error instanceof DevMigrationPlanError

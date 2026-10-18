@@ -39,6 +39,7 @@ test("rejects altered SQL hashes, timestamps, order and extra/missing files", ()
     a => { a.files[10].hash = "untrusted-secret"; },
     a => { a.files[11].hash = "untrusted-secret"; },
     a => { a.files[14].hash = "untrusted-secret"; },
+    a => { a.files[15].hash = "untrusted-secret"; },
     a => { a.files[1].folderMillis++; },
     a => { a.files.reverse(); }, a => { a.files.pop(); }, a => { a.files.push(a.files[1]); },
   ]) {
@@ -64,6 +65,7 @@ test("accepts reviewed catalog baseline and media final state", () => {
   assert.equal(validateTestMigrationState(state(12)), 12);
   assert.equal(validateTestMigrationState(state(14)), 14);
   assert.equal(validateTestMigrationState(state(15)), 15);
+  assert.equal(validateTestMigrationState(state(16)), 16);
 });
 
 test("rejects absent, reordered, partial or modified migration history", () => {

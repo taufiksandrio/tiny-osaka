@@ -10,15 +10,15 @@ const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: 
 const CatalogBoard = ({ initial }) => {
   const { products, busySlug, saving, announcement, save, remove } = useCatalogCards(initial);
   const [modal, setModal] = useState(null); // null | { product?: card }; client state only, never in the URL
-  const [serverError, setServerError] = useState("");
+  const [serverError, setServerError] = useState(null); // { message, field? }
   const listRef = useRef(null), openerRef = useRef(null);
   const owner = initial.role === "owner";
-  const open = (product, opener) => { openerRef.current = opener; setServerError(""); setModal({ product }); };
+  const open = (product, opener) => { openerRef.current = opener; setServerError(null); setModal({ product }); };
   const submit = async values => {
-    setServerError("");
+    setServerError(null);
     const result = await save(modal.product, values);
     if (result.ok || result.gone) setModal(null);
-    else setServerError(result.message);
+    else setServerError({ message: result.message, field: result.field });
   };
   const del = async product => { if (await remove(product)) listRef.current?.focus(); };
   // Return focus to the opener; fall back to the list heading if that card no longer exists.

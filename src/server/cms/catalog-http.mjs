@@ -16,7 +16,7 @@ export const catalogRoute = async (request, operation, { status = 200 } = {}) =>
     else if (request.method !== "GET") verifyCmsOrigin(request, getAuthConfig().baseURL);
     return cmsJson(await operation(getCmsCatalog(), input), status);
   } catch (error) {
-    if (error instanceof CmsRequestError) return cmsJson({ code: error.code }, error.status);
+    if (error instanceof CmsRequestError) return cmsJson({ code: error.code, ...(error.detail ?? {}) }, error.status);
     if (error instanceof CatalogDraftError) {
       const code = error.code;
       const http = code === "FORBIDDEN" ? 403 : code === "AUTH_REQUIRED" ? 401 : conflictCodes.includes(code) ? 409 :

@@ -60,6 +60,10 @@ export const productEntries = pgTable("product_entries", {
     .references(() => products.id, { onDelete: "restrict", onUpdate: "restrict" }),
   categoryId: uuid("category_id").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Optional manual order links (migration 0015). Stored only; never synced and not shown publicly.
+  grabfoodUrl: text("grabfood_url"),
+  gofoodUrl: text("gofood_url"),
+  shopeefoodUrl: text("shopeefood_url"),
 }, (table) => [
   primaryKey({ name: "product_entries_pk", columns: [table.revisionId, table.productId] }),
   foreignKey({
@@ -69,6 +73,9 @@ export const productEntries = pgTable("product_entries", {
   }).onDelete("restrict").onUpdate("restrict"),
   index("product_entries_category_idx").on(table.revisionId, table.categoryId),
   check("product_entries_sort_nonnegative", sql`${table.sortOrder} >= 0`),
+  check("product_entries_grabfood_url_check", sql`${table.grabfoodUrl} IS NULL OR (${table.grabfoodUrl} ~ '^https://' AND length(${table.grabfoodUrl}) <= 2048)`),
+  check("product_entries_gofood_url_check", sql`${table.gofoodUrl} IS NULL OR (${table.gofoodUrl} ~ '^https://' AND length(${table.gofoodUrl}) <= 2048)`),
+  check("product_entries_shopeefood_url_check", sql`${table.shopeefoodUrl} IS NULL OR (${table.shopeefoodUrl} ~ '^https://' AND length(${table.shopeefoodUrl}) <= 2048)`),
 ]);
 
 export const categoryTranslations = pgTable("category_translations", {

@@ -23,6 +23,12 @@ export const getPublishedCatalog = async db => {
       const content = { ...graph };
       delete content.mediaRefs;
       delete content.mediaAssets;
+      // Order links are admin-only until a separate decision shows them publicly (migration 0015).
+      content.productEntries = content.productEntries.map(entry => {
+        const publicEntry = { ...entry };
+        for (const field of ["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]) delete publicEntry[field];
+        return publicEntry;
+      });
       return { ...content, media: publicRevisionMedia(graph, "catalog"), revision: { id: row.revision.id, version: row.revision.version } };
     });
   } catch {

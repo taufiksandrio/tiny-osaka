@@ -6,6 +6,7 @@ import { formatPrice, listedProducts, featuredProducts } from "@/server/public/v
 import { content } from "../content";
 import OrderingNotice from "./OrderingNotice";
 import PublishedMedia from "./PublishedMedia";
+import ProductCardImage from "./ProductCardImage";
 import HomeContent from "./HomeContent";
 import Rich from "./PublicRichText";
 
@@ -30,13 +31,15 @@ export const publishedMetadata = async (key, slug) => {
     description: page?.fields.seoDescription || page?.fields.summary || labels.empty, robots: { index: false, follow: false } };
 };
 
-const CatalogCards = ({ catalog, limit, headingLevel: Heading = "h2" }) => {
+const CardMedia = ({ items, priority }) => items.map(media => media.asset.kind === "image" ?
+  <ProductCardImage key={media.id} media={media} priority={priority} /> : <PublishedMedia key={media.id} media={media} />);
+const CatalogCards = ({ catalog, limit, headingLevel: Heading = "h2", priorityFirst = false }) => {
   const products = catalog ? (limit ? featuredProducts(catalog, limit) : listedProducts(catalog)) : [];
   if (!products.length) return <p>{labels.emptyMenu}</p>;
-  return <div className="menu-grid">{products.map(product => <article className="prose-panel" key={product.id}>
+  return <div className="menu-grid">{products.map((product, index) => <article className="prose-panel" key={product.id}>
     <Heading><Link href={`/menu/${product.slug}`}>{product.title}</Link></Heading>{product.description && <p>{product.description}</p>}
     <p>{formatPrice(product.price)}</p>
-    <Media items={catalog.media.filter(media => media.productId === product.id).slice(0, 1)} />
+    <CardMedia items={catalog.media.filter(media => media.productId === product.id).slice(0, 1)} priority={priorityFirst && index === 0} />
   </article>)}</div>;
 };
 
@@ -56,7 +59,7 @@ export const PublishedPage = async ({ pageKey }) => {
       {fields ? fields.summary && <p>{fields.summary}</p> : <p>{labels.empty}</p>}
       <Rich document={fields?.body} />
       <Media items={page?.media} />
-      {["home", "menu"].includes(pageKey) && <CatalogCards catalog={catalog} />}
+      {["home", "menu"].includes(pageKey) && <CatalogCards catalog={catalog} priorityFirst={pageKey === "menu"} />}
       {pageKey === "about" && fields && <>{fields.storyHeading && <h2>{fields.storyHeading}</h2>}<Rich document={fields.storyBody} />
         {fields.serviceHeading && <h2>{fields.serviceHeading}</h2>}<Rich document={fields.serviceBody} /></>}
       {pageKey === "location" && fields && <dl className="info-list">{["city", "service", "hours", "coverage"].filter(key => fields[key]?.trim()).map(key =>

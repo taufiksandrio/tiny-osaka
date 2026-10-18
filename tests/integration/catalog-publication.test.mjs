@@ -374,7 +374,8 @@ test("all seventeen tables are empty and all protection functions/triggers remai
   try {
     for (const table of workflowTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 15);
+    // Tepat 16: migrasi 0001..0015 (0015 = link order) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 16);
   } finally { await client.end(); }
 });
 
