@@ -31,7 +31,7 @@ const check = async callback => {
   }); } catch (error) { if (error !== rollback) throw error; }
 };
 const [OWNER, STAFF] = [0, 1];
-const GRAB = "https://shop.example/grab/1", GO = "https://shop.example/go/1", SHOPEE = "https://shop.example/shopee/1";
+const GRAB = "https://app.grab.com/grab/1", GO = "https://gofood.link/go/1", SHOPEE = "https://shop.example/shopee/1";
 const input = (name, price = 25000, extra = {}) => ({ name, description: "", price, ...extra });
 const body = (card, extra) => ({ name: card.name, description: card.description, price: card.price, expectedVersion: card.version, ...extra });
 const links = card => [card.grabfoodUrl, card.gofoodUrl, card.shopeefoodUrl];
@@ -77,12 +77,12 @@ test("PATCH: absent key keeps, string sets or replaces, null and blank remove; k
   const added = (await api.update(jars[STAFF], created.slug, body(created, { shopeefoodUrl: SHOPEE }))).product;
   assert.deepEqual(links(added), [GRAB, GO, SHOPEE]); assert.notEqual(added.version, created.version);
   // Replace one.
-  const replaced = (await api.update(jars[OWNER], created.slug, body(added, { gofoodUrl: "https://shop.example/go/2" }))).product;
-  assert.deepEqual(links(replaced), [GRAB, "https://shop.example/go/2", SHOPEE]);
+  const replaced = (await api.update(jars[OWNER], created.slug, body(added, { gofoodUrl: "https://gofood.link/go/2" }))).product;
+  assert.deepEqual(links(replaced), [GRAB, "https://gofood.link/go/2", SHOPEE]);
   // Remove one with null, one with blank text.
   const cleared = (await api.update(jars[STAFF], created.slug, body(replaced, { grabfoodUrl: null, shopeefoodUrl: "  " }))).product;
-  assert.deepEqual(links(cleared), [null, "https://shop.example/go/2", null]);
-  assert.deepEqual(await stored(tx, created.slug), [null, "https://shop.example/go/2", null]);
+  assert.deepEqual(links(cleared), [null, "https://gofood.link/go/2", null]);
+  assert.deepEqual(await stored(tx, created.slug), [null, "https://gofood.link/go/2", null]);
   // Editing only the name keeps the links.
   const renamed = (await api.update(jars[OWNER], created.slug, { ...body(cleared), name: "QA Ubah Baru" })).product;
   assert.deepEqual(links(renamed), links(cleared));
@@ -101,8 +101,8 @@ test("identical re-save and clearing an absent link are no-ops without a new sna
 test("the version token covers links: stale token is PRODUCT_CONFLICT and other cards keep their version", () => check(async (api) => {
   const card = (await api.create(jars[OWNER], input("QA Versi", 1, { grabfoodUrl: GRAB }))).product;
   const other = (await api.create(jars[OWNER], input("QA Versi Lain", 1, { grabfoodUrl: GRAB }))).product;
-  await api.update(jars[OWNER], card.slug, body(card, { grabfoodUrl: "https://shop.example/grab/9" }));
-  await assert.rejects(api.update(jars[STAFF], card.slug, body(card, { grabfoodUrl: "https://shop.example/grab/10" })), { code: "PRODUCT_CONFLICT" });
+  await api.update(jars[OWNER], card.slug, body(card, { grabfoodUrl: "https://app.grab.com/grab/9" }));
+  await assert.rejects(api.update(jars[STAFF], card.slug, body(card, { grabfoodUrl: "https://app.grab.com/grab/10" })), { code: "PRODUCT_CONFLICT" });
   assert.equal((await api.list(jars[STAFF])).products.find(row => row.slug === other.slug).version, other.version);
   assert.notEqual(card.version, (await api.list(jars[STAFF])).products.find(row => row.slug === card.slug).version);
 }));
@@ -119,7 +119,7 @@ test("links survive clones (edit another product, delete another product, change
   assert.deepEqual(await stored(tx, a.slug), [GRAB, null, SHOPEE]);
 }));
 test("deleting a product removes its links from every snapshot; a reused slug starts without links", () => check(async (api, tx) => {
-  const gone = (await api.create(jars[STAFF], input("QA Hapus Tautan", 1, { grabfoodUrl: "https://shop.example/hapus/grab", gofoodUrl: "https://shop.example/hapus/go" }))).product;
+  const gone = (await api.create(jars[STAFF], input("QA Hapus Tautan", 1, { grabfoodUrl: "https://app.grab.com/hapus/grab", gofoodUrl: "https://gofood.link/hapus/go" }))).product;
   const keep = (await api.create(jars[STAFF], input("QA Tetap Tautan", 1, { shopeefoodUrl: SHOPEE }))).product;
   await api.update(jars[OWNER], gone.slug, body(gone, { shopeefoodUrl: "https://shop.example/hapus/shopee" }));
   assert.ok(await count(tx, "catalog_revisions") >= 3);
@@ -154,8 +154,12 @@ test("links are stored only: no public exposure, no outbound request, RBAC and a
   const published = await getPublishedCatalog(tx);
   const text = JSON.stringify(published);
   assert.ok(text.includes(card.slug));
-  for (const link of [GRAB, GO, SHOPEE]) assert.equal(text.includes(link), false);
-  assert.equal(Object.keys(published.products[0]).some(key => /url$/i.test(key)), false);
+  // Raw URL fields never leave the server; allowlisted hosts surface only as orderLinks, ShopeeFood (empty allowlist) not at all.
+  assert.equal(text.includes(SHOPEE), false);
+  assert.equal(published.productEntries.length, 1);
+  const [entry] = published.productEntries;
+  assert.deepEqual(entry.orderLinks, [{ platform: "gofood", href: GO }, { platform: "grabfood", href: GRAB }]);
+  assert.equal(Object.keys(entry).some(key => /url$/i.test(key)), false);
   const events = await rows(tx, "SELECT action, actor_id FROM public.catalog_workflow_events");
   assert.ok(events.some(row => row.action === "create" && row.actor_id === fixture.accounts[STAFF].id));
   assert.equal(fetchCalls, 0);

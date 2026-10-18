@@ -1,38 +1,6 @@
-/* Theme values only apply to the approved home template, including CMS preview. */
-.home-theme {
-  --background: #faf5eb; --foreground: #25251f; --card: #fffdf8; --card-foreground: #25251f;
-  --primary: #b52f24; --primary-foreground: #fff; --secondary: #f0e8da; --secondary-foreground: #25251f;
-  --muted: #f0e8da; --muted-foreground: #625c52; --accent: #f0e8da; --accent-foreground: #25251f;
-  --border: #d9d1c4; --input: #d9d1c4; --ring: #b52f24; --radius: .75rem;
-  color: var(--foreground); background: var(--background); min-width: 0;
-}
+/* Wadah beranda (halaman publik dan pratinjau CMS). Token tema ada di site.css (`.site-root, .home-theme`) agar pratinjau
+   di luar `.site-root` tetap sama; tata letak beranda ada di site.css. File ini hanya menyisakan reset dasar pratinjau. */
+.home-theme { color: var(--foreground); background: var(--background); min-width: 0; }
 .home-theme :where(h1, h2, h3, p, figure) { margin: revert-layer; }
 .home-theme :where(a) { color: revert-layer; text-decoration: revert-layer; }
 .home-theme :where(h1, h2, h3) { font-size: revert-layer; font-weight: revert-layer; letter-spacing: revert-layer; line-height: revert-layer; }
-.home-theme .home-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center; gap: 3.5rem; padding-block: 5rem 3rem; }
-.home-theme .home-kicker { color: #a52c23; font-size: .75rem; font-weight: 700; letter-spacing: .16em; }
-.home-theme .home-headline { white-space: pre-line; overflow-wrap: anywhere; font-size: clamp(2.5rem, 4.6vw, 4.2rem); font-weight: 800; line-height: 1.06; letter-spacing: -.055em; }
-.home-theme .home-summary { max-width: 32rem; font-size: 1rem; color: #625c52; line-height: 1.85; }
-.home-theme .home-art-image { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 1rem; }
-.home-theme .home-art figcaption { font-size: .7rem; line-height: 1.6; margin-top: .75rem; color: #625c52; }
-.home-theme .home-story { padding-block: 1rem 4rem; }
-.home-theme .home-story .home-prose { max-width: 48rem; padding-left: 1.5rem; border-left: 3px solid #b52f24; }
-.home-theme .home-prose { color: #625c52; line-height: 1.85; overflow-wrap: anywhere; }
-.home-theme .home-prose > * + * { margin-top: 1rem; }
-.home-theme .home-prose a:not([data-slot="button"]) { color: #a52c23; text-decoration: underline; }
-.home-theme .home-prose ul { list-style: disc; padding-left: 1.5rem; }
-.home-theme .home-prose ol { list-style: decimal; padding-left: 1.5rem; }
-.home-theme .home-menu { padding-block: 2rem 4rem; border-top: 1px solid #d9d1c4; }
-.home-theme h2 { font-size: clamp(1.65rem, 3vw, 2.5rem); line-height: 1.15; font-weight: 700; letter-spacing: -.04em; overflow-wrap: anywhere; }
-.home-theme .home-section-intro { max-width: 40rem; color: #625c52; font-size: .9rem; line-height: 1.8; }
-.home-theme .home-about { padding-block: 1rem 5rem; }
-.home-theme .home-about-card { max-width: 50rem; padding-block: 2rem; }
-.home-theme [data-slot="button"] { min-height: 44px; max-width: 100%; height: auto; white-space: normal; padding: .75rem 1.25rem; border-radius: .625rem; }
-.site-brand-mark { width: 64px; height: 64px; flex-shrink: 0; }
-.footer-brand-lockup { display: inline-flex; align-items: center; gap: .75rem; }
-@media (max-width: 767px) {
-  .home-theme .home-hero { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-block: 2.5rem 2rem; }
-  .home-theme .container { width: calc(100% - 32px); }
-  .home-theme .home-story { padding-bottom: 2.5rem; }
-  .home-theme .home-menu { padding-block: 2rem 3rem; }
-}

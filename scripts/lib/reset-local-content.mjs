@@ -92,7 +92,7 @@ export const applyDropLanguageMigration = async ({ client, files, initialState, 
   log(`${label}: rows kept untouched: ${formatCounts(before, retainedTables)}.`);
   assertResetRequested(env);
   let retained;
-  await applyReviewedMigration(client, files.slice(initialState), async () => {
+  await applyReviewedMigration(client, files.slice(initialState, RESET_TO_STATE), async () => {
     if (await checkHistory(client) !== RESET_TO_STATE) throw new ContentResetError("Migration final state verification failed.");
     await assertResetResult(client, retained);
   }, async () => {

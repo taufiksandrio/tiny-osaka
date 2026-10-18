@@ -88,7 +88,7 @@ test("a failing final verification rolls the whole transaction back", async () =
 });
 
 test("migration 0016 is structural only and refuses a database that holds content", () => {
-  const file = readMigrationFiles({ migrationsFolder: "drizzle" }).at(-1);
+  const file = readMigrationFiles({ migrationsFolder: "drizzle" })[16];
   const sql = file.sql.join("\n");
   // The purge function body (replaced, not run) legitimately deletes; everything before it must not.
   const executed = sql.slice(0, sql.indexOf("CREATE OR REPLACE FUNCTION public.catalog_purge_product"));
@@ -97,4 +97,17 @@ test("migration 0016 is structural only and refuses a database that holds conten
   const source = readFileSync("drizzle/0016_drop_language_columns.sql", "utf8");
   const functions = [...source.matchAll(/CREATE FUNCTION public\.(public_read_\w+)\(([^)]*)\) RETURNS jsonb\s+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
   assert.deepEqual(functions.map(row => `${row[1]}(${row[2]})`), ["public_read_catalog()", "public_read_page(p_key text)"]);
+});
+
+test("migration 0017 replaces only public_read_catalog, adds exactly the three link keys and widens no grant", () => {
+  const source = readFileSync("drizzle/0017_public_read_order_links.sql", "utf8");
+  const code = source.split("\n").filter(line => !line.startsWith("--")).join("\n");
+  assert.equal([...code.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\(/g)].map(row => row[1]).join(), "public_read_catalog");
+  assert.ok(!/\b(DELETE|TRUNCATE|UPDATE|INSERT|ALTER|DROP|GRANT|REVOKE)\b/i.test(code), "function-only change");
+  const added = [...code.matchAll(/'(\w+Url)',e\.(\w+)/g)].map(row => `${row[1]}=${row[2]}`);
+  assert.deepEqual(added, ["grabfoodUrl=grabfood_url", "gofoodUrl=gofood_url", "shopeefoodUrl=shopeefood_url"]);
+  const previous = readFileSync("drizzle/0016_drop_language_columns.sql", "utf8").match(/CREATE FUNCTION public\.public_read_catalog\(\)[\s\S]*?\$\$;/)[0];
+  const stripped = code.match(/CREATE OR REPLACE FUNCTION[\s\S]*?\$\$;/)[0]
+    .replace("CREATE OR REPLACE FUNCTION", "CREATE FUNCTION").replace(/,'grabfoodUrl',e\.grabfood_url,'gofoodUrl',e\.gofood_url,'shopeefoodUrl',e\.shopeefood_url/, "");
+  assert.equal(stripped.replaceAll("\r\n", "\n"), previous.replaceAll("\r\n", "\n"), "0017 differs from 0016 only by the three link keys");
 });

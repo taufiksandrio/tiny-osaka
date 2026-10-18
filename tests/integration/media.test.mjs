@@ -382,8 +382,8 @@ test("all thirty tables are empty and guard definitions, ownership and fourteen 
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
     await verifyMediaProtection(client, "tiny_osaka_test_owner");
-    // Tepat 17: migrasi 0001..0016 (0016 = kolom bahasa dihapus) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 17);
+    // Tepat 18: migrasi 0001..0017 (0017 = public_read_catalog memuat link order) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 18);
   } finally { await client.end(); }
 });
 

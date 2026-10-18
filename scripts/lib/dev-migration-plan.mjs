@@ -35,6 +35,8 @@ export const reviewedMigrations = Object.freeze([
     hash: "64c694563b15638beb782fbdeb0b979884372eef6e4660f5bc3ec2e54c9fa403" }),
   Object.freeze({ tag: "0016_drop_language_columns", when: 1792308540559,
     hash: "c9bd255cc6ce5183f94b99e0f8d881ce2f380e814ad331c96b74df4d158584ad" }),
+  Object.freeze({ tag: "0017_public_read_order_links", when: 1792394940000,
+    hash: "adf41753af20b1d3db3123d7ce2a1d11b8b16defefc28a06e4c6477c50f7eaa2" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -50,11 +52,11 @@ export const deletionTables = Object.freeze(["catalog_deletion_log"]);
 export const tablesForState = length => [...allTables.filter(name => length >= 13 || !["publication_jobs", "publication_events"].includes(name)),
   ...(length >= 15 ? deletionTables : [])].sort();
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0016 plan."); };
+const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0017 plan."); };
 
 export const validateDevMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 17 || !Array.isArray(files) || files.length !== 17) refuse();
+    journal.entries?.length !== 18 || !Array.isArray(files) || files.length !== 18) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -67,7 +69,7 @@ export const validateDevMigrationFiles = (journal, files) => {
 // Only reviewed catalog/media states (including the forward intermediate) are allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateDevMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![12, 13, 14, 15, 16, 17].includes(history.length) ||
+  if (!Array.isArray(history) || ![12, 13, 14, 15, 16, 17, 18].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_dev_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();

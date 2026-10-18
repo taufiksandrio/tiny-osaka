@@ -3,7 +3,11 @@
 export const ORDER_LINK_KEYS = Object.freeze(["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]);
 export const ORDER_LINK_LABELS = Object.freeze({ grabfoodUrl: "GrabFood", gofoodUrl: "GoFood", shopeefoodUrl: "ShopeeFood" });
 export const ORDER_URL_MAX = 2048;
-export const OFFICIAL_ORDER_HOSTS = Object.freeze({ grabfoodUrl: Object.freeze([]), gofoodUrl: Object.freeze([]), shopeefoodUrl: Object.freeze([]) });
+export const OFFICIAL_ORDER_HOSTS = Object.freeze({
+  grabfoodUrl: Object.freeze(["app.grab.com"]),
+  gofoodUrl: Object.freeze(["gofood.link"]),
+  shopeefoodUrl: Object.freeze([]),
+});
 const FORBIDDEN = /[\u0000- \u007f"<>\\]/;
 const fail = (key, reason) => {
   const label = ORDER_LINK_LABELS[key];

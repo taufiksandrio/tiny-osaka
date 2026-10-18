@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-export const verifyPublicReadProtection = async (client, owner, { media = true, preDrop = false } = {}) => {
-  // 0016 replaced the 0006 functions (ADR-039); preDrop checks the intermediate states 7..16 against 0006.
-  const source = readFileSync(new URL(preDrop ? "../../drizzle/0006_public_read_path.sql" : "../../drizzle/0016_drop_language_columns.sql", import.meta.url), "utf8") +
-    (media ? readFileSync(new URL("../../drizzle/0010_cms_media_access.sql", import.meta.url), "utf8") : "");
-  const expected = [...source.matchAll(/CREATE FUNCTION public\.(public_read_\w+)\(([^)]*)\) RETURNS jsonb\s+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
+// preDrop: states 7..16 are checked against 0006. orderLinks: state >= 18 (0017) replaced public_read_catalog()
+// (adds the three stored order links); the page and media functions keep their earlier definitions.
+export const verifyPublicReadProtection = async (client, owner, { media = true, preDrop = false, orderLinks = false } = {}) => {
+  const read = name => readFileSync(new URL(`../../drizzle/${name}`, import.meta.url), "utf8");
+  const sources = [preDrop ? read("0006_public_read_path.sql") : read("0016_drop_language_columns.sql"),
+    ...(media ? [read("0010_cms_media_access.sql")] : []), ...(orderLinks ? [read("0017_public_read_order_links.sql")] : [])];
+  const byName = new Map();
+  for (const source of sources) {
+    for (const match of source.matchAll(/CREATE (?:OR REPLACE )?FUNCTION public\.(public_read_\w+)\(([^)]*)\) RETURNS jsonb\s+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)) {
+      byName.set(match[1], match);
+    }
+  }
+  const expected = [...byName.values()];
   const app = owner.replace("_owner", "_app");
   const { rows } = await client.query(`
     SELECT p.oid,p.proname,p.prosrc,p.prosecdef,p.proconfig,p.provolatile,l.lanname,

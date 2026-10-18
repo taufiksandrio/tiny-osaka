@@ -2,11 +2,14 @@ import { usesPublishedContent } from "@/server/public/data.mjs";
 import { PublishedProduct, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { content } from "@/features/public-site/content";
 import { getPageContent } from "@/features/public-site/page-content";
 import { sampleMenu } from "@/features/public-site/fixtures/menu";
 import PageIntro from "@/features/public-site/components/PageIntro";
-import MenuCard from "@/features/public-site/components/MenuCard";
+import { SamplePhoto, MenuCardGrid } from "@/features/public-site/components/MenuCard";
 import OrderingNotice from "@/features/public-site/components/OrderingNotice";
 
 const getSample = (slug) => {
@@ -37,29 +40,22 @@ const ProductPage = async ({ params }) => {
       <PageIntro copy={copy}
         intro={{ title, eyebrow: copy.detailEyebrow, description: item.details }}
         parents={[{ label: copy.pages.menu.label, href: "/menu" }]} />
-      <section className="page-section container detail-grid" aria-labelledby="product-info-title">
-        <div className={`menu-placeholder detail-placeholder tone-${item.tone}`}>
-          <span className="sample-tag">{siteCopy.sample}</span>
-          <span className="slot-number" aria-hidden="true">{item.number}</span>
-          <span className="photo-note">{siteCopy.photo}</span>
-        </div>
-        <div className="prose-panel">
+      <section className="site-section container product-detail" aria-labelledby="product-info-title">
+        <div className="product-detail-media"><div className="product-detail-photo"><SamplePhoto tag={siteCopy.sample} note={siteCopy.photo} number={item.number} /></div></div>
+        <Card className="content-card"><CardContent>
           <p className="notice-box">{copy.detailNote}</p>
           <h2 id="product-info-title">{copy.product.detailsHeading}</h2>
-          <dl className="info-list">
-            {copy.product.fields.map((field) => <div key={field}><dt>{field}</dt><dd>{copy.product.pending}</dd></div>)}
+          <dl className="detail-list">
+            {copy.product.fields.map((field) => <div key={field} className="detail-row"><dt>{field}</dt><dd>{copy.product.pending}</dd></div>)}
           </dl>
           <p className="content-note">{copy.product.note}</p>
-          <Link className="text-link" href="/menu"><span aria-hidden="true">←</span>{copy.backMenu}</Link>
-        </div>
+          <Button asChild variant="outline"><Link href="/menu"><ArrowLeft aria-hidden="true" />{copy.backMenu}</Link></Button>
+        </CardContent></Card>
       </section>
-      <section className="related-section" aria-labelledby="related-title">
-        <div className="container">
-          <div className="section-heading"><h2 id="related-title">{copy.product.related}</h2><p>{copy.product.relatedIntro}</p></div>
-          <div className="menu-grid related-grid">
-            {sampleMenu.filter((sample) => sample.slug !== slug).map((sample) => <MenuCard key={sample.id} item={sample} copy={siteCopy} />)}
-          </div>
-        </div>
+      <section className="site-section container related-block" aria-labelledby="related-title">
+        <h2 className="related-title" id="related-title">{copy.product.related}</h2>
+        <p className="related-intro">{copy.product.relatedIntro}</p>
+        <MenuCardGrid items={sampleMenu.filter((sample) => sample.slug !== slug)} copy={siteCopy} headingLevel="h3" />
       </section>
       <OrderingNotice copy={siteCopy} />
     </main>

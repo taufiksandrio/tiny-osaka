@@ -32,8 +32,22 @@ import { test, expect, publicPaths } from "./fixtures";
 
       // Reload resets natural tab order; verify a real keyboard journey to promos.
       await page.goto(path || "/");
-      const promo = page.locator(".main-nav").getByRole("link", { name: "Promo & event", exact: true });
-      for (let index = 0; index < 5; index += 1) await page.keyboard.press("Tab");
+      const promo = page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Promo & event", exact: true });
+      if (!(await promo.isVisible())) {
+        // Below 768 px the same links live in the Sheet opened by "Buka menu" (keyboard: focus the button, Enter).
+        const openMenu = page.getByRole("button", { name: "Buka menu", exact: true });
+        for (let index = 0; index < 12 && !(await openMenu.evaluate((el) => el === document.activeElement)); index += 1) await page.keyboard.press("Tab");
+        await page.keyboard.press("Enter");
+        const sheetPromo = page.getByRole("navigation", { name: "Navigasi seluler" }).getByRole("link", { name: "Promo & event", exact: true });
+        for (let index = 0; index < 12 && !(await sheetPromo.evaluate((el) => el === document.activeElement)); index += 1) await page.keyboard.press("Tab");
+        await expect(sheetPromo).toBeFocused();
+        await expect(sheetPromo).toHaveCSS("outline-style", "solid");
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/promos$/);
+        return;
+      }
+      // Desktop: the inline nav is in the tab order; reach it with Tab (bounded, no fixed count).
+      for (let index = 0; index < 12 && !(await promo.evaluate((el) => el === document.activeElement)); index += 1) await page.keyboard.press("Tab");
       await expect(promo).toBeFocused();
       await expect(promo).toHaveCSS("outline-style", "solid");
       await page.keyboard.press("Enter");

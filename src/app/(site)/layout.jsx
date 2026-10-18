@@ -2,7 +2,10 @@ import { usesPublishedContent } from "@/server/public/data.mjs";
 import { content } from "@/features/public-site/content";
 import SiteHeader from "@/features/public-site/components/SiteHeader";
 import SiteFooter from "@/features/public-site/components/SiteFooter";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "@/styles/globals.css";
+
+const siteFont = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-site", display: "swap" });
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +19,8 @@ const SiteLayout = ({ children }) => {
   const copy = usesPublishedContent() ? { ...content, footerNote: "Tiny Osaka", footerPreview: "Informasi dari konten terbit." } : content;
 
   return (
-    <html lang="id">
-      <body>
+    <html lang="id" className={siteFont.variable}>
+      <body className="site-root">
         <a className="skip-link" href="#main-content">{copy.skip}</a>
         {!usesPublishedContent() && <div className="preview-banner">{copy.preview}</div>}
         <SiteHeader copy={copy} />
