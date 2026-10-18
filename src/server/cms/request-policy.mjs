@@ -1,3 +1,4 @@
+import { isValidDatabaseUrl, isRemoteTarget, localTargets } from "../db/config.mjs";
 export class CmsRequestError extends Error {
   // detail (optional): small JSON-safe object returned to the client next to the code, e.g. { field, message }.
   constructor(code, status, detail) { super(code); this.code = code; this.status = status; if (detail) this.detail = detail; }
@@ -40,13 +41,9 @@ export const exactInput = (input, fields) => {
 };
 export const getCmsDatabaseConfig = (env = process.env) => {
   const target = env.PUBLIC_DATABASE_TARGET ?? "dev";
-  if (!["dev", "test"].includes(target)) cmsFail("CMS_UNAVAILABLE", 503);
+  if (!localTargets.includes(target) && !isRemoteTarget(target)) cmsFail("CMS_UNAVAILABLE", 503);
   const value = env[target === "test" ? "TEST_CMS_DATABASE_URL" : "CMS_DATABASE_URL"];
-  let url;
-  try { url = new URL(value); } catch { cmsFail("CMS_UNAVAILABLE", 503); }
-  if (!["postgres:", "postgresql:"].includes(url.protocol) || !["127.0.0.1", "[::1]"].includes(url.hostname) ||
-    (url.port && url.port !== "5432") || url.pathname !== `/tiny_osaka_${target}` ||
-    url.username !== `tiny_osaka_${target}_cms` || !url.password || url.password === "REPLACE_LOCALLY" || url.search || url.hash) cmsFail("CMS_UNAVAILABLE", 503);
+  if (!isValidDatabaseUrl(value, target, ["cms"], env)) cmsFail("CMS_UNAVAILABLE", 503);
   return { connectionString: value, max: 2, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000,
     statement_timeout: 15000, lock_timeout: 5000, application_name: `tiny-osaka-${target}-cms` };
 };

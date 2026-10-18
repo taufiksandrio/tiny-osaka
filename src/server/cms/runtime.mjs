@@ -11,7 +11,8 @@ let services;
 const poolKey = Symbol.for("tiny-osaka.cms.pool");
 const getServices = () => {
   if (!services) {
-    if (process.env.PUBLIC_DATABASE_TARGET !== "test" && !process.env.CMS_DATABASE_URL) {
+    // Local private env file is a dev-only convenience; staging/production read server env only.
+    if ((process.env.PUBLIC_DATABASE_TARGET ?? "dev") === "dev" && !process.env.CMS_DATABASE_URL) {
       try { loadEnvFile(".env.cms.local"); } catch { /* Fail closed in config validation. */ }
     }
     // Route bundles may evaluate this module separately. Share one bounded pool

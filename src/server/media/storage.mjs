@@ -19,6 +19,15 @@ const fileDigest = async file => {
 };
 export const storageRoot = (env = process.env) => {
   const target = env.PUBLIC_DATABASE_TARGET || "dev";
+  if (["staging", "production"].includes(target)) {
+    // Remote targets store media on a persistent volume whose mount path comes from the server env.
+    const configured = env.MEDIA_STORAGE_ROOT;
+    if (typeof configured !== "string" || !path.isAbsolute(configured) || configured.includes("\0") ||
+      configured.split(/[\\/]+/).includes("..") || path.parse(configured).root === path.resolve(configured)) {
+      mediaFail("STORAGE_UNAVAILABLE", "Media storage volume path is not configured.");
+    }
+    return path.resolve(configured);
+  }
   if (!["test", "dev"].includes(target)) mediaFail("STORAGE_UNAVAILABLE", "Local storage target required.");
   return path.resolve(".media", target);
 };
