@@ -1,6 +1,7 @@
 # Spec: Tahap B - hapus kolom `locale`, `alt_en`, `caption_en` dari skema (migrasi 0016)
 
-Status: DISETUJUI dan DITERAPKAN di kode (Tahap B, ADR-039). Berkas migrasi: drizzle/0016_drop_language_columns.sql. Eksekusi ke DB test/dev dicatat di laporan implementasi; ubah baris ini menjadi SELESAI setelah migrasi test dan dev dijalankan.
+Status: SELESAI (2026-10-18). Bukti: PR #23 ter-merge ke main (b49a5db); DB `tiny_osaka_test` dan `tiny_osaka_dev` sudah di state migrasi 17 (0016 terapan; diverifikasi baca-saja oleh agen backend). QA di main: lint, build, unit 168/168, integration DB, E2E Playwright, security-check, dan `drizzle-kit check` lulus; `/id` dan `/en` mengembalikan 404; tidak ada kemunculan `locale` selain di `tests/integration/drop-language-schema.test.mjs` dan `scripts/lib/language-removal-protection.mjs`. Berkas migrasi: drizzle/0016_drop_language_columns.sql (ADR-039).
+BELUM teruji / belum terbukti (jangan dianggap lulus): AC-1 (backup dan pra-cek), AC-2 (pengecekan langsung riwayat `drizzle.__drizzle_migrations`; role migrator tidak bisa SELECT skema drizzle), AC-7 (atomisitas), AC-8 (konsistensi hash dari data DB), AC-13 (smoke dev), AC-15 (dokumen). Bukti no-op `db:migrate:test`/`db:migrate:dev` (jalankan kedua) juga belum ada: perintah ditolak pengaman dan belum dijalankan user.
 Tanggal: 2026-10-18. Penulis: PM. Lanjutan `docs/specs/remove-all-locale-code.md` (opsi B2 DISETUJUI user: "kolom locale hapus saja ga berguna"; sebelumnya: "pokoknya jangan ada /id /eng apapun caranya lakukan").
 Prasyarat keras: Tahap A (kode/test/dokumen tanpa locale) selesai dan hijau. Tahap B mengubah skema, hash, dan data; kode dan DB harus berpindah bersamaan (lihat bagian 9, risiko R2).
 
@@ -110,7 +111,7 @@ Idempoten: runner menolak/no-op bila state sudah 17 (cetak "already applied"); `
 - `src/server/db/stored-language.mjs`: HAPUS berkas (`STORED_LOCALE`). `src/server/public/data.mjs`: `SELECT public.public_read_catalog()` dan `public_read_page($1::text)`; hapus `delete result.locale`.
 - Hash: `catalog/content-hash.mjs` hapus `"locale"` dari 5 daftar; `pages/content-hash.mjs` hapus `locale` dan pengurutan berdasarkan locale (satu baris per revisi; bentuk muatan hash bebas diubah BE karena tidak ada hash lama yang bertahan, tetapi harus deterministik dan dikunci golden baru); `media/policy.mjs` `mediaRefFields` hapus `altEn`, `captionEn`; komentar "Legacy English columns" di `media/validation.mjs:35` dihapus. Tidak perlu penanda `format` baru (Q6).
 - Penulis/pembaca: `catalog/drafts.mjs` (target upsert tanpa `locale`, daftar kolom klon baris ~324-333 tanpa `locale`/`alt_en`/`caption_en`), `catalog/products.mjs:50` (cari terjemahan per `productId`), `catalog/review-readiness.mjs` (satu terjemahan per entitas; PK menjamin; cukup validasi judul), `pages/drafts.mjs` (upsert target `revisionId`; klon `INSERT .. SELECT` tanpa locale/alt_en/caption_en, baris 65-69), `pages/validation.mjs`, `cms/pages.mjs`, `media/references.mjs`, `cms/media.mjs`, `cms/batch.mjs`. Loader graf (`catalog/review.mjs`, `pages/drafts.mjs::loadPageGraph`) memakai `select()` penuh: otomatis tanpa kolom, tidak perlu perubahan selain tipe field.
-- `scripts/lib/catalog-variants-report.mjs` (3.5), skrip proteksi dan rencana migrasi (3.5), skrip baru `scripts/precheck-drop-locale.mjs` (baca-saja; bagian 7).
+- `scripts/lib/catalog-variants-report.mjs` (3.5), skrip proteksi dan rencana migrasi (3.5), skrip baru `scripts/precheck-drop-language.mjs` (baca-saja; bagian 7).
 - Sisa konstanta/komentar dari Tahap A yang menyebut locale (mis. `tests/unit/legacy-hash-golden.test.mjs`, komentar `stored-language`) dihapus/diganti.
 
 ### 5.2 Test dan fixture
@@ -162,9 +163,9 @@ Prasyarat berurutan:
 1. Tahap A selesai: lint, build, semua `test:*`, Playwright e2e hijau (hasil aktual dilaporkan), diff direview user. Cabang Tahap B diambil dari hasil Tahap A (Q8).
 2. ADR-039 dan spec ini disetujui user.
 3. Server dev/aplikasi dihentikan (lock `ACCESS EXCLUSIVE` + `lock_timeout` 5 detik).
-4. Pra-cek baca-saja di DB test lalu dev (hasil ditempelkan ke laporan BE dan ditinjau user sebelum dev). Cara disarankan: skrip `scripts/precheck-drop-locale.mjs` (BE; `BEGIN READ ONLY`, memakai kredensial migrator, hanya cetak angka dan nilai non-sensitif):
-   - `node --env-file=.env.test-migrator.local scripts/precheck-drop-locale.mjs`
-   - `node --env-file=.env.dev-migrator.local scripts/precheck-drop-locale.mjs`
+4. Pra-cek baca-saja di DB test lalu dev (hasil ditempelkan ke laporan BE dan ditinjau user sebelum dev). Cara disarankan: skrip `scripts/precheck-drop-language.mjs` (BE; `BEGIN READ ONLY`, memakai kredensial migrator, hanya cetak angka dan nilai non-sensitif):
+   - `node --env-file=.env.test-migrator.local scripts/precheck-drop-language.mjs`
+   - `node --env-file=.env.dev-migrator.local scripts/precheck-drop-language.mjs`
    Alternatif manual (PowerShell, klien PostgreSQL 18 seperti `scripts/setup-*.ps1`; kata sandi diminta interaktif, tidak ditulis di mana pun):
    ```
    $env:PGOPTIONS='-c default_transaction_read_only=on'
@@ -223,7 +224,7 @@ Prasyarat berurutan:
 ## 10. Tugas per peran
 
 backend:
-- Setelah ADR-039 dan spec disetujui dan Tahap A hijau: cabang baru dari hasil Tahap A. Ubah `src/server/db/schema.mjs`; `drizzle-kit generate` untuk jurnal + snapshot 0016, lalu GANTI SQL dengan 0016 tulis-tangan (bagian 4); pin hash berkas di `scripts/lib/{test,dev}-migration-plan.mjs` (17 entri, state `[12..17]`, pesan); `scripts/migrate-{test,dev}-db.mjs` (no-op di 17, env konfirmasi, hook reset `scripts/lib/reset-local-content.mjs`, verifikasi akhir 17); perbarui `scripts/lib/{public-read,catalog}-protection.mjs`, tambah modul pernyataan ketiadaan locale, `scripts/security-check.mjs`, `scripts/verify-dev-db.mjs`, `scripts/lib/catalog-variants-report.mjs`; tulis `scripts/precheck-drop-locale.mjs`.
+- Setelah ADR-039 dan spec disetujui dan Tahap A hijau: cabang baru dari hasil Tahap A. Ubah `src/server/db/schema.mjs`; `drizzle-kit generate` untuk jurnal + snapshot 0016, lalu GANTI SQL dengan 0016 tulis-tangan (bagian 4); pin hash berkas di `scripts/lib/{test,dev}-migration-plan.mjs` (17 entri, state `[12..17]`, pesan); `scripts/migrate-{test,dev}-db.mjs` (no-op di 17, env konfirmasi, hook reset `scripts/lib/reset-local-content.mjs`, verifikasi akhir 17); perbarui `scripts/lib/{public-read,catalog}-protection.mjs`, tambah modul pernyataan ketiadaan locale, `scripts/security-check.mjs`, `scripts/verify-dev-db.mjs`, `scripts/lib/catalog-variants-report.mjs`; tulis `scripts/precheck-drop-language.mjs`.
 - Ubah kode di 5.1; hapus `stored-language.mjs`; hash tanpa locale/en; unit test dan integrasi yang disentuh pada 5.2; jangan jalankan migrasi dev sebelum test hijau dan user menyetujui pra-cek dev.
 - Jalankan pra-cek, backup, migrasi test sesuai bagian 7 (izin migrasi DB test/dev sudah diberikan user setelah pra-cek; reset dev tetap berhenti di titik tinjauan - Q5).
 frontend:
