@@ -32,8 +32,8 @@ export const validateMediaAsset = asset => {
   return true;
 };
 export const validateMediaRefText = (input, ready = false) => {
-  for (const [key, max] of [["altId", p.altLength], ["altEn", p.altLength],
-    ["captionId", p.captionLength], ["captionEn", p.captionLength]]) {
+  // Legacy English columns are never validated or written; they only feed the immutable hash of old snapshots.
+  for (const [key, max] of [["altId", p.altLength], ["captionId", p.captionLength]]) {
     if (typeof input[key] !== "string" || input[key].length > max || input[key].includes("\0") ||
       (ready && key === "altId" && !input[key].trim())) invalid();
   }
@@ -82,18 +82,15 @@ export const mediaHashSnapshot = (graph, domain) => {
   return { refs: encode(graph.mediaRefs, domain === "catalog" ? [...mediaRefFields, "productId"] : mediaRefFields),
     assets: encode(graph.mediaAssets, mediaAssetFields) };
 };
-export const publicRevisionMedia = (graph, domain, locale) => {
+export const publicRevisionMedia = (graph, domain) => {
   validateRevisionMedia(graph, domain);
-  if (locale !== undefined && !["id", "en"].includes(locale)) invalid();
   const assets = new Map((graph.mediaAssets ?? []).map(row => [row.id, row]));
   const dto = asset => ({ id: asset.id, kind: asset.kind, width: asset.width, height: asset.height,
     durationMs: asset.durationMs, externalId: asset.externalId });
   return [...(graph.mediaRefs ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)).map(ref => {
     const asset = assets.get(ref.assetId);
-    const text = locale ? { alt: locale === "id" ? ref.altId : ref.altEn, caption: locale === "id" ? ref.captionId : ref.captionEn } :
-      { altId: ref.altId, altEn: ref.altEn, captionId: ref.captionId, captionEn: ref.captionEn };
     return { id: ref.id, ...(domain === "catalog" ? { productId: ref.productId } : {}),
-      sortOrder: ref.sortOrder, ...text, asset: dto(asset), poster: asset.posterId ? dto(assets.get(asset.posterId)) : null };
+      sortOrder: ref.sortOrder, alt: ref.altId, caption: ref.captionId, asset: dto(asset), poster: asset.posterId ? dto(assets.get(asset.posterId)) : null };
   });
 };
 

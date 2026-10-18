@@ -91,7 +91,7 @@ Approved by user on 2026-10-17. Branch: feat/phase3-2-cms-pages, based on
 origin/main b1753db, which includes the six-character CMS password decision.
 Standing per-subphase commit/push permission applies after verification.
 
-Scope: /admin/pages, bilingual fixed-template page editing, bounded structured
+Scope: /admin/pages, fixed-template page editing (Indonesian-only since ADR-034/038), bounded structured
 rich text, content preview, exact-version draft save/clone/submit, Owner-only
 approve/reject/publish/archive. Frozen revisions require a new draft; cloning
 never inherits approval. Live content persists until an approved replacement.
@@ -126,8 +126,8 @@ published-only public readers are preserved. Setup completed by the user;
 migration applied only to local dev/test databases.
 
 Manual use: restart npm.cmd run dev, sign in through /admin/login and choose
-Kelola halaman website. Select a page, create a draft and save each locale.
-Complete both locales before submit; Owner reviews the frozen candidate before
+Kelola halaman website. Select a page, create a draft and save it.
+Complete the Indonesian title and body before submit; Owner reviews the frozen candidate before
 approval/publication. Concurrent stale saves retain local unsaved text and ask
 the editor to copy it before reloading. The revision list shows the latest100.
 
@@ -148,7 +148,7 @@ release blockers. Exact commands and initial corrected failures: SECURITY_AND_QA
 Approved by user on 2026-10-17. Branch feat/phase3-3-cms-catalog starts from
 origin/main2b8b4cb, including merged PR8's form/button spacing.
 
-Scope: authenticated catalog revision list/create/clone, ID/EN category/product
+Scope: authenticated catalog revision list/create/clone, category/product
 content, ordering/placement, standard and additional variants, integer IDR prices,
 modifier groups/options and selection limits. Staff may draft/submit; Owner alone
 approves/rejects/publishes/archives the exact frozen version/hash. Existing live
@@ -301,7 +301,7 @@ actors are rejected. A failed last operation rolls back earlier identities,
 translations, media references, versions and audit rows. Existing workflow audit
 and approval hashes are not reformatted. No database migration or dependency.
 
-English public paths permanently redirect to stable Indonesian /id paths. No
+[Diamandemen ADR-038 dan penghapusan kode bahasa, 2026-10-18: tidak ada alihan; `/id` dan `/en` adalah 404 biasa dan URL tanpa prefix.] No
 language selector or English output remains. Approved snapshots can contain legacy
 English rows internally so their original hashes and signatures stay valid. No
 new Owner publication or real development content edit is performed by the agent.

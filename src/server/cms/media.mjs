@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
 import { roles } from "../db/auth-schema.mjs";
 import { createMediaAssets } from "../media/assets.mjs";
-import { createMediaReferences } from "../media/references.mjs";
+import { createMediaReferences, mediaRefDto } from "../media/references.mjs";
 import { validMediaUuid } from "../media/validation.mjs";
 import { createLocalStorage, videoAvailable } from "../media/storage.mjs";
 import { cmsFail, exactInput } from "./request-policy.mjs";
@@ -65,13 +65,13 @@ export const createCmsMedia = ({ db, authenticate, storage = createLocalStorage(
       const table = domain === "page" ? s.pageMediaRefs : s.catalogMediaRefs;
       const refs = await tx.select().from(table).where(and(eq(table.revisionId, revisionId), ...(domain === "catalog" ? [eq(table.productId, productId)] : [])));
       const items = [];
-      for (const ref of refs) items.push({ ...ref, asset: assetDto(await asset(tx, ref.assetId)) });
+      for (const ref of refs) items.push({ ...mediaRefDto(ref), asset: assetDto(await asset(tx, ref.assetId)) });
       return items.sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
     }),
     reference: (headers, domain, action, input) => run(headers, async (tx, actor) => {
       if (!["page", "catalog"].includes(domain) || !["save", "remove"].includes(action)) cmsFail("INVALID_INPUT");
       const fields = ["revisionId", "expectedVersion", ...(domain === "catalog" ? ["productId"] : []),
-        ...(action === "remove" ? ["referenceId"] : ["assetId", "referenceId", "altId", "altEn", "captionId", "captionEn", "sortOrder"])];
+        ...(action === "remove" ? ["referenceId"] : ["assetId", "referenceId", "altId", "captionId", "sortOrder"])];
       exactInput(input, fields);
       const refs = createMediaReferences({ db: tx, resolveActor: async () => actor });
       const method = action + (domain === "page" ? "Page" : "Catalog");

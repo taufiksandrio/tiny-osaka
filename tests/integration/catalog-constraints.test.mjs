@@ -17,10 +17,8 @@ const withGraph = async (run) => {
     await client.query("INSERT INTO products(id,slug) VALUES ($1,$2)", [ids.product, slug]);
     await client.query("INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [ids.revision, ids.category]);
     await client.query("INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [ids.revision, ids.product, ids.category]);
-    for (const locale of ["id", "en"]) {
-      await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title) VALUES ($1,$2,$3,'QA category only')", [ids.revision, ids.category, locale]);
-      await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title) VALUES ($1,$2,$3,'QA product only')", [ids.revision, ids.product, locale]);
-    }
+    await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title) VALUES ($1,$2,'id','QA category only')", [ids.revision, ids.category]);
+    await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title) VALUES ($1,$2,'id','QA product only')", [ids.revision, ids.product]);
     await run(client, ids, slug);
   } finally {
     try {
@@ -52,7 +50,7 @@ const reject = async (client, statement, params, code, constraint) => {
   if (constraint) assert.equal(actual.constraint, constraint);
 };
 
-test("accepts a valid bilingual draft graph with expected defaults", () => withGraph(async (client, ids) => {
+test("accepts a valid draft graph with expected defaults", () => withGraph(async (client, ids) => {
   const { rows: [revision] } = await client.query("SELECT status,version,created_at FROM catalog_revisions WHERE id=$1", [ids.revision]);
   assert.equal(revision.status, "draft");
   assert.equal(revision.version, 1);
@@ -61,7 +59,7 @@ test("accepts a valid bilingual draft graph with expected defaults", () => withG
     JOIN category_entries c ON c.revision_id=p.revision_id AND c.category_id=p.category_id
     JOIN product_translations t ON t.revision_id=p.revision_id AND t.product_id=p.product_id
     WHERE p.revision_id=$1 ORDER BY t.locale`, [ids.revision]);
-  assert.deepEqual(rows.map(row => row.locale), ["en", "id"]);
+  assert.deepEqual(rows.map(row => row.locale), ["id"]);
   assert.ok(rows.every(row => row.title === "QA product only" && row.description === ""));
 }));
 

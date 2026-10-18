@@ -1,5 +1,7 @@
 # Security, Privacy & Quality Gates
 
+> Catatan 2026-10-18 (ADR-034/038 dan penghapusan kode bahasa): situs hanya Indonesia, URL tanpa prefix; `/id` dan `/en` adalah 404 biasa tanpa alihan. Catatan hasil QA historis di bawah yang menyebut bilingual, ID/EN, locale, `/id`, atau `/en` mencatat keadaan saat itu dan tidak lagi berlaku; gerbang hidup ada di bagian "Mandatory automated coverage" dan bagian terbaru di akhir dokumen.
+
 ## Security baseline
 - Use widely reviewed OSS auth library if it meets requirements; no DIY password hashing/session system.
 - Credential login, internal invitation/provisioning only; optional Owner MFA; verified-email single-use expiry-limited reset flow; rate-limit login and reset endpoints.
@@ -13,9 +15,9 @@
 - Data/privacy: no tracking before required consent where applicable; review Indonesia privacy obligations, third-party embeds and privacy notices before launch.
 
 ## Mandatory automated coverage
-1. Unit: currency, modifier minimum/maximum, locale fallback, URL allowlist, revision approval invariant.
+1. Unit: currency, modifier minimum/maximum, URL allowlist (tanpa prefix bahasa), revision approval invariant.
 2. Integration: auth/session expiry, server RBAC, draft/approval/publication boundaries, scheduled publish, sync default-OFF, per-platform failures/idempotency.
-3. Playwright: ID+EN public navigation, mobile CTA, admin login and role restriction, draft/review/approve/publish/archive, 404/unpublished behavior, UTM/GA4 mocked, media preview.
+3. Playwright: public navigation (satu bahasa; `/id` dan `/en` 404), mobile CTA, admin login and role restriction, draft/review/approve/publish/archive, 404/unpublished behavior, UTM/GA4 mocked, media preview.
 4. Security: dependency audit, secret scan, inputs/embeds/CSRF, prohibited actions.
 5. Build and lint on PR. Tests must be reproducible and run without live credentials.
 
@@ -37,11 +39,11 @@ local ignored artifacts. No credentials or live merchant data are needed.
 
 The 222 cases span 1440px desktop, 390px mobile and 320px small mobile:
 
-- All 24 public locale routes: server content, localized metadata/lang, H1,
-  noindex, internal links and anchors, root redirect and invalid-route 404.
+- All public routes (historical 222-case run: 24 routes): server content, metadata/lang, H1,
+  noindex, internal links and anchors and invalid-route 404.
 - Homepage/menu/detail journeys, explicit unavailable merchant links, promo
   navbar, footer guides, breadcrumbs and cross-page ordering anchor.
-- Locale switching in both directions on every public path, including details.
+- (Historical: language switching was removed by ADR-038; there is no switcher.)
 - Axe WCAG A/AA tags, overflow/duplicate IDs, keyboard skip link and promo focus.
 
 The browser fixture aborts and fails attempted non-local HTTP(S)/WebSocket
@@ -1330,3 +1332,18 @@ There is no persistent worker/service setup. Rollback: ADR-036; restore PR15 app
 and UI together, retain all data/media/history and keep the worker stopped until
 old pending jobs are inspected. An application revert does not restore previous
 page text automatically; use a separately approved content replacement.
+
+## Penghapusan kode bahasa (2026-10-18)
+
+Lingkup: kode, API, UI, test, dan dokumen; tanpa migrasi dan tanpa perubahan hash. Kontrak baru ada di
+`docs/DATA_CONTRACTS.md` bagian "Kontrak satu bahasa".
+
+- Hash: daftar kolom hash katalog/halaman/media tidak diubah. Test golden `tests/unit/legacy-hash-golden.test.mjs`
+  mengunci hash graf dengan baris `en` dan teks alt/caption Inggris; integrasi (`pages`, `media`, `publication`)
+  membuktikan snapshot beku dengan baris/kolom Inggris tetap lolos hash, diabaikan validasi, tidak dikeluarkan
+  API/publik, dan tidak disalin ke draft hasil klon.
+- Keamanan: RBAC tidak berubah; permukaan input berkurang (`locale`, `altEn`, `captionEn` ditolak 400 oleh
+  `exactInput`); Staff tetap tidak dapat publish/approve di jalur katalog/halaman yang ada.
+- SEO: `<html lang="id">`, `noindex, nofollow`, tanpa hreflang, tanpa `Restaurant`/`LocalBusiness`; `/id` dan `/en`
+  tetap 404 (`tests/e2e/navigation.spec.js`).
+- Rollback: revert perubahan kode/test/dokumen; tidak ada perubahan data atau skema.

@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { catalogRevisions, categories, products, productVariants, variantTranslations, categoryEntries, categoryTranslations,
   productEntries, productTranslations, modifierGroups, modifierOptions,
   modifierGroupTranslations, modifierOptionTranslations } from "../db/schema.mjs";
+import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 // Internal persistence only: callers must supply an authorized server DB context.
 // No route, role grant, approval or published-content operation is exposed here.
@@ -15,8 +16,7 @@ export class CatalogDraftError extends Error {
 }
 const validUuid = value => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const writableVersion = value => Number.isInteger(value) && value >= 1 && value < 2147483647;
-const validTranslationText = input => ["id", "en"].includes(input.locale) &&
-  typeof input.title === "string" && input.title.trim().length > 0 &&
+const validTranslationText = input => typeof input.title === "string" && input.title.trim().length > 0 &&
   typeof input.description === "string" && !input.title.includes("\0") && !input.description.includes("\0");
 const validatePriceEdit = input => {
   if (!input || ![input.revisionId, input.productId, input.variantId].every(validUuid) ||
@@ -72,9 +72,9 @@ export const updateVariantPrice = async (db, input) => {
 const saveTranslation = async (db, input, entry, translations, identityKey) => {
   if (!input || !validUuid(input.revisionId) || !validUuid(input[identityKey]) || !writableVersion(input.expectedVersion) ||
     !validTranslationText(input)) {
-    throw new CatalogDraftError("INVALID_INPUT", "Require valid draft/entry IDs, version, locale, nonblank title and text description.");
+    throw new CatalogDraftError("INVALID_INPUT", "Require valid draft/entry IDs, version, nonblank title and text description.");
   }
-  const { revisionId, expectedVersion, locale, title, description } = input;
+  const { revisionId, expectedVersion, title, description } = input;
   const identity = input[identityKey];
   try {
     return await db.transaction(async tx => {
@@ -83,11 +83,11 @@ const saveTranslation = async (db, input, entry, translations, identityKey) => {
         .where(and(eq(entry.revisionId, revisionId), eq(entry[identityKey], identity))).limit(1);
       if (!parent) throw new CatalogDraftError("ENTRY_NOT_FOUND", "Category or product does not belong to this draft.");
       // Explicit fields only. Text is stored literally, never interpreted as HTML.
-      const [saved] = await tx.insert(translations).values({ revisionId, [identityKey]: identity, locale, title, description })
+      const [saved] = await tx.insert(translations).values({ revisionId, [identityKey]: identity, locale: STORED_LOCALE, title, description })
         .onConflictDoUpdate({ target: [translations.revisionId, translations[identityKey], translations.locale],
           set: { title, description } })
         .returning({ title: translations.title, description: translations.description });
-      return { revisionId, version, [identityKey]: identity, locale, ...saved };
+      return { revisionId, version, [identityKey]: identity, ...saved };
     });
   } catch (error) { throw persistenceError(error); }
 };
@@ -136,9 +136,9 @@ export const updateProductVariant = (db, input) => saveProductVariant(db, input,
 export const saveVariantTranslation = async (db, input) => {
   if (!input || ![input.revisionId, input.productId, input.variantId].every(validUuid) ||
     !writableVersion(input.expectedVersion) || !validTranslationText(input)) {
-    throw new CatalogDraftError("INVALID_INPUT", "Require valid draft/product/variant scope, version, locale and text fields.");
+    throw new CatalogDraftError("INVALID_INPUT", "Require valid draft/product/variant scope, version and text fields.");
   }
-  const { revisionId, productId, variantId, expectedVersion, locale, title, description } = input;
+  const { revisionId, productId, variantId, expectedVersion, title, description } = input;
   try {
     return await db.transaction(async tx => {
       const version = await advanceDraftVersion(tx, revisionId, expectedVersion);
@@ -146,10 +146,10 @@ export const saveVariantTranslation = async (db, input) => {
         .where(and(eq(productVariants.revisionId, revisionId), eq(productVariants.productId, productId),
           eq(productVariants.id, variantId))).limit(1);
       if (!variant) throw new CatalogDraftError("VARIANT_NOT_FOUND", "Variant does not belong to the selected draft and product.");
-      const [saved] = await tx.insert(variantTranslations).values({ revisionId, productId, variantId, locale, title, description })
+      const [saved] = await tx.insert(variantTranslations).values({ revisionId, productId, variantId, locale: STORED_LOCALE, title, description })
         .onConflictDoUpdate({ target: [variantTranslations.revisionId, variantTranslations.productId, variantTranslations.variantId, variantTranslations.locale],
           set: { title, description } }).returning({ title: variantTranslations.title, description: variantTranslations.description });
-      return { revisionId, version, productId, variantId: variant.id, locale, ...saved };
+      return { revisionId, version, productId, variantId: variant.id, ...saved };
     });
   } catch (error) { throw persistenceError(error); }
 };
@@ -228,9 +228,9 @@ export const updateModifierOption = (db, input) => saveModifierOption(db, input,
 
 const saveModifierTranslation = async (db, input, isOption) => {
   if (!validModifierScope(input) || !validUuid(input.groupId) || (isOption && !validUuid(input.optionId)) || !validTranslationText(input)) {
-    throw new CatalogDraftError("INVALID_INPUT", "Require valid modifier translation scope, version, locale and text fields.");
+    throw new CatalogDraftError("INVALID_INPUT", "Require valid modifier translation scope, version and text fields.");
   }
-  const { revisionId, productId, groupId, optionId, expectedVersion, locale, title, description } = input;
+  const { revisionId, productId, groupId, optionId, expectedVersion, title, description } = input;
   const parent = isOption ? modifierOptions : modifierGroups;
   const translations = isOption ? modifierOptionTranslations : modifierGroupTranslations;
   try {
@@ -240,13 +240,13 @@ const saveModifierTranslation = async (db, input, isOption) => {
       if (isOption) conditions.push(eq(modifierOptions.groupId, groupId));
       const [row] = await tx.select({ id: parent.id }).from(parent).where(and(...conditions)).limit(1);
       if (!row) throw new CatalogDraftError(isOption ? "MODIFIER_OPTION_NOT_FOUND" : "MODIFIER_GROUP_NOT_FOUND", "Modifier translation parent does not belong to the selected draft scope.");
-      const values = { revisionId, productId, groupId: isOption ? groupId : row.id, locale, title, description };
+      const values = { revisionId, productId, groupId: isOption ? groupId : row.id, locale: STORED_LOCALE, title, description };
       const target = [translations.revisionId, translations.productId, translations.groupId];
       if (isOption) { values.optionId = row.id; target.push(modifierOptionTranslations.optionId); }
       target.push(translations.locale);
       const [saved] = await tx.insert(translations).values(values)
         .onConflictDoUpdate({ target, set: { title, description } }).returning({ title: translations.title, description: translations.description });
-      return { revisionId, version, productId, groupId: values.groupId, ...(isOption ? { optionId: row.id } : {}), locale, ...saved };
+      return { revisionId, version, productId, groupId: values.groupId, ...(isOption ? { optionId: row.id } : {}), ...saved };
     });
   } catch (error) { throw persistenceError(error); }
 };
@@ -330,7 +330,7 @@ const cloneChildren = [
   ["modifier_group_translations", ["product_id", "group_id", "locale", "title", "description"]],
   ["modifier_options", ["product_id", "group_id", "id", "code", "price_delta", "sort_order"]],
   ["modifier_option_translations", ["product_id", "group_id", "option_id", "locale", "title", "description"]],
-  ["catalog_media_refs", ["id", "product_id", "asset_id", "alt_id", "alt_en", "caption_id", "caption_en", "sort_order"]],
+  ["catalog_media_refs", ["id", "product_id", "asset_id", "alt_id", "caption_id", "sort_order"]],
 ];
 
 // excludeProductId (optional) copies the snapshot without one product: the card delete flow
@@ -355,8 +355,10 @@ export const cloneCatalogDraft = async (db, input) => {
         const table = sql`${sql.identifier("public")}.${sql.identifier(name)}`;
         const fields = sql.join(columns.map(column => sql.identifier(column)), sql`, `);
         const skip = excludeProductId && columns.includes("product_id") ? sql` AND product_id <> ${excludeProductId}::uuid` : sql``;
+        // Legacy non-Indonesian translation rows stay in the old snapshot; the new draft carries Indonesian rows only.
+        const only = columns.includes("locale") ? sql` AND locale = ${STORED_LOCALE}` : sql``;
         await tx.execute(sql`INSERT INTO ${table} (revision_id, ${fields})
-          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid${skip}`);
+          SELECT ${draft.id}::uuid, ${fields} FROM ${table} WHERE revision_id = ${sourceRevisionId}::uuid${skip}${only}`);
       }
       return draft;
     });

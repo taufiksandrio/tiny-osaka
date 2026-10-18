@@ -3,7 +3,7 @@ const nextConfig = {
   distDir: process.env.QA_NEXT_DIST_DIR === ".next-qa" ? ".next-qa" : ".next",
   // Preserve the repository's existing agent instructions during development.
   agentRules: false,
-  // Unmatched URLs (retired /en/*) render an Indonesian 404 with <html lang="id"> (there is no root layout).
+  // Unmatched URLs render an Indonesian 404 with <html lang="id"> (there is no root layout).
   experimental: { globalNotFound: true },
   // Card images go through the built-in optimizer (no new dependency; sharp is already installed).
   // Only same-origin /media/** may be optimized (no remotePatterns); webp only (AVIF costs too much CPU/RAM
@@ -17,11 +17,7 @@ const nextConfig = {
     imageSizes: [384],
     minimumCacheTTL: 3600,
   },
-  redirects: async () => [
-    // ADR-038: public URLs have no language segment. Exact patterns only (Next itself strips a trailing slash first); /en has no redirect (404).
-    { source: "/id", destination: "/", permanent: true },
-    { source: "/id/:path+", destination: "/:path+", permanent: true },
-  ],
+  // ADR-038: public URLs have no language segment and nothing redirects; any prefixed address is a normal 404.
 };
 
 export default nextConfig;

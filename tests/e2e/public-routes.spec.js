@@ -51,7 +51,7 @@ test("root is served directly without redirect", async ({ request }) => {
   expect(response.status()).toBe(200);
 });
 
-test("unknown locales, pages and fixture slugs return 404", async ({ request }) => {
+test("unknown language prefixes, pages and fixture slugs return 404", async ({ request }) => {
   for (const path of ["/fr", "/fr/menu", "/fr/menu/sample-01", "/missing", "/menu/missing", "/en/menu/missing", "/guides/missing", "/en/guides/missing"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(404);

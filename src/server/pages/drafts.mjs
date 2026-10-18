@@ -4,6 +4,7 @@ import * as s from "../db/schema.mjs";
 import { getPageDefinition } from "./templates.mjs";
 import { PageContentError, pageFail, validPageUuid, validPageVersion, validatePageFields } from "./validation.mjs";
 import { loadRevisionMedia } from "../media/references.mjs";
+import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 export const pagePersistence = error => {
   if (error instanceof PageContentError) throw error;
@@ -41,10 +42,10 @@ export const savePageTranslation = async (db, input) => {
       const [revision] = await tx.select().from(s.pageRevisions).where(and(eq(s.pageRevisions.id, input.revisionId),
         eq(s.pageRevisions.version, input.expectedVersion), eq(s.pageRevisions.status, "draft"))).for("update");
       if (!revision) pageFail("REVISION_CONFLICT", "Draft changed or is frozen.");
-      validatePageFields(revision.pageKey, input.locale, input.fields);
+      validatePageFields(revision.pageKey, input.fields);
       // Detach caller-owned input before asynchronous persistence.
       const fields = JSON.parse(JSON.stringify(input.fields));
-      const [row] = await tx.insert(s.pageTranslations).values({ revisionId: revision.id, locale: input.locale, fields })
+      const [row] = await tx.insert(s.pageTranslations).values({ revisionId: revision.id, locale: STORED_LOCALE, fields })
         .onConflictDoUpdate({ target: [s.pageTranslations.revisionId, s.pageTranslations.locale], set: { fields } }).returning();
       await tx.update(s.pageRevisions).set({ version: sql`version + 1` }).where(eq(s.pageRevisions.id, revision.id));
       return { ...row, version: revision.version + 1 };
@@ -62,10 +63,12 @@ export const clonePageDraft = async (db, input) => {
         eq(s.pageRevisions.version, input.expectedSourceVersion))).for("share");
       if (!source) pageFail("REVISION_CONFLICT", "Source revision changed or is unavailable.");
       const [draft] = await tx.insert(s.pageRevisions).values({ pageKey: source.pageKey }).returning();
+      // Only the Indonesian row and Indonesian media text carry over; legacy English data stays in the old snapshot.
       await tx.execute(sql`INSERT INTO public.page_translations(revision_id,locale,fields)
-        SELECT ${draft.id}::uuid,locale,fields FROM public.page_translations WHERE revision_id=${source.id}::uuid`);
-      await tx.execute(sql`INSERT INTO public.page_media_refs(revision_id,id,asset_id,alt_id,alt_en,caption_id,caption_en,sort_order)
-        SELECT ${draft.id}::uuid,id,asset_id,alt_id,alt_en,caption_id,caption_en,sort_order
+        SELECT ${draft.id}::uuid,locale,fields FROM public.page_translations
+        WHERE revision_id=${source.id}::uuid AND locale=${STORED_LOCALE}`);
+      await tx.execute(sql`INSERT INTO public.page_media_refs(revision_id,id,asset_id,alt_id,caption_id,sort_order)
+        SELECT ${draft.id}::uuid,id,asset_id,alt_id,caption_id,sort_order
         FROM public.page_media_refs WHERE revision_id=${source.id}::uuid`);
       return draft;
     });

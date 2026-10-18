@@ -84,26 +84,24 @@ const complete = async context => {
   const variant = await add(writers.createProductVariant, { ...scope, expectedVersion: version++, code: "standard", basePrice: 250000, sortOrder: 0 });
   const group = await add(writers.createModifierGroup, { ...scope, expectedVersion: version++, code: "toppings", selectionType: "single", minSelections: 1, maxSelections: 1, sortOrder: 0 });
   const option = await add(writers.createModifierOption, { ...scope, groupId: group.groupId, expectedVersion: version++, code: "qa-option", priceDelta: 150000, sortOrder: 0 });
-  for (const locale of ["id", "en"]) {
-    const text = { locale, title: `QA synthetic ${locale}`, description: "QA only" };
-    for (const [save, fields] of [
-      [writers.saveCategoryTranslation, { revisionId: source.id, categoryId: graph.category.categoryId }],
-      [writers.saveProductTranslation, scope], [writers.saveVariantTranslation, { ...scope, variantId: variant.variantId }],
-      [writers.saveModifierGroupTranslation, { ...scope, groupId: group.groupId }],
-      [writers.saveModifierOptionTranslation, { ...scope, groupId: group.groupId, optionId: option.optionId }],
-    ]) await add(save, { ...fields, ...text, expectedVersion: version++ });
-  }
+  const text = { title: "QA synthetic", description: "QA only" };
+  for (const [save, fields] of [
+    [writers.saveCategoryTranslation, { revisionId: source.id, categoryId: graph.category.categoryId }],
+    [writers.saveProductTranslation, scope], [writers.saveVariantTranslation, { ...scope, variantId: variant.variantId }],
+    [writers.saveModifierGroupTranslation, { ...scope, groupId: group.groupId }],
+    [writers.saveModifierOptionTranslation, { ...scope, groupId: group.groupId, optionId: option.optionId }],
+  ]) await add(save, { ...fields, ...text, expectedVersion: version++ });
   return { ...graph, variant, group, option, version, scope };
 };
 const report = (context, version, revisionId = context.source.id) => getCatalogReviewReadiness(context.db, { revisionId, expectedVersion: version });
 
-test("from empty draft to complete bilingual review structure using only application writers", () => withFixture(async context => {
+test("from empty draft to complete review structure using only application writers", () => withFixture(async context => {
   const empty = await report(context, 1);
   assert.equal(empty.ready, false);
   assert.ok(empty.issues.some(row => row.code === "EMPTY_CATALOG"));
   const graph = await complete(context);
   const before = await root(context.client, context.source.id);
-  assert.deepEqual(await report(context, graph.version), { revisionId: context.source.id, version: 16, ready: true, issues: [] });
+  assert.deepEqual(await report(context, graph.version), { revisionId: context.source.id, version: 11, ready: true, issues: [] });
   assert.deepEqual(await root(context.client, context.source.id), before); // report makes no DML/version change
   assert.equal(before.status, "draft");
 }));
@@ -152,9 +150,9 @@ test("moving/reordering cloned entries affects only the clone, never shared slug
   assert.equal(rows.find(row => row.revision_id === clone.id).sort_order, 8);
   assert.equal((await client.query("SELECT slug FROM products WHERE id=$1", [graph.product.productId])).rows[0].slug, graph.product.slug);
   assert.equal((await report(context, 4, clone.id)).ready, false); // missing new-category translations
-  for (const [idx, locale] of ["id", "en"].entries()) await add(writers.saveCategoryTranslation, { revisionId: clone.id,
-    expectedVersion: 4 + idx, categoryId: category.categoryId, locale, title: "QA clone category", description: "" });
-  assert.equal((await report(context, 6, clone.id)).ready, true);
+  await add(writers.saveCategoryTranslation, { revisionId: clone.id,
+    expectedVersion: 4, categoryId: category.categoryId, title: "QA clone category", description: "" });
+  assert.equal((await report(context, 5, clone.id)).ready, true);
   assert.equal((await report(context, graph.version)).ready, true);
 }));
 
@@ -182,13 +180,13 @@ test("readiness refuses stale/missing revision and flags overflow in a complete 
   await assert.rejects(report(context, graph.version - 1), rejectCode("REVISION_CONFLICT"));
   await assert.rejects(report(context, 1, randomUUID()), rejectCode("REVISION_CONFLICT"));
   await add(writers.updateModifierOption, { ...graph.scope, groupId: graph.group.groupId, optionId: graph.option.optionId,
-    expectedVersion: 16, code: "qa-option", priceDelta: Number.MAX_SAFE_INTEGER, sortOrder: 0 });
-  const overflow = await report(context, 17);
+    expectedVersion: 11, code: "qa-option", priceDelta: Number.MAX_SAFE_INTEGER, sortOrder: 0 });
+  const overflow = await report(context, 12);
   assert.ok(overflow.issues.some(row => row.code === "PRICE_TOTAL_OVERFLOW"));
   await add(writers.updateModifierOption, { ...graph.scope, groupId: graph.group.groupId, optionId: graph.option.optionId,
-    expectedVersion: 17, code: "qa-option", priceDelta: 150000, sortOrder: 0 });
-  await add(writers.updateVariantPrice, { ...graph.scope, variantId: graph.variant.variantId, expectedVersion: 18, basePrice: Number.MAX_SAFE_INTEGER - 150000 });
-  assert.equal((await report(context, 19, source.id)).ready, true);
+    expectedVersion: 12, code: "qa-option", priceDelta: 150000, sortOrder: 0 });
+  await add(writers.updateVariantPrice, { ...graph.scope, variantId: graph.variant.variantId, expectedVersion: 13, basePrice: Number.MAX_SAFE_INTEGER - 150000 });
+  assert.equal((await report(context, 14, source.id)).ready, true);
 }));
 
 test("concurrent slug creation in different revisions has one winner without orphan identities", () => withFixture(async context => {
@@ -253,15 +251,15 @@ test("readiness locks a consistent version, then becomes stale after a waiting e
     const pid = (await worker.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
     await db.transaction(async tx => {
       const checked = await getCatalogReviewReadiness(tx, { revisionId: source.id, expectedVersion: graph.version });
-      assert.equal(checked.ready, true); assert.equal(checked.version, 16);
-      pending = addOn(drizzle(worker), writers.createCatalogCategory, { revisionId: source.id, expectedVersion: 16, slug: slug("waiting"), sortOrder: 0 })
+      assert.equal(checked.ready, true); assert.equal(checked.version, 11);
+      pending = addOn(drizzle(worker), writers.createCatalogCategory, { revisionId: source.id, expectedVersion: 11, slug: slug("waiting"), sortOrder: 0 })
         .then(value => ({ value }), error => ({ error }));
       await waitBlocked(client, [pid]);
-      assert.equal((await root(client, source.id)).version, 16);
+      assert.equal((await root(client, source.id)).version, 11);
     });
-    assert.equal((await pending).value?.version, 17);
-    await assert.rejects(report(context, 16), rejectCode("REVISION_CONFLICT"));
-    const changed = await report(context, 17);
+    assert.equal((await pending).value?.version, 12);
+    await assert.rejects(report(context, 11), rejectCode("REVISION_CONFLICT"));
+    const changed = await report(context, 12);
     assert.equal(changed.ready, false);
     assert.ok(changed.issues.some(row => row.code === "MISSING_TRANSLATION"));
   } finally { if (pending) await pending; await worker.end(); }

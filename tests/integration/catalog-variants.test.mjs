@@ -36,11 +36,9 @@ const withFixture = async (run, seed = true) => {
       }
       for (const revision of revisions) {
         await client.query("INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [revision, ids.category]);
-        await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title,description) VALUES ($1,$2,'en','QA existing category EN','QA English description')", [revision, ids.category]);
         for (const product of [ids.product, ids.otherProduct]) {
           await client.query("INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [revision, product, ids.category]);
         }
-        await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title,description) VALUES ($1,$2,'en','QA existing product EN','QA English description')", [revision, ids.product]);
       }
       for (const [revision, product, variant] of [
         [ids.revision, ids.otherProduct, ids.otherVariant], [ids.otherRevision, ids.product, ids.otherRevisionVariant]]) {
@@ -84,7 +82,7 @@ const withFixture = async (run, seed = true) => {
 const variantInput = (ids, fields = {}) => ({ revisionId: ids.revision, productId: ids.product,
   expectedVersion: 1, code: "standard", basePrice: 250000, sortOrder: 2, ...fields });
 const textInput = (ids, variantId, fields = {}) => ({ revisionId: ids.revision, productId: ids.product,
-  variantId, expectedVersion: 2, locale: "id", title: "QA 日本語 varian", description: "QA description\nline two", ...fields });
+  variantId, expectedVersion: 2, title: "QA 日本語 varian", description: "QA description\nline two", ...fields });
 const rejectCode = code => error => error instanceof CatalogDraftError && error.code === code;
 const versionOf = async (client, ids) => (await client.query("SELECT version FROM catalog_revisions WHERE id=$1", [ids.revision])).rows[0].version;
 const variantsOf = async (client, ids, revision = ids.revision) => (await client.query(
@@ -161,15 +159,18 @@ test("edit/translation composite scope rejects foreign variants and rolls back t
   assert.deepEqual(await textsOf(client, ids, standard.variantId), []);
 }));
 
-test("variant ID/EN upserts preserve other locale/revision and exact literal text", () => withFixture(async ({ client, db, ids }) => {
+test("variant text upserts leave other revisions and legacy English rows untouched and keep exact literal text", () => withFixture(async ({ client, db, ids }) => {
   const standard = await createProductVariant(db, variantInput(ids));
   await saveVariantTranslation(db, textInput(ids, standard.variantId));
-  await saveVariantTranslation(db, textInput(ids, standard.variantId, { expectedVersion: 3, locale: "en", title: "QA standard EN", description: "QA English" }));
+  // A row written before the single-language change; the application can no longer create one.
+  await client.query("INSERT INTO variant_translations(revision_id,product_id,variant_id,locale,title,description) VALUES ($1,$2,$3,'en','QA legacy English','QA legacy English description')",
+    [ids.revision, ids.product, standard.variantId]);
   const before = await textsOf(client, ids, standard.variantId);
-  await saveVariantTranslation(db, textInput(ids, standard.variantId, { expectedVersion: 4, title: "  QA <literal> 日本語  ", description: "" }));
+  assert.deepEqual(before.map(row => row.locale), ["en", "id"]);
+  await saveVariantTranslation(db, textInput(ids, standard.variantId, { expectedVersion: 3, title: "  QA <literal> 日本語  ", description: "" }));
   assert.deepEqual(await textsOf(client, ids, standard.variantId), [before[0], { locale: "id", title: "  QA <literal> 日本語  ", description: "" }]);
   assert.deepEqual(await textsOf(client, ids, ids.otherRevisionVariant, ids.otherRevision), []);
-  assert.equal(await versionOf(client, ids), 5);
+  assert.equal(await versionOf(client, ids), 4);
 }));
 
 test("SQL failure after actual writes rolls back create, edit and translated text", () => withFixture(async ({ client, db, ids }) => {
@@ -252,7 +253,7 @@ test("variant creation and product text compete for the same root token", () => 
   try {
     workers.push(await connectTestOwner()); workers.push(await connectTestOwner());
     const results = await race(client, workers, ids.revision, [db => createProductVariant(db, variantInput(ids)),
-      db => saveProductTranslation(db, { revisionId: ids.revision, productId: ids.product, expectedVersion: 1, locale: "id", title: "QA concurrent", description: "" })]);
+      db => saveProductTranslation(db, { revisionId: ids.revision, productId: ids.product, expectedVersion: 1, title: "QA concurrent", description: "" })]);
     assert.equal(await versionOf(client, ids), 2);
     assert.equal((await variantsOf(client, ids)).length, results[0].status === "fulfilled" ? 1 : 0);
     const rows = (await client.query("SELECT title FROM product_translations WHERE revision_id=$1 AND product_id=$2 AND locale='id'", [ids.revision, ids.product])).rows;

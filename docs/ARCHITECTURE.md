@@ -12,7 +12,7 @@
 - `observability`: server logs, task health, monitored failures, no PII tokens in logs.
 
 ## Suggested code organization (proposed)
-`src/app/[locale]/...` public routes; `src/app/admin/...` protected routes; `src/app/api/...` route handlers; `src/features/<feature>/{components,hooks,services,validators}`; `src/server/{auth,db,integrations,jobs}`; `src/lib`; `src/styles`; `tests/{unit,integration,e2e}`. Avoid treating route folders as the entire domain boundary.
+`src/app/(site)/...` public routes (single language, no URL prefix, ADR-038); `src/app/admin/...` protected routes; `src/app/api/...` route handlers; `src/features/<feature>/{components,hooks,services,validators}`; `src/server/{auth,db,integrations,jobs}`; `src/lib`; `src/styles`; `tests/{unit,integration,e2e}`. Avoid treating route folders as the entire domain boundary.
 
 ## Architectural rules
 - DB interactions/auth/admin mutations must run on server; no secrets in client component.

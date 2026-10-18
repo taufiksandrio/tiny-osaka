@@ -64,11 +64,11 @@ test("invalid decoding, forged inputs and unknown poster are rejected", async ()
 test("draft references increment versions, frozen edits fail and only exact publication grants bytes", async () => {
   const youtube = await api.youtube(jars[1], { videoId: "Abc_123-xyz", posterId: uploaded.id }); tracked.assets.push(youtube.id);
   const row = await pageFlow(1).createDraft({ pageKey: "about" }); tracked.pages.push("about"); tracked.pageRevisions.push(row.id);
-  const data = { revisionId: row.id, expectedVersion: 1, assetId: youtube.id, referenceId: null, altId: "Gambar uji", altEn: "Test image", captionId: "", captionEn: "", sortOrder: 0 };
+  const data = { revisionId: row.id, expectedVersion: 1, assetId: youtube.id, referenceId: null, altId: "Gambar uji", captionId: "", sortOrder: 0 };
   const ref = await api.reference(jars[1], "page", "save", data); assert.equal(ref.version, 2);
   await assert.rejects(api.reference(jars[1], "page", "save", data), { code: "REVISION_CONFLICT" });
   let version = 2;
-  version = (await pageFlow(1).saveTranslation({ revisionId: row.id, expectedVersion: version, locale: "id", fields: fields() })).version;
+  version = (await pageFlow(1).saveTranslation({ revisionId: row.id, expectedVersion: version, fields: fields() })).version;
   const submitted = await pageFlow(1).submit({ revisionId: row.id, expectedVersion: version });
   await assert.rejects(api.reference(jars[0], "page", "remove", { revisionId: row.id, expectedVersion: submitted.version, referenceId: ref.id }), { code: "REVISION_CONFLICT" });
   await assert.rejects(pageFlow(1).approve(token(submitted)), { code: "FORBIDDEN" });
@@ -88,7 +88,7 @@ test("catalog picker scopes media to the exact product and audits save/remove wi
   tracked.categories.push(category.categoryId);
   const product = await drafts.createCatalogProduct(db, { revisionId: draft.id, expectedVersion: category.version, slug: "qa-media-product-" + randomUUID(), categoryId: category.categoryId, sortOrder: 0 });
   const productId = product.productId; tracked.products.push(productId);
-  const input = { revisionId: draft.id, expectedVersion: product.version, productId, assetId: uploaded.id, referenceId: null, altId: "QA", altEn: "QA", captionId: "", captionEn: "", sortOrder: 0 };
+  const input = { revisionId: draft.id, expectedVersion: product.version, productId, assetId: uploaded.id, referenceId: null, altId: "QA", captionId: "", sortOrder: 0 };
   await assert.rejects(api.reference(jars[1], "catalog", "save", { ...input, productId: randomUUID() }), { code: "ENTRY_NOT_FOUND" });
   const ref = await api.reference(jars[1], "catalog", "save", input);
   const media = await loadRevisionMedia(db, draft.id, "catalog"); const dto = assetDto(media.mediaAssets[0]);

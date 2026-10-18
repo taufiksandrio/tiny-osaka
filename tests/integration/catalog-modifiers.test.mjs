@@ -39,11 +39,9 @@ const withFixture = async (run, seed = true) => {
       }
       for (const revision of revisions) {
         await client.query("INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [revision, ids.category]);
-        await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title,description) VALUES ($1,$2,'en','QA existing category EN','QA English description')", [revision, ids.category]);
         for (const product of [ids.product, ids.otherProduct]) {
           await client.query("INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [revision, product, ids.category]);
         }
-        await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title,description) VALUES ($1,$2,'en','QA existing product EN','QA English description')", [revision, ids.product]);
       }
       for (const [revision, product, variant] of [
         [ids.revision, ids.otherProduct, ids.otherVariant], [ids.otherRevision, ids.product, ids.otherRevisionVariant]]) {
@@ -93,7 +91,7 @@ const groupInput = (ids, fields = {}) => ({ revisionId: ids.revision, productId:
 const optionInput = (ids, groupId, fields = {}) => ({ revisionId: ids.revision, productId: ids.product, groupId,
   expectedVersion: 3, code: "paid", priceDelta: 150000, sortOrder: 4, ...fields });
 const labelInput = (ids, groupId, fields = {}) => ({ revisionId: ids.revision, productId: ids.product, groupId,
-  expectedVersion: 7, locale: "id", title: "QA 日本語 topping", description: "QA description\nline two", ...fields });
+  expectedVersion: 7, title: "QA 日本語 topping", description: "QA description\nline two", ...fields });
 const rejectCode = code => error => error instanceof CatalogDraftError && error.code === code;
 const versionOf = async (client, ids) => (await client.query("SELECT version FROM catalog_revisions WHERE id=$1", [ids.revision])).rows[0].version;
 const buildGraph = async ({ db, ids }) => {
@@ -197,19 +195,23 @@ test("full parent/product/revision/group scopes prevent moving groups/options or
   assert.deepEqual(await snapshot(client, ids.revision), before);
 }));
 
-test("group/option ID/EN upserts preserve sibling locale and literal text", () => withFixture(async context => {
+test("group/option label upserts keep legacy English rows and literal text", () => withFixture(async context => {
   const { client, db, ids } = context;
   const graph = await buildGraph(context);
   let expectedVersion = 7;
   for (const [save, table, fields] of [[saveModifierGroupTranslation, "modifier_group_translations", {}],
     [saveModifierOptionTranslation, "modifier_option_translations", { optionId: graph.paid.optionId }]]) {
     await save(db, labelInput(ids, graph.group.groupId, { ...fields, expectedVersion: expectedVersion++ }));
-    await save(db, labelInput(ids, graph.group.groupId, { ...fields, expectedVersion: expectedVersion++, locale: "en", title: "QA EN", description: "QA English" }));
+    // A row written before the single-language change; the application can no longer create one.
+    const columns = table === "modifier_group_translations" ? "group_id" : "group_id,option_id";
+    const values = table === "modifier_group_translations" ? "$3" : "$3,$4";
+    await client.query(`INSERT INTO ${table}(revision_id,product_id,${columns},locale,title,description) VALUES ($1,$2,${values},'en','QA EN','QA English')`,
+      [ids.revision, ids.product, graph.group.groupId, ...(fields.optionId ? [fields.optionId] : [])]);
     await save(db, labelInput(ids, graph.group.groupId, { ...fields, expectedVersion: expectedVersion++, title: "  QA <literal> 日本語  ", description: "" }));
     const { rows } = await client.query(`SELECT locale,title,description FROM ${table} WHERE revision_id=$1 ORDER BY locale`, [ids.revision]);
     assert.deepEqual(rows, [{ locale: "en", title: "QA EN", description: "QA English" }, { locale: "id", title: "  QA <literal> 日本語  ", description: "" }]);
   }
-  assert.equal(await versionOf(client, ids), 13);
+  assert.equal(await versionOf(client, ids), 11);
 }));
 
 test("stored modifier graph calculates exact totals and enforces required/unique selections and overflow", () => withFixture(async context => {
@@ -274,10 +276,8 @@ test("cloning retains groups/options/labels and later clone edits do not change 
   const { client, db, ids, revisions } = context;
   const graph = await buildGraph(context);
   let expectedVersion = 7;
-  for (const locale of ["id", "en"]) {
-    await saveModifierGroupTranslation(db, labelInput(ids, graph.group.groupId, { expectedVersion: expectedVersion++, locale }));
-    await saveModifierOptionTranslation(db, labelInput(ids, graph.group.groupId, { expectedVersion: expectedVersion++, locale, optionId: graph.paid.optionId }));
-  }
+  await saveModifierGroupTranslation(db, labelInput(ids, graph.group.groupId, { expectedVersion: expectedVersion++ }));
+  await saveModifierOptionTranslation(db, labelInput(ids, graph.group.groupId, { expectedVersion: expectedVersion++, optionId: graph.paid.optionId }));
   const before = await snapshot(client, ids.revision);
   const clone = await db.transaction(async tx => {
     const row = await cloneCatalogDraft(tx, { sourceRevisionId: ids.revision, expectedSourceVersion: expectedVersion }); revisions.push(row.id); return row;
@@ -287,7 +287,7 @@ test("cloning retains groups/options/labels and later clone edits do not change 
   await saveModifierGroupTranslation(db, labelInput(ids, graph.group.groupId, { revisionId: clone.id, expectedVersion: 2, title: "QA clone" }));
   await createModifierOption(db, optionInput(ids, graph.group.groupId, { revisionId: clone.id, expectedVersion: 3, code: "clone-only", priceDelta: 0 }));
   assert.deepEqual(await snapshot(client, ids.revision), before);
-  assert.equal(await versionOf(client, ids), 11);
+  assert.equal(await versionOf(client, ids), 9);
 }));
 
 const race = async (client, workers, revision, calls) => {

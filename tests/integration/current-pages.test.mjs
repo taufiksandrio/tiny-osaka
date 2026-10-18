@@ -35,10 +35,10 @@ test("Staff saves and immediately replaces the public page under their own ident
   const empty = await pages.current(headers[1], "about");
   const first = await pages.saveCurrent(headers[1], input(empty));
   assert.equal(first.status, "published"); assert.equal(first.isLive, true); assert.ok(first.updatedAt);
-  assert.equal((await getPublishedPage(db, { pageKey: "about", locale: "id" })).fields.title, fields.title);
+  assert.equal((await getPublishedPage(db, { pageKey: "about" })).fields.title, fields.title);
   const next = await pages.saveCurrent(headers[1], { ...input(first), fields: { ...fields, title: "QA pengganti" } });
   assert.notEqual(next.id, first.id); assert.equal((await pages.current(headers[0], "about")).id, next.id);
-  assert.equal((await getPublishedPage(db, { pageKey: "about", locale: "id" })).fields.title, "QA pengganti");
+  assert.equal((await getPublishedPage(db, { pageKey: "about" })).fields.title, "QA pengganti");
   const receipt = (await db.execute("SELECT approved_by FROM public.page_approvals")).rows;
   assert.equal(receipt.length, 2); assert.ok(receipt.every(row => row.approved_by === fixture.accounts[1].id));
   const list = await pages.list(headers[1]); assert.equal(list.find(row => row.key === "about").publishedRevisionId, next.id);

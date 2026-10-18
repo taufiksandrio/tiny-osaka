@@ -8,7 +8,7 @@ import { CatalogDraftError } from "../../src/server/catalog/drafts.mjs";
 const fixture = () => {
   const [revisionId, categoryId, productId, variantId, groupId, optionId] = Array.from({ length: 6 }, () => randomUUID());
   const scope = { revisionId, productId };
-  const localized = fields => ["id", "en"].map(locale => ({ revisionId, ...fields, locale, title: `QA ${locale}`, description: "" }));
+  const localized = fields => [{ revisionId, ...fields, locale: "id", title: "QA id", description: "" }];
   return {
     revision: { id: revisionId, version: 8, status: "draft" },
     categories: [{ id: categoryId, slug: "qa-category" }], products: [{ id: productId, slug: "qa-product" }],
@@ -24,7 +24,7 @@ const fixture = () => {
 };
 const has = (report, code) => report.issues.some(row => row.code === code);
 
-test("complete bilingual catalog returns a version-bound report without modifying graph", () => {
+test("complete Indonesian catalog returns a version-bound report without modifying graph", () => {
   const graph = fixture(); const before = structuredClone(graph);
   assert.deepEqual(validateCatalogReviewReadiness(graph), { revisionId: graph.revision.id, version: 8, ready: true, issues: [] });
   assert.deepEqual(graph, before);
@@ -50,15 +50,19 @@ test("Indonesian names and valid text are required for every catalog entity", ()
   for (const name of ["categoryTranslations", "productTranslations", "variantTranslations", "modifierGroupTranslations", "modifierOptionTranslations"]) {
     const graph = fixture(); graph[name] = graph[name].filter(row => row.locale !== "id");
     const report = validateCatalogReviewReadiness(graph);
-    assert.ok(report.issues.some(row => row.code === "MISSING_TRANSLATION" && row.locale === "id"));
+    assert.ok(report.issues.some(row => row.code === "MISSING_TRANSLATION" && !("locale" in row)));
     for (const change of [{ title: " \t\n\u00a0" }, { description: null }, { title: "private-content\0" }]) {
       const invalid = fixture(); Object.assign(invalid[name][0], change);
       const result = validateCatalogReviewReadiness(invalid);
       assert.ok(has(result, "INVALID_TEXT"));
       assert.ok(!JSON.stringify(result).includes("private-content"));
     }
-    const invalid = fixture(); invalid[name][0].locale = "jp";
-    assert.ok(has(validateCatalogReviewReadiness(invalid), "INVALID_LOCALE"));
+    // Rows of any non-Indonesian locale left in old snapshots are ignored, never rejected or counted.
+    const legacy = fixture(); legacy[name].push({ ...legacy[name][0], locale: "en", title: "", description: null });
+    const legacyReport = validateCatalogReviewReadiness(legacy);
+    assert.equal(legacyReport.ready, true); assert.deepEqual(legacyReport.issues, []);
+    const onlyLegacy = fixture(); for (const row of onlyLegacy[name]) row.locale = "en";
+    assert.ok(has(validateCatalogReviewReadiness(onlyLegacy), "MISSING_TRANSLATION"));
   }
 });
 
@@ -107,8 +111,8 @@ test("worst permitted selection uses top max options, accepts exact safe boundar
   graph.modifierOptions[0].priceDelta = 200;
   const extra = { ...graph.modifierOptions[0], id: randomUUID(), code: "extra", priceDelta: 100 };
   graph.modifierOptions.push(extra);
-  for (const locale of ["id", "en"]) graph.modifierOptionTranslations.push({ revisionId: graph.revision.id,
-    productId: extra.productId, groupId: extra.groupId, optionId: extra.id, locale, title: "QA extra", description: "" });
+  graph.modifierOptionTranslations.push({ revisionId: graph.revision.id,
+    productId: extra.productId, groupId: extra.groupId, optionId: extra.id, locale: "id", title: "QA extra", description: "" });
   assert.equal(validateCatalogReviewReadiness(graph).ready, true); // max=1: not the sum of both options
   graph.modifierGroups[0].maxSelections = 2;
   assert.ok(has(validateCatalogReviewReadiness(graph), "PRICE_TOTAL_OVERFLOW"));
@@ -120,10 +124,8 @@ test("worst selection includes maximum base variant and all independent groups",
   const group = { ...graph.modifierGroups[0], id: randomUUID(), code: "other" };
   const option = { ...graph.modifierOptions[0], id: randomUUID(), groupId: group.id };
   graph.modifierGroups.push(group); graph.modifierOptions.push(option);
-  for (const locale of ["id", "en"]) {
-    graph.modifierGroupTranslations.push({ revisionId: graph.revision.id, productId: group.productId, groupId: group.id, locale, title: "QA other", description: "" });
-    graph.modifierOptionTranslations.push({ revisionId: graph.revision.id, productId: option.productId, groupId: group.id, optionId: option.id, locale, title: "QA other", description: "" });
-  }
+  graph.modifierGroupTranslations.push({ revisionId: graph.revision.id, productId: group.productId, groupId: group.id, locale: "id", title: "QA other", description: "" });
+  graph.modifierOptionTranslations.push({ revisionId: graph.revision.id, productId: option.productId, groupId: group.id, optionId: option.id, locale: "id", title: "QA other", description: "" });
   assert.ok(has(validateCatalogReviewReadiness(graph), "PRICE_TOTAL_OVERFLOW"));
 });
 

@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { validateRevisionMedia } from "../media/validation.mjs";
 import { getPageDefinition, isInternalPageLink, pageTemplateFields } from "./templates.mjs";
+import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 export class PageContentError extends Error {
   constructor(code, message) { super(message); this.name = "PageContentError"; this.code = code; }
@@ -51,9 +52,9 @@ const validateRich = (document, ready) => {
   if (ready && !visible) invalid();
 };
 
-export const validatePageFields = (pageKey, locale, fields, { ready = false } = {}) => {
+export const validatePageFields = (pageKey, fields, { ready = false } = {}) => {
   const definition = getPageDefinition(pageKey);
-  if (!definition || !["id", "en"].includes(locale)) pageFail("INVALID_INPUT", "Unknown page or locale.");
+  if (!definition) pageFail("INVALID_INPUT", "Unknown page.");
   const allowed = pageTemplateFields[definition.template];
   if (!keys(fields, Object.keys(allowed), ready ? ["title", "body"] : [])) invalid();
   // Validate the bounded node/field shape before JSON serialization.
@@ -73,23 +74,21 @@ export const validatePageFields = (pageKey, locale, fields, { ready = false } = 
 export const validatePageReadiness = graph => {
   if (!graph || !getPageDefinition(graph.page?.key) || graph.page.template !== getPageDefinition(graph.page.key).template ||
     !validPageUuid(graph.revision?.id) || graph.revision.pageKey !== graph.page.key ||
-    !validPageVersion(graph.revision.version) || !Array.isArray(graph.translations) || graph.translations.length < 1 || graph.translations.length > 2) {
+    !validPageVersion(graph.revision.version) || !Array.isArray(graph.translations) || graph.translations.length < 1) {
     pageFail("NOT_READY", "Require an Indonesian page revision.");
   }
-  const locales = new Set();
+  // Frozen snapshots may still hold legacy non-Indonesian rows: they stay in the graph for hashing but are ignored here.
+  const rows = graph.translations.filter(row => row.locale === STORED_LOCALE);
   try {
-    for (const row of graph.translations) {
-      if (row.revisionId !== graph.revision.id || locales.has(row.locale)) invalid();
-      validatePageFields(graph.page.key, row.locale, row.fields, { ready: row.locale === "id" });
-      locales.add(row.locale);
-    }
+    if (rows.length !== 1) invalid();
+    if (rows[0].revisionId !== graph.revision.id) invalid();
+    validatePageFields(graph.page.key, rows[0].fields, { ready: true });
   } catch (error) {
     if (error instanceof PageContentError) pageFail("NOT_READY", "Lengkapi judul dan isi halaman sebelum mengirim review.");
     throw error;
   }
-  if (!locales.has("id")) pageFail("NOT_READY", "Konten Indonesia wajib tersedia.");
   try { validateRevisionMedia(graph, "page"); }
-  catch { pageFail("NOT_READY", "Complete valid bilingual media references before submitting."); }
+  catch { pageFail("NOT_READY", "Complete valid media references before submitting."); }
   return true;
 };
 

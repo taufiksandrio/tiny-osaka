@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { isInternalPageLink } from "@/server/pages/templates.mjs";
-// Links saved before ADR-038 may start with /id or /en; render them without the language segment.
-const publicHref = href => href.replace(/^\/(?:id|en)(?=\/|$)/, "") || "/";
 const Inline = ({ spans }) => spans.map((span, index) => {
   let node = span.text;
   if (span.marks?.includes("bold")) node = <strong>{node}</strong>;
   if (span.marks?.includes("italic")) node = <em>{node}</em>;
-  if (span.href && isInternalPageLink(span.href)) node = <Link href={publicHref(span.href)}>{node}</Link>;
+  if (span.href && isInternalPageLink(span.href)) node = <Link href={span.href}>{node}</Link>;
   return <span key={index}>{node}</span>;
 });
 const PublicRichText = ({ document }) => document?.blocks.map((block, index) => {

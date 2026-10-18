@@ -80,4 +80,4 @@ Confirmed weekly backup on SAME production VPS. This does not protect against VP
 Track HTTP uptime, application exceptions, scheduled job failures and merchant sync outcomes. Avoid logging secrets, user PII and API payloads containing sensitive fields. Escalation/alerts to developer.
 
 ## Production release checklist
-PR approved; branch reviewed; database migration reversible or documented; unit/integration/E2E/build/security checks passed; pages render ID/EN, SEO and analytics verified; backup tested; merchant sync OFF without approved access; staging QA; explicit manual deploy confirmation and rollback strategy.
+PR approved; branch reviewed; database migration reversible or documented; unit/integration/E2E/build/security checks passed; pages render in Indonesian without language prefix, SEO and analytics verified; backup tested; merchant sync OFF without approved access; staging QA; explicit manual deploy confirmation and rollback strategy.

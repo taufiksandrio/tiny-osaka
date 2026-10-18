@@ -17,7 +17,7 @@ const labels = { title: "Judul", summary: "Ringkasan", body: "Isi", eyebrow: "Pe
 const textOf = value => (value?.blocks ?? []).map(block => (block.content ?? block.items?.flat() ?? []).map(span => span.text).join("")).join("\n\n");
 const documentOf = text => ({ blocks: text.split(/\n\s*\n/).filter(part => part.trim()).map(part => ({ type: "paragraph", content: (part.match(/[\s\S]{1,4000}/g) ?? []).map(text => ({ text })) })) });
 const PageEditor = ({ initial }) => {
-  const [revision, setRevision] = useState(initial), [fields, setFields] = useState(initial.translations.find(row => row.locale === "id")?.fields ?? {});
+  const [revision, setRevision] = useState(initial), [fields, setFields] = useState(initial.fields ?? {});
   const [dirty, setDirty] = useState(false), [media, setMedia] = useState([]), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [issues, setIssues] = useState([]), [preview, setPreview] = useState(false);
   const form = useRef(null), unsaved = dirty || media.length > 0;
   useEffect(() => { if (!unsaved) return; const warn = event => { event.preventDefault(); event.returnValue = ""; }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [unsaved]);
@@ -44,7 +44,7 @@ const PageEditor = ({ initial }) => {
     <Card className="shadow-none"><CardHeader>
       <CardDescription>Isi dalam bahasa Indonesia. Tanda * wajib diisi. Simpan untuk langsung memperbarui website.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-3">
       <Button type="button" variant="outline" onClick={() => setPreview(!preview)}>{preview ? "Kembali ke editor" : "Pratinjau konten"}</Button>
-      {revision.pageKey === "home" && <Button variant="outline" disabled={busy} onClick={() => { setFields(previous => ({ ...homeDraft.id, ...Object.fromEntries(Object.entries(previous).filter(([, value]) => typeof value === "string" ? value.trim() : textOf(value).trim())) })); setDirty(true); setMessage("Konten home dimuat. Periksa lalu simpan."); }}>Isi dari konten home tersedia</Button>}
+      {revision.pageKey === "home" && <Button variant="outline" disabled={busy} onClick={() => { setFields(previous => ({ ...homeDraft, ...Object.fromEntries(Object.entries(previous).filter(([, value]) => typeof value === "string" ? value.trim() : textOf(value).trim())) })); setDirty(true); setMessage("Konten home dimuat. Periksa lalu simpan."); }}>Isi dari konten home tersedia</Button>}
     </CardContent></Card>
     {preview ? <PagePreview spec={spec} fields={fields} labels={labels} unsaved={unsaved} pageKey={revision.pageKey} mediaRefs={revision.mediaRefs} mediaAssets={revision.mediaAssets} /> : <div className="grid gap-6">
       <Card className="shadow-none"><CardHeader><h2>Konten halaman</h2></CardHeader><CardContent><fieldset disabled={busy} className="grid gap-6">

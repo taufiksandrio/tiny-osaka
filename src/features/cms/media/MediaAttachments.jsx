@@ -15,7 +15,7 @@ const MediaAttachments = ({ productId = null, initial = [], assets = [], disable
     setRows(next);
     onOperations(next.filter(row => row.changed).map(row => ({
       action: row.removed ? "mediaRemove" : "mediaSave", data: { ...(productId ? { productId } : {}), referenceId: row.referenceId,
-        ...(row.removed ? {} : Object.fromEntries(["assetId", "altId", "altEn", "captionId", "captionEn", "sortOrder"].map(key => [key, row[key]]))) },
+        ...(row.removed ? {} : Object.fromEntries(["assetId", "altId", "captionId", "sortOrder"].map(key => [key, row[key]]))) },
     })));
   };
   const change = (key, field, value) => update(rows.map(row => row.key === key ? { ...row, [field]: value, changed: true } : row));
@@ -27,7 +27,7 @@ const MediaAttachments = ({ productId = null, initial = [], assets = [], disable
       <div className="cms-form-field"><Label htmlFor={row.key + "caption"}>Keterangan (opsional)</Label><Textarea id={row.key + "caption"} value={row.captionId} maxLength={2000} onChange={event => change(row.key, "captionId", event.target.value)} /></div>
       <Button type="button" variant="outline" className="justify-self-start" onClick={() => update(row.referenceId ? rows.map(item => item.key === row.key ? { ...item, removed: true, changed: true } : item) : rows.filter(item => item.key !== row.key))}>Lepas media</Button>
     </fieldset>)}
-    <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || rows.filter(row => !row.removed).length >= 12} onClick={() => update([...rows, { key: crypto.randomUUID(), referenceId: null, assetId: "", altId: "", altEn: "", captionId: "", captionEn: "", sortOrder: rows.length }])}>Tambah media</Button>
+    <Button type="button" variant="outline" className="justify-self-start" disabled={disabled || rows.filter(row => !row.removed).length >= 12} onClick={() => update([...rows, { key: crypto.randomUUID(), referenceId: null, assetId: "", altId: "", captionId: "", sortOrder: rows.length }])}>Tambah media</Button>
   </section>;
 };
 export default MediaAttachments;

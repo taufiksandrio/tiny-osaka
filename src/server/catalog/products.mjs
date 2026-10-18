@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, asc, eq, sql } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
+import { STORED_LOCALE } from "../db/stored-language.mjs";
 import { cmsFail } from "../cms/request-policy.mjs";
 import { publishingLock } from "../publishing/locks.mjs";
 import * as drafts from "./drafts.mjs";
@@ -47,7 +48,7 @@ const priceOf = variants => {
 export const buildCards = graph => {
   const cards = graph.productEntries.map(entry => {
     const identity = graph.products.find(row => row.id === entry.productId);
-    const translation = graph.productTranslations.find(row => row.productId === entry.productId && row.locale === "id");
+    const translation = graph.productTranslations.find(row => row.productId === entry.productId && row.locale === STORED_LOCALE);
     const ref = graph.mediaRefs.filter(row => row.productId === entry.productId)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))[0];
     const asset = ref ? graph.mediaAssets.find(row => row.id === ref.assetId) : null;
@@ -88,7 +89,7 @@ const ensureCategory = async (tx, draft, version) => {
       const created = await drafts.createCatalogCategory(tx, { revisionId: draft.id, expectedVersion: version,
         slug: slugCandidate(INTERNAL_CATEGORY, n), sortOrder: 0 });
       const titled = await drafts.saveCategoryTranslation(tx, { revisionId: draft.id, expectedVersion: created.version,
-        categoryId: created.categoryId, locale: "id", title: "Menu", description: "" });
+        categoryId: created.categoryId, title: "Menu", description: "" });
       return { categoryId: created.categoryId, version: titled.version };
     } catch (error) {
       if (!(error instanceof CatalogDraftError) || error.code !== "SLUG_CONFLICT") throw error;
@@ -102,7 +103,7 @@ const addStandardVariant = async (tx, draftId, version, productId, price) => {
   const variant = await drafts.createProductVariant(tx, { revisionId: draftId, expectedVersion: version, productId,
     code: "standard", basePrice: price, sortOrder: 0 });
   return drafts.saveVariantTranslation(tx, { revisionId: draftId, expectedVersion: variant.version, productId,
-    variantId: variant.variantId, locale: "id", title: "Standar", description: "" });
+    variantId: variant.variantId, title: "Standar", description: "" });
 };
 
 // Submit, approve and publish as one immutable, hash-checked snapshot. The real actor is
@@ -144,7 +145,7 @@ const applyImage = async (tx, draftId, productId, image) => {
     await tx.delete(s.catalogMediaRefs).where(scope);
     if (image.mode === "set") {
       await tx.insert(s.catalogMediaRefs).values({ revisionId: draftId, productId, assetId: image.assetId, altId: image.alt,
-        altEn: "", captionId: "", captionEn: "", sortOrder: 0 });
+        captionId: "", sortOrder: 0 });
     }
   }
   await bumpDraft(tx, draftId);
@@ -184,7 +185,7 @@ export const createProduct = async (tx, actor, input) => {
   }
   if (!created) cmsFail("SLUG_CONFLICT", 409);
   const titled = await drafts.saveProductTranslation(tx, { revisionId: draft.id, expectedVersion: created.version,
-    productId: created.productId, locale: "id", title: input.name, description: input.description });
+    productId: created.productId, title: input.name, description: input.description });
   await addStandardVariant(tx, draft.id, titled.version, created.productId, input.price);
   if (image) await applyImage(tx, draft.id, created.productId, image);
   // A new card has no links yet, so null means "nothing to store".
@@ -218,7 +219,7 @@ export const updateProduct = async (tx, actor, slug, input) => {
   if (input.name === current.name && input.description === current.description && input.price === current.price && sameImage && sameLinks) return publicDto(current);
   const draft = await cloneLive(tx, live);
   const titled = await drafts.saveProductTranslation(tx, { revisionId: draft.id, expectedVersion: draft.version,
-    productId: current.id, locale: "id", title: input.name, description: input.description });
+    productId: current.id, title: input.name, description: input.description });
   const variants = await tx.select().from(s.productVariants)
     .where(and(eq(s.productVariants.revisionId, draft.id), eq(s.productVariants.productId, current.id)));
   const target = variants.find(row => row.code === "standard") ?? variants[0];

@@ -26,11 +26,10 @@ export const saveBatch = async (tx, actor, input) => {
       ["revisionId", "expectedVersion"].some(key => Object.hasOwn(operation.data, key))) cmsFail("INVALID_INPUT");
     const data = { ...operation.data, revisionId: revision.id, expectedVersion: version };
     if (action === "save") {
-      exactInput(data, ["revisionId", "expectedVersion", "locale", "fields"]);
-      if (data.locale !== "id") cmsFail("INVALID_INPUT");
+      exactInput(data, ["revisionId", "expectedVersion", "fields"]);
       version = (await workflow.saveTranslation(data)).version;
     } else {
-      exactInput(data, ["revisionId", "expectedVersion", ...(action === "mediaRemove" ? ["referenceId"] : ["referenceId", "assetId", "altId", "altEn", "captionId", "captionEn", "sortOrder"])]);
+      exactInput(data, ["revisionId", "expectedVersion", ...(action === "mediaRemove" ? ["referenceId"] : ["referenceId", "assetId", "altId", "captionId", "sortOrder"])]);
       version = (await refs[action === "mediaSave" ? "savePage" : "removePage"](data)).version;
     }
     await tx.insert(s.pageWorkflowEvents).values({ revisionId: revision.id, action: "save", actorId: actor.subject });

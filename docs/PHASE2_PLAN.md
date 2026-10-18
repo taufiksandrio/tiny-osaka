@@ -1,5 +1,7 @@
 # Phase 2: current status and original data design
 
+> Catatan 2026-10-18 (ADR-034/038 dan penghapusan kode bahasa): rencana ini historis. Istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bawah tidak berlaku lagi; situs satu bahasa Indonesia tanpa prefix URL (kontrak terbaru: docs/DATA_CONTRACTS.md bagian "Kontrak satu bahasa").
+
 Current status (2026-10-16, ADR-024): all five approved functional groups are
 complete. Public routes use published data by default; explicit local fixture
 preview remains available. QA: 104 unit, 143 integration, 300 E2E, lint/build.

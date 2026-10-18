@@ -9,6 +9,8 @@ import * as w from "../../src/server/catalog/drafts.mjs";
 import * as s from "../../src/server/db/schema.mjs";
 import { createCatalogWorkflow } from "../../src/server/catalog/workflow.mjs";
 import { getPublishedCatalog } from "../../src/server/catalog/published.mjs";
+import { loadCatalogGraph } from "../../src/server/catalog/review.mjs";
+import { hashCatalogContent } from "../../src/server/catalog/content-hash.mjs";
 import { connectTestOwner } from "../../scripts/lib/test-db.mjs";
 import { workflowTables } from "../../scripts/lib/test-migration-plan.mjs";
 import { verifyCatalogProtection } from "../../scripts/lib/catalog-protection.mjs";
@@ -39,15 +41,13 @@ const complete = async (db, track = () => {}) => {
     selectionType: "single", minSelections: 1, maxSelections: 1, sortOrder: 0 });
   const option = await w.createModifierOption(db, { ...scope, groupId: group.groupId, expectedVersion: version++,
     code: "qa-option", priceDelta: 150000, sortOrder: 0 });
-  for (const locale of ["id", "en"]) {
-    for (const [save, fields] of [
-      [w.saveCategoryTranslation, { revisionId: revision.id, categoryId: category.categoryId }],
-      [w.saveProductTranslation, scope],
-      [w.saveVariantTranslation, { ...scope, variantId: variant.variantId }],
-      [w.saveModifierGroupTranslation, { ...scope, groupId: group.groupId }],
-      [w.saveModifierOptionTranslation, { ...scope, groupId: group.groupId, optionId: option.optionId }],
-    ]) await save(db, { ...fields, expectedVersion: version++, locale, title: "QA synthetic " + locale, description: "" });
-  }
+  for (const [save, fields] of [
+    [w.saveCategoryTranslation, { revisionId: revision.id, categoryId: category.categoryId }],
+    [w.saveProductTranslation, scope],
+    [w.saveVariantTranslation, { ...scope, variantId: variant.variantId }],
+    [w.saveModifierGroupTranslation, { ...scope, groupId: group.groupId }],
+    [w.saveModifierOptionTranslation, { ...scope, groupId: group.groupId, optionId: option.optionId }],
+  ]) await save(db, { ...fields, expectedVersion: version++, title: "QA synthetic", description: "" });
   return { revision, category, product, variant, group, option, version };
 };
 
@@ -87,6 +87,29 @@ test("published reader is empty until an approved revision is explicitly publish
   assert.ok(!JSON.stringify(graph).includes("qa-owner-subject"));
   assert.deepEqual(await owner(db).publish(token(published)), published);
   assert.equal((await db.select().from(s.catalogWorkflowEvents)).length, 3);
+}));
+
+test("legacy English translation rows are ignored by readiness, stay in the verified hash and are not cloned", () => withRollback(async db => {
+  const fixture = await complete(db);
+  // Rows written before the single-language change; no application writer can create them any more.
+  const legacy = { revisionId: fixture.revision.id, locale: "en", title: "QA legacy English", description: "" };
+  await db.insert(s.categoryTranslations).values({ ...legacy, categoryId: fixture.category.categoryId });
+  await db.insert(s.productTranslations).values({ ...legacy, productId: fixture.product.productId });
+  await db.insert(s.variantTranslations).values({ ...legacy, productId: fixture.product.productId, variantId: fixture.variant.variantId });
+  await db.insert(s.modifierGroupTranslations).values({ ...legacy, productId: fixture.product.productId, groupId: fixture.group.groupId });
+  await db.insert(s.modifierOptionTranslations).values({ ...legacy, productId: fixture.product.productId, groupId: fixture.group.groupId, optionId: fixture.option.optionId });
+  const submitted = await staff(db).submit(sourceToken(fixture));
+  const published = await owner(db).publish(token(await owner(db).approve(token(submitted))));
+  const frozen = await root(db, fixture.revision.id);
+  const graph = await loadCatalogGraph(db, frozen);
+  assert.equal(graph.productTranslations.length, 2, "the loader still returns the legacy row");
+  assert.equal(hashCatalogContent(graph), published.contentHash, "the stored hash still covers both rows");
+  const clone = await w.cloneCatalogDraft(db, { sourceRevisionId: fixture.revision.id, expectedSourceVersion: frozen.version });
+  const cloned = await loadCatalogGraph(db, await root(db, clone.id));
+  for (const name of ["categoryTranslations", "productTranslations", "variantTranslations", "modifierGroupTranslations", "modifierOptionTranslations"]) {
+    assert.deepEqual(cloned[name].map(row => row.locale), ["id"], name);
+  }
+  assert.equal(hashCatalogContent(await loadCatalogGraph(db, await root(db, fixture.revision.id))), published.contentHash, "old hash unchanged");
 }));
 
 test("incomplete and stale drafts cannot submit and leave no submission or audit", () => withRollback(async db => {
@@ -360,7 +383,7 @@ test("simultaneous first publication serializes and exposes one complete approve
     const graph = await getPublishedCatalog(drizzle(client));
     assert.ok(approved.some(r => r.revisionId === graph.revision.id));
     assert.equal(graph.productEntries.length, 1);
-    assert.equal(graph.productTranslations.length, 2);
+    assert.equal(graph.productTranslations.length, 1);
     assert.equal((await drizzle(client).select().from(s.catalogPublication)).length, 1);
   } finally {
     await client.query("ROLLBACK"); await Promise.all(pending);

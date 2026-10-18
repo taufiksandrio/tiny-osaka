@@ -6,7 +6,7 @@
 - Acceptance: local dev server works; lint/build pass; no TS files; instructions present and Git clean after approved commit.
 
 ## Phase 1: Static public conversion shell + localization
-- [Diamandemen ADR-038, 2026-10-18: situs satu bahasa Indonesia, rute tanpa prefix; /en 404, /id 308.] Responsive layout, nav/footer, `/id` and `/en` routing (after path approval), homepage/about/menu/product/guide/promo/location placeholders with unmistakable dummy content.
+- [Diamandemen ADR-038, 2026-10-18: situs satu bahasa Indonesia, rute tanpa prefix; `/id` dan `/en` sama-sama 404 biasa tanpa alihan.] Responsive layout, nav/footer, `/id` and `/en` routing (after path approval), homepage/about/menu/product/guide/promo/location placeholders with unmistakable dummy content.
 - Design tokens and responsive UI, accessible CTA skeleton; mock data in separate fixture folder.
 - Acceptance: links navigable, mobile Playwright E2E, SEO metadata and page structure. No fabricated live restaurant facts.
 

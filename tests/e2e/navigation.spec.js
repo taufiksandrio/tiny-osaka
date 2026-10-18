@@ -55,20 +55,22 @@ for (const path of ["/en", "/en/menu", "/en/menu/sample-01", "/en/about", "/en/g
 }
 
 for (const path of publicPaths) {
-  test("former /id address redirects permanently without a chain: " + (path || "homepage"), async ({ request }) => {
+  test("former /id address is a plain 404 without redirect, while the unprefixed address works: " + (path || "homepage"), async ({ request }) => {
     const response = await request.get("/id" + path + "?utm=x", { maxRedirects: 0 });
-    expect(response.status()).toBe(308);
-    expect(response.headers().location).toBe((path || "/") + "?utm=x");
+    expect(response.status()).toBe(404);
+    expect(response.headers().location).toBeUndefined();
     expect((await request.get(path || "/", { maxRedirects: 0 })).status()).toBe(200);
   });
 }
 
-test("/id/ and /en/ with trailing slash end on the homepage / a 404, and other routes are untouched", async ({ request }) => {
-  const legacy = await request.get("/id/");
-  expect(legacy.url()).toBe("http://127.0.0.1:3030/");
-  expect(legacy.status()).toBe(200);
-  expect((await request.get("/en/")).status()).toBe(404);
-  for (const path of ["/idle", "/identity", "/admin/login"]) {
-    expect((await request.get(path, { maxRedirects: 0 })).status(), path).not.toBe(308);
+test("/id/ and /en/ with trailing slash are 404 and nothing redirects to or from a language prefix", async ({ request }) => {
+  for (const path of ["/id", "/en"]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(404);
+    expect(response.headers().location, path).toBeUndefined();
   }
+  // Next itself strips a trailing slash first (framework default, not an app redirect); the end result is still a 404.
+  for (const path of ["/id/", "/en/"]) expect((await request.get(path)).status(), path).toBe(404);
+  expect((await request.get("/", { maxRedirects: 0 })).status()).toBe(200);
+  expect((await request.get("/admin/login", { maxRedirects: 0 })).status()).toBe(200);
 });
