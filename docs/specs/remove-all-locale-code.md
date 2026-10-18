@@ -1,6 +1,6 @@
 # Spec: Hapus semua kode dan sebutan bahasa/locale (en/id)
 
-Status: MENUNGGU PERSETUJUAN USER. Belum ada kode, migrasi, atau dokumen lain yang diubah.
+Status: SELESAI (2026-10-18), digantikan oleh `docs/specs/drop-locale-column.md` dan ADR-039. Tahap A (kode) diterapkan di commit a6dd3c2 (PR #22). Tahap B ditempuh sebagai B2 lewat migrasi 0016 (PR #23, b49a5db), bukan B1 yang direkomendasikan di bawah. Grep `src` menyisakan hanya `localeCompare` untuk sorting. Status ditutup atas persetujuan user. Teks di bawah adalah draf asli, dipertahankan sebagai riwayat.
 Tanggal: 2026-10-18. Penulis: PM. Branch dokumen: chore/agents-md-adr-037-038.
 Permintaan user: "hapus semua yg berhubungan dengan lang /eng dan /id". Konteks: situs hanya Indonesia, URL tanpa prefix (ADR-038); alihan `/id/*` juga sudah dihapus (`/id/*` dan `/en/*` sama-sama 404; `next.config.mjs` tanpa `redirects`).
 

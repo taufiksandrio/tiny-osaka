@@ -1,6 +1,6 @@
 # Spec: Situs satu bahasa tanpa pemilih bahasa dan tanpa segmen bahasa di URL
 
-Status: MENUNGGU PERSETUJUAN USER (rev.2). Keputusan user sudah dicatat di bagian 2; sisa pertanyaan di bagian 12. Belum ada kode, route, test, atau dokumen lain yang diubah. Konflik dengan AGENTS.md dicatat di bagian 5 (jangan diubah oleh agen; hanya user).
+Status: SELESAI (2026-10-18), digantikan oleh ADR-038 dan `docs/specs/remove-all-locale-code.md`. Diterapkan di commit a6dd3c2 (PR #22): situs satu bahasa Indonesia, tanpa pemilih bahasa, URL tanpa prefix; `/id` dan `/en` sama-sama 404 tanpa alihan. Status ditutup atas persetujuan user. Pertanyaan terbuka di bagian 12 (redirect `/id`) tidak berlaku lagi karena alihan tidak dipakai. Teks di bawah adalah rev.2 asli, dipertahankan sebagai riwayat.
 Permintaan user (verbatim): "pm untuk navigasinya juga dibuat tidak ada lang id/eng"; keputusan: "tombol pilihan dihapus dan satu bahasa jadi default, alamat eng dihapus selamanya gausah ada lagi"; "gausah ada langg, hanya url/menu".
 
 ## 1. Masalah dan tujuan
