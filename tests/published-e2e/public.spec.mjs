@@ -9,8 +9,6 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 });
 test.afterEach(async ({ page }) => expect(runtimeErrors.get(page)).toEqual([]));
-// QA fixtures tag their synthetic content with the stored "id" translation; this is not a URL segment.
-const tag = "id";
 {
   test(`empty database shows no examples and returns detail 404`, async ({ page, request }) => {
     expect(process.env.QA_PUBLIC_EMPTY).toBe("1");
@@ -26,10 +24,10 @@ const tag = "id";
     test(`published ${key} SSR, accessibility and mobile layout`, async ({ page, request }) => {
       const response = await request.get(suffix || "/");
       expect(response.status()).toBe(200);
-      expect(await response.text()).toContain(`QA ${key} ${tag}`);
+      expect(await response.text()).toContain(`QA ${key}`);
       await page.goto(suffix || "/");
-      await expect(page.locator("h1")).toHaveText(`QA ${key} ${tag}`);
-      await expect(page).toHaveTitle(`QA ${key} ${tag}`);
+      await expect(page.locator("h1")).toHaveText(`QA ${key}`);
+      await expect(page).toHaveTitle(`QA ${key}`);
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
       await expect(page.locator(".preview-banner")).toHaveCount(0);
       await expect(page.locator("main script")).toHaveCount(0);
@@ -54,7 +52,7 @@ const tag = "id";
   }
   test(`published product shows single price without modifier UI`, async ({ page }) => {
     await page.goto(`/menu/${process.env.QA_PUBLIC_SLUG}`);
-    await expect(page.locator("h1")).toHaveText(`QA Product ${tag}`);
+    await expect(page.locator("h1")).toHaveText(`QA Product`);
     await expect(page.locator("main")).toContainText(/Rp\s?250\.000/);
     await expect(page.getByRole("status")).toHaveCount(0);
     await expect(page.getByRole("checkbox")).toHaveCount(0);

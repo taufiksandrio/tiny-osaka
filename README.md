@@ -48,8 +48,8 @@ npm ci
 npm.cmd run dev -- --hostname=127.0.0.1
 ```
 
-Buka http://127.0.0.1:3000/id atau http://127.0.0.1:3000/en.
-Route `/` diarahkan sementara (307) ke `/id`. Hentikan server dengan Ctrl+C.
+Buka http://127.0.0.1:3000/. Situs satu bahasa Indonesia tanpa prefix bahasa; `/id` dan `/en`
+adalah 404 biasa. Hentikan server dengan Ctrl+C.
 
 ## Verifikasi
 
@@ -497,11 +497,32 @@ file untracked lainnya; jangan memakai pembersihan massal working tree.
 ## Katalog kartu dan satu bahasa (ADR-037/038, 2026-10-18)
 
 - Katalog: satu halaman /admin/catalog berupa grid card; Tambah/Ubah lewat modal (Owner dan Staff, langsung tayang); Hapus permanen hanya Owner. Tanpa kategori/varian/modifier; scheduling dihapus. Gambar opsional dengan alt wajib; link order GrabFood/GoFood/ShopeeFood hanya disimpan (allowlist host masih kosong).
-- Situs satu bahasa: URL tanpa prefix; /en 404; /id 308.
+- Situs satu bahasa: URL tanpa prefix; `/id` dan `/en` sama-sama 404 biasa tanpa alihan (amandemen ADR-038 2026-10-18).
 - Migrasi 0014 (purge) dan 0015 (kolom link order) hanya dijalankan di DB lokal test; dev/produksi menunggu persetujuan.
 - Rollback: kembalikan app/UI/docs/next.config.mjs bersama; produk terhapus hanya pulih dari backup. Rincian di docs/DECISIONS.md ADR-037/038.
 
+## Penghapusan kode bahasa (lanjutan ADR-034/037/038, 2026-10-18)
+
+Situs hanya Indonesia dan URL tanpa prefix; `/id` dan `/en` adalah 404 biasa. Kode aplikasi, API, UI, test, dan
+dokumen tidak lagi memodelkan bahasa. Semua penyebutan bilingual, ID/EN, `locale`, `/id`, `/en`, `altEn`, dan
+`captionEn` di bagian historis README ini (Phase 1A sampai Phase 3.x) sudah tidak berlaku; kontrak terbaru ada
+di bagian ini dan `docs/DATA_CONTRACTS.md`.
+
+- Tanpa migrasi dan tanpa perubahan hash: kolom `locale` (selalu `'id'`), `alt_en`/`caption_en`, dan fungsi SQL
+  `public_read_*` tetap ada di skema. Satu konstanta internal `src/server/db/stored-language.mjs` menyuplai nilai `'id'`.
+- Daftar kolom hash (`catalog/content-hash.mjs`, `pages/content-hash.mjs`, `mediaRefFields`) tidak berubah. Baris `en`
+  dan teks alt/caption Inggris pada snapshot lama tetap dimuat dan di-hash, diabaikan oleh validasi, tidak dikeluarkan
+  oleh API atau pembaca publik, dan tidak disalin ke draft hasil klon.
+- API: simpan halaman/batch tidak lagi menerima `locale`; referensi media tidak menerima `altEn`/`captionEn`
+  (field tak dikenal ditolak 400). Pembacaan halaman CMS mengembalikan `fields` (bukan `translations`); referensi
+  media hanya memuat `altId`/`captionId`; keluaran publik memakai `alt`/`caption`.
+- Tautan rich text baru hanya tanpa prefix (`/menu`); tautan lama berprefiks `/id/...` atau `/en/...` pada data
+  tersimpan dibiarkan dan kini ditolak validasi sebagai tautan internal (hasilnya 404 bila dirender).
+- Rollback: revert perubahan kode/test/dokumen; tidak ada perubahan data atau skema.
+
 ## Struktur
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 > Catatan: pohon `[locale]/` di bawah historis; sejak ADR-038 rute publik di `src/app/(site)`.
 
@@ -542,7 +563,7 @@ dimulai, mengikuti arsitektur yang disetujui.
 ## Batas Phase 0
 
 CMS, schema database, authentication, merchant integration,
-dan katalog bisnis resmi belum diimplementasikan. Routing bilingual beranda
+dan katalog bisnis resmi belum diimplementasikan. Routing beranda
 ditambahkan pada Phase 1A, dengan halaman pendukung pada Phase 1B di atas.
 Tidak ada secret atau konfigurasi
 layanan live. Halaman bootstrap memakai metadata `noindex`; konfigurasi SEO
@@ -712,6 +733,8 @@ terverifikasi; schema katalog, grant tabel, migrator dan migrasi belum dibuat.
 
 ## Phase 2B1: schema draft katalog (2026-10-16)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Schema JS di `src/server/db/schema.mjs` kini mendefinisikan tujuh tabel draft:
 catalog_revisions, categories, products, category_entries, product_entries,
 category_translations dan product_translations. Rincian kontrak ada di
@@ -759,6 +782,8 @@ SQL diterapkan sehingga tidak diperlukan rollback DB. Langkah berikutnya perlu
 rencana dan persetujuan migrator, migrasi test DB serta pengujian constraint.
 
 ## Phase 2B2: migrasi database test (2026-10-16)
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 Selesai di branch `feat/catalog-data-plan`, sesuai ADR-010. Database
 `tiny_osaka_test` kini memiliki tujuh tabel draft katalog dan schema `drizzle`
@@ -876,6 +901,8 @@ menimpa env atau mengulangi provisioning secara buta.
 
 ## Phase 2C1: harga, varian dan topping offline (2026-10-16)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Diimplementasikan pada feat/catalog-data-plan sesuai rencana dan revisi pengguna:
 tidak ada plafon harga bisnis. Produk sederhana memakai varian internal standard;
 kelompok topping berlaku untuk seluruh varian produk; setiap opsi sekali pilih;
@@ -934,6 +961,8 @@ Setelah 0001 nantinya diterapkan, gunakan rencana reverse migration/restore khus
 bukan rollback file tersebut. Rollback belum dijalankan.
 
 ## Phase 2C2: migrasi harga/topping ke test (2026-10-16)
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 Selesai di feat/catalog-data-plan, sesuai persetujuan rencana dan ADR-013.
 Database test sekarang memiliki 13 tabel katalog dan dua history migration yang
@@ -1086,6 +1115,8 @@ pulihkan hanya record sintetis itu; jangan reset database. Rollback belum dijala
 
 ## Phase 2D2: salin katalog ke draft baru (2026-10-16)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Selesai di feat/catalog-data-plan sesuai ADR-016. cloneCatalogDraft menerima ID
 sumber dan expectedSourceVersion, mengunci root sumber FOR SHARE, lalu membuat
 root baru draft/version 1 dan menyalin sepuluh tabel anak dalam satu transaksi.
@@ -1136,6 +1167,8 @@ berikutnya gagal, inspeksi ID test yang dilaporkan tanpa reset database.
 
 ## Phase 2D3: edit terjemahan kategori/produk (2026-10-16)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Selesai di feat/catalog-data-plan sesuai ADR-017. saveCategoryTranslation dan
 saveProductTranslation menambah/memperbarui nama/deskripsi untuk locale ID/EN
 pada entry yang sudah ada di draft. expectedVersion dan perubahan teks disimpan
@@ -1184,6 +1217,8 @@ fase ini. Pertahankan writer/clone baseline, schema/migrasi/database. Fixture su
 bersih; pada cleanup gagal di masa depan inspeksi hanya ID test yang dilaporkan.
 
 ## Phase 2D4: writer varian dan label ID/EN (2026-10-16)
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 Selesai pada feat/catalog-data-plan sesuai ADR-018. Writer dapat membuat varian
 ber-ID baru, mengedit kode/harga/urutan serta upsert nama/deskripsi ID/EN varian.
@@ -1238,6 +1273,8 @@ run mendatang gagal, inspeksi hanya ID test yang dilaporkan tanpa reset database
 
 ## Phase 2D5: writer kelompok topping dan opsi (2026-10-16)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Selesai pada feat/catalog-data-plan sesuai ADR-019. Enam writer internal mencakup
 create/edit kelompok topping, create/edit opsi dan upsert label ID/EN keduanya.
 Semua memakai expectedVersion/transaksi root yang sama. Scope dan kode unik
@@ -1291,6 +1328,8 @@ Pertahankan writer/clone baseline, schema/migrasi/database. Fixture sudah bersih
 pada cleanup gagal berikutnya inspeksi hanya ID test yang dilaporkan.
 
 ## Phase 2D6: paket fondasi draft katalog selesai (2026-10-16)
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 Paket gabungan selesai di feat/catalog-data-plan sesuai ADR-020. Writer kini dapat
 membuat kategori/produk beserta identitas dan slug unik, memindahkan produk antar
@@ -1438,6 +1477,8 @@ sebelum paket ini dipertahankan; paket ini tidak menginstal dependency.
 
 ## Phase 2 kelompok 3: backend konten halaman bilingual (ADR-022)
 
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
+
 Paket selesai pada feat/catalog-data-plan. Sembilan identitas mengikuti rute yang
 sudah ada: home, about, menu, guides, promos, location, guide-takoyaki,
 guide-okonomiyaki, guide-burger. Template dan target tautan tetap milik kode.
@@ -1496,6 +1537,8 @@ disetujui. Pertahankan SQL 0000-0004, snapshot/journal dan history. Jangan mengh
 riwayat atau menulis ulang migrasi terapan. Approval paket ini hanya lokal test/dev.
 
 ## Phase 2 kelompok 4: referensi media dan batasnya (ADR-023)
+
+> Historis. Diamandemen ADR-034/038 dan penghapusan kode bahasa (2026-10-18): istilah bilingual, ID/EN, `locale`, `/id`, dan `/en` di bagian ini tidak berlaku lagi; situs satu bahasa tanpa prefix.
 
 Backend referensi media selesai pada feat/catalog-data-plan. Empat tabel baru:
 media_assets, media_events, catalog_media_refs dan page_media_refs. Referensi
@@ -1560,8 +1603,8 @@ Kebijakan/kontrak media dan sumber YouTube resmi tercatat pada DATA_CONTRACTS.md
 
 ## Phase 2 public content modes (ADR-024)
 
-Default public rendering uses published local database content, including ID/EN
-page fields, catalog variants and modifier prices. No published data means a
+Default public rendering uses published local database content, including
+page fields and the catalog. No published data means a
 localized empty state. A missing/unpublished product or guide returns 404. No
 fixture is substituted. CMS login/editor and real media serving are Phase 3.
 
@@ -1572,7 +1615,7 @@ $env:PUBLIC_CONTENT_SOURCE = "published"
 npm.cmd run dev
 ```
 
-Open http://localhost:3000/id and http://localhost:3000/en. Both local databases
+Open http://localhost:3000/. Both local databases
 are intentionally empty after QA; empty-state text is expected. To inspect the
 existing example design, stop the server, choose explicit preview and restart:
 
@@ -1637,7 +1680,7 @@ Provisioning, password change/reset and the reset form share this minimum.
 
 After local CMS provisioning and migration0008, restart development and open
 /admin/pages through the authenticated dashboard. Staff/Owner can create and
-save bilingual drafts, preview structured rich text and submit for review.
+save drafts, preview structured rich text and submit for review.
 Owner alone approves/rejects/publishes/archives. Frozen content must be cloned
 to a fresh draft; approval is never copied and the live revision stays intact.
 Save each language before submitting. The editor preserves unsaved fields when
@@ -1703,9 +1746,9 @@ illustration, not a photograph of Tiny Osaka food or premises. Asset provenance
 is recorded in docs/BRAND_ASSETS.md.
 
 To prepare content, sign in at http://localhost:3000/admin/login and open
-**Halaman website → home → a draft → Muat draf konten home**. Blank ID/EN fields
+**Halaman website → home → a draft → Muat draf konten home**. Blank fields
 are filled from reviewed facts; existing content is preserved. Review the preview,
-save each language, then use the normal review/Owner approval/publication actions.
+save, then use the normal review/Owner approval/publication actions.
 The preset never saves, approves, or publishes automatically. The public reader
 continues to show only published content; no draft/sample fallback was introduced.
 

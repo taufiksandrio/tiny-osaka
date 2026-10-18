@@ -5,6 +5,10 @@ import { mediaPolicy } from "./policy.mjs";
 import { mediaPersistence, resolveMediaActor } from "./assets.mjs";
 import { mediaFail, validMediaUuid, validMediaVersion, validateMediaRefText } from "./validation.mjs";
 
+// API shape of a stored reference: Indonesian labels only (legacy English columns are never exposed).
+export const mediaRefDto = ref => ({ id: ref.id, revisionId: ref.revisionId, ...(ref.productId ? { productId: ref.productId } : {}),
+  assetId: ref.assetId, altId: ref.altId, captionId: ref.captionId, sortOrder: ref.sortOrder });
+
 export const loadRevisionMedia = async (tx, revisionId, domain) => {
   const table = domain === "catalog" ? s.catalogMediaRefs : s.pageMediaRefs;
   const mediaRefs = await tx.select().from(table).where(eq(table.revisionId, revisionId));
@@ -46,8 +50,8 @@ export const createMediaReferences = ({ db, resolveActor } = {}) => {
         } else {
           const [asset] = await tx.select().from(s.mediaAssets).where(eq(s.mediaAssets.id, input.assetId));
           if (!asset) mediaFail("ASSET_NOT_FOUND", "Registered media asset required.");
-          const values = { assetId: asset.id, altId: input.altId, altEn: input.altEn,
-            captionId: input.captionId, captionEn: input.captionEn, sortOrder: input.sortOrder };
+          const values = { assetId: asset.id, altId: input.altId,
+            captionId: input.captionId, sortOrder: input.sortOrder };
           if (input.referenceId) {
             [row] = await tx.update(table).set(values).where(and(...scope, eq(table.id, input.referenceId))).returning();
             if (!row) mediaFail("REFERENCE_NOT_FOUND", "Reference does not belong to this draft scope.");

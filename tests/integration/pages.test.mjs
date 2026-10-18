@@ -7,6 +7,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as s from "../../src/server/db/schema.mjs";
 import { createPageWorkflow } from "../../src/server/pages/workflow.mjs";
+import { loadPageGraph } from "../../src/server/pages/drafts.mjs";
+import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
 import { getPublishedPage } from "../../src/server/pages/published.mjs";
 import { PageContentError } from "../../src/server/pages/validation.mjs";
 import { pageDefinitions } from "../../src/server/pages/templates.mjs";
@@ -21,7 +23,7 @@ const workflow = (db, role = "owner") => createPageWorkflow({ db, resolveActor: 
 const code = expected => error => error instanceof PageContentError && error.code === expected;
 const token = row => ({ revisionId: row.revisionId ?? row.id, expectedVersion: row.version, expectedHash: row.contentHash });
 const root = async (db, id) => (await db.select().from(s.pageRevisions).where(eq(s.pageRevisions.id, id)))[0];
-const published = (db, pageKey = "about", locale = "id") => getPublishedPage(db, { pageKey, locale });
+const published = (db, pageKey = "about") => getPublishedPage(db, { pageKey });
 const rollback = new Error("rollback synthetic page fixture");
 const withRollback = async run => {
   const client = await connectTestOwner();
@@ -33,17 +35,20 @@ const withRollback = async run => {
 const complete = async (db, key = "about") => {
   const staff = workflow(db, "staff");
   const revision = await staff.createDraft({ pageKey: key });
-  await staff.saveTranslation({ revisionId: revision.id, expectedVersion: 1, locale: "id", fields: fields(key) });
-  await staff.saveTranslation({ revisionId: revision.id, expectedVersion: 2, locale: "en", fields: fields(key) });
+  await staff.saveTranslation({ revisionId: revision.id, expectedVersion: 1, fields: fields(key) });
   return root(db, revision.id);
 };
+// Reproduces a snapshot written before the single-language change: it still has an English row.
+// Written straight to the draft table because no application writer accepts English any more.
+const addLegacyEnglish = (db, revisionId, key = "about") =>
+  db.insert(s.pageTranslations).values({ revisionId, locale: "en", fields: { ...fields(key), title: "QA legacy English title" } });
 const approve = async (db, revision) => workflow(db).approve(token(await workflow(db, "staff").submit(token(revision))));
 const rejectSql = async (db, client, statement, params = [], expected = "23514") => {
   await assert.rejects(db.transaction(() => client.query(statement, params)),
     error => error.code === expected || error.cause?.code === expected);
 };
 
-test("all nine templates complete bilingual review/publication with JSONB-stable hashes", () => withRollback(async db => {
+test("all nine templates complete review/publication with JSONB-stable hashes", () => withRollback(async db => {
   for (const key of Object.keys(pageDefinitions)) {
     assert.equal(await published(db, key), null);
     const revision = await complete(db, key);
@@ -51,41 +56,62 @@ test("all nine templates complete bilingual review/publication with JSONB-stable
     assert.equal(await published(db, key), null);
     const result = await workflow(db).publish(token(approval));
     assert.deepEqual(await workflow(db).publish(token(result)), result);
-    for (const locale of ["id"]) {
-      const page = await published(db, key, locale);
-      assert.equal(page.pageKey, key); assert.equal(page.locale, locale);
-      assert.deepEqual(page.fields, fields(key));
-      assert.ok(!JSON.stringify(page).includes("qa-owner-subject"));
-      assert.ok(!Object.hasOwn(page, "contentHash"));
-    }
+    const page = await published(db, key);
+    assert.equal(page.pageKey, key); assert.ok(!Object.hasOwn(page, "locale"));
+    assert.deepEqual(page.fields, fields(key));
+    assert.ok(!JSON.stringify(page).includes("qa-owner-subject"));
+    assert.ok(!Object.hasOwn(page, "contentHash"));
   }
   assert.equal((await db.select().from(s.pagePublications)).length, 9);
   assert.equal((await db.select().from(s.pageWorkflowEvents)).length, 27);
   await db.execute(sql`SET CONSTRAINTS ALL IMMEDIATE`);
 }));
 
-test("partial drafts are stored but incomplete bilingual content cannot submit or fall back", () => withRollback(async db => {
+test("partial drafts are stored but incomplete content cannot submit or fall back", () => withRollback(async db => {
   const draft = await workflow(db, "staff").createDraft({ pageKey: "about" });
   await assert.rejects(workflow(db, "staff").submit(token(draft)), code("NOT_READY"));
-  const saved = await workflow(db, "staff").saveTranslation({ revisionId: draft.id, expectedVersion: 1, locale: "id", fields: { title: "Incomplete draft" } });
+  const saved = await workflow(db, "staff").saveTranslation({ revisionId: draft.id, expectedVersion: 1, fields: { title: "Incomplete draft" } });
   await assert.rejects(workflow(db, "staff").submit({ revisionId: draft.id, expectedVersion: saved.version }), code("NOT_READY"));
-  await assert.rejects(published(db, "about", "en"), code("INVALID_INPUT"));
+  await assert.rejects(published(db, "unknown"), code("INVALID_INPUT"));
   assert.equal((await db.select().from(s.pageSubmissions)).length, 0);
   assert.equal((await root(db, draft.id)).status, "draft");
 }));
 
-test("translation upserts isolate locales and reject invalid content without consuming version", () => withRollback(async db => {
+test("page saves overwrite the single Indonesian row and reject invalid content without consuming version", () => withRollback(async db => {
   const revision = await complete(db);
   const f = fields(); f.body = rich("<script>literal text</script>");
-  await workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 3, locale: "id", fields: f });
+  await workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 2, fields: f });
   const rows = await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, revision.id));
-  assert.deepEqual(rows.find(r => r.locale === "id").fields, f);
-  assert.deepEqual(rows.find(r => r.locale === "en").fields, fields());
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].fields, f);
   for (const bad of [{ ...fields(), style: "red" }, { ...fields(), body: { blocks: [{ type: "html", html: "<script>x</script>" }] } }]) {
-    await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 4, locale: "id", fields: bad }), code("INVALID_CONTENT"));
-    assert.equal((await root(db, revision.id)).version, 4);
+    await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 3, fields: bad }), code("INVALID_CONTENT"));
+    assert.equal((await root(db, revision.id)).version, 3);
   }
-  await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 3, locale: "en", fields: fields() }), code("REVISION_CONFLICT"));
+  await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: 2, fields: fields() }), code("REVISION_CONFLICT"));
+}));
+
+test("legacy English rows stay hashable, are ignored by readiness/publication and are not cloned", () => withRollback(async db => {
+  const revision = await complete(db);
+  await addLegacyEnglish(db, revision.id);
+  const live = await workflow(db).publish(token(await approve(db, await root(db, revision.id))));
+  const frozen = await root(db, revision.id);
+  assert.equal(frozen.status, "published");
+  // The stored hash covers both rows and is still reproducible by the loader + unchanged hash format.
+  const graph = await loadPageGraph(db, frozen);
+  assert.deepEqual(graph.translations.map(row => row.locale).sort(), ["en", "id"]);
+  assert.equal(hashPageContent(graph), live.contentHash);
+  const page = await published(db);
+  assert.deepEqual(page.fields, fields());
+  assert.ok(!JSON.stringify(page).includes("legacy English"));
+  const clone = await workflow(db, "staff").cloneDraft({ sourceRevisionId: revision.id, expectedSourceVersion: frozen.version });
+  const cloned = await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, clone.id));
+  assert.deepEqual(cloned.map(row => row.locale), ["id"]);
+  assert.equal((await db.select().from(s.pageTranslations).where(eq(s.pageTranslations.revisionId, revision.id))).length, 2);
+  await workflow(db).publish(token(await approve(db, await root(db, clone.id))));
+  assert.equal((await published(db)).revisionId, clone.id);
+  // The old snapshot hash is untouched by the replacement.
+  assert.equal(hashPageContent(await loadPageGraph(db, await root(db, revision.id))), live.contentHash);
 }));
 
 test("unwired identity denies all writes; Staff cannot forge Owner approval/publication", () => withRollback(async db => {
@@ -138,7 +164,7 @@ test("frozen roots/translations/receipts/audit reject raw updates, inserts and d
     await rejectSql(db, client, `UPDATE ${table} SET revision_id=revision_id WHERE revision_id=$1`, [revision.id]);
     await rejectSql(db, client, `DELETE FROM ${table} WHERE revision_id=$1`, [revision.id]);
   }
-  await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: revision.version, locale: "id", fields: fields() }), code("REVISION_CONFLICT"));
+  await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id, expectedVersion: revision.version, fields: fields() }), code("REVISION_CONFLICT"));
 }));
 
 test("clone of frozen content resets approval; draft edits and approval preserve live page until replacement", () => withRollback(async (db, client) => {
@@ -148,7 +174,7 @@ test("clone of frozen content resets approval; draft edits and approval preserve
   assert.equal(clone.status, "draft"); assert.equal(clone.version, 1); assert.equal(clone.contentHash, null);
   assert.equal((await db.select().from(s.pageApprovals).where(eq(s.pageApprovals.revisionId, clone.id))).length, 0);
   const f = fields(); f.title = "QA revised title";
-  await workflow(db, "staff").saveTranslation({ revisionId: clone.id, expectedVersion: 1, locale: "id", fields: f });
+  await workflow(db, "staff").saveTranslation({ revisionId: clone.id, expectedVersion: 1, fields: f });
   assert.deepEqual(await root(db, revision.id), original);
   assert.equal((await published(db)).fields.title, fields().title);
   const approval = await approve(db, await root(db, clone.id));
@@ -156,7 +182,6 @@ test("clone of frozen content resets approval; draft edits and approval preserve
   await workflow(db).publish(token(approval));
   assert.equal((await published(db)).revisionId, clone.id);
   assert.equal((await published(db)).fields.title, "QA revised title");
-  await assert.rejects(published(db, "about", "en"), code("INVALID_INPUT"));
   await assert.rejects(workflow(db).archive(token(approval)), code("LIVE_REVISION"));
   await rejectSql(db, client, "DELETE FROM page_publications WHERE page_key='about'");
   await assert.rejects(workflow(db).publish(token(live)), code("REVISION_CONFLICT"));
@@ -230,7 +255,7 @@ test("draft create, translation save and clone roll back actual SQL errors after
   await assert.rejects(workflow(broken, "staff").createDraft({ pageKey: "home" }), code("PERSISTENCE_FAILED"));
   assert.equal((await db.select().from(s.pages).where(eq(s.pages.key, "home"))).length, 0);
   await assert.rejects(workflow(broken, "staff").saveTranslation({
-    revisionId: revision.id, expectedVersion: revision.version, locale: "id", fields: { ...fields(), title: "QA losing write" },
+    revisionId: revision.id, expectedVersion: revision.version, fields: { ...fields(), title: "QA losing write" },
   }), code("PERSISTENCE_FAILED"));
   assert.deepEqual(await root(db, revision.id), before);
   assert.deepEqual((await db.select().from(s.pageTranslations).where(and(eq(s.pageTranslations.revisionId, revision.id),
@@ -239,17 +264,17 @@ test("draft create, translation save and clone roll back actual SQL errors after
     sourceRevisionId: revision.id, expectedSourceVersion: revision.version,
   }), code("PERSISTENCE_FAILED"));
   assert.equal((await db.select().from(s.pageRevisions)).length, 1);
-  assert.equal((await db.select().from(s.pageTranslations)).length, 2);
+  assert.equal((await db.select().from(s.pageTranslations)).length, 1);
 }));
 
 test("last writable draft version stays exact and exhausted revisions can submit and clone", () => withRollback(async db => {
   const revision = await complete(db);
   await db.update(s.pageRevisions).set({ version: 2147483646 }).where(eq(s.pageRevisions.id, revision.id));
   const result = await workflow(db, "staff").saveTranslation({ revisionId: revision.id,
-    expectedVersion: 2147483646, locale: "id", fields: fields() });
+    expectedVersion: 2147483646, fields: fields() });
   assert.equal(result.version, 2147483647);
   await assert.rejects(workflow(db, "staff").saveTranslation({ revisionId: revision.id,
-    expectedVersion: 2147483647, locale: "id", fields: fields() }), code("INVALID_INPUT"));
+    expectedVersion: 2147483647, fields: fields() }), code("INVALID_INPUT"));
   await assert.rejects(workflow(db, "staff").cloneDraft({
     sourceRevisionId: revision.id, expectedSourceVersion: revision.version,
   }), code("REVISION_CONFLICT"));
@@ -322,8 +347,8 @@ test("two editors and submit versus editor serialize on an exact version without
       const f = fields(); f.title = "QA competing editor";
       pending = [
         submitRace ? workflow(drizzle(a), "staff").submit(token(current)) :
-          workflow(drizzle(a), "staff").saveTranslation({ revisionId: revision.id, expectedVersion: current.version, locale: "id", fields: f }),
-        workflow(drizzle(b), "staff").saveTranslation({ revisionId: revision.id, expectedVersion: current.version, locale: "en", fields: fields() }),
+          workflow(drizzle(a), "staff").saveTranslation({ revisionId: revision.id, expectedVersion: current.version, fields: f }),
+        workflow(drizzle(b), "staff").saveTranslation({ revisionId: revision.id, expectedVersion: current.version, fields: fields() }),
       ].map(promise => promise.then(value => ({ value }), error => ({ error })));
       await waitBlocked(client, pids);
       await client.query("ROLLBACK");
@@ -363,7 +388,7 @@ test("concurrent approve versus reject yields one decision and append-only audit
   }
 });
 
-test("simultaneous first publication serializes per page and leaves one complete bilingual pointer", async () => {
+test("simultaneous first publication serializes per page and leaves one complete pointer", async () => {
   const client = await connectTestOwner(), a = await connectTestOwner(), b = await connectTestOwner();
   const revisions = [], keys = []; let pending = [];
   try {
@@ -380,7 +405,6 @@ test("simultaneous first publication serializes per page and leaves one complete
     const results = await Promise.all(pending); pending = [];
     assert.equal(results.filter(r => r.value).length, 2);
     const id = await published(drizzle(client));
-    await assert.rejects(published(drizzle(client), "about", "en"), code("INVALID_INPUT"));
     assert.ok(approved.some(row => row.revisionId === id.revisionId));
     assert.equal((await drizzle(client).select().from(s.pagePublications)).length, 1);
   } finally {

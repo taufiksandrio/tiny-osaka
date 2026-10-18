@@ -8,7 +8,7 @@ import { createMediaAssets } from "../../src/server/media/assets.mjs";
 import { createMediaReferences } from "../../src/server/media/references.mjs";
 import { hashCatalogContent, catalogContentFields } from "../../src/server/catalog/content-hash.mjs";
 import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
-import { pageGraph } from "../fixtures/page-content.mjs";
+import { legacyPageGraph, pageGraph } from "../fixtures/page-content.mjs";
 import { imageAsset, inspectedImage, reference } from "../fixtures/media.mjs";
 
 const code = expected => error => error instanceof MediaError && error.code === expected;
@@ -72,7 +72,7 @@ test("media graph requires scoped references, Indonesian alt labels, exact asset
     g => { g.mediaRefs.push({ ...g.mediaRefs[0] }); }, g => { delete g.mediaAssets; },
     g => { g.mediaRefs = [null]; }, g => { g.revision = null; },
   ]) { const changed = structuredClone(g); mutate(changed); assert.throws(() => validateRevisionMedia(changed, "page"), code("INVALID_MEDIA")); }
-  const draft = structuredClone(g); draft.mediaRefs[0].altEn = "";
+  const draft = structuredClone(g); draft.mediaRefs[0].altId = "";
   assert.equal(validateRevisionMedia(draft, "page", { ready: false }), true);
   const video = imageAsset({ kind: "video", mime: "video/mp4", storageKey: randomUUID() + ".mp4",
     durationMs: 1000, posterId: g.mediaAssets[0].id });
@@ -100,7 +100,7 @@ test("legacy catalog/page hash constants remain unchanged with empty or absent m
   const c = { revision: { id: "revision", version: 1, status: "draft" },
     ...Object.fromEntries(Object.entries(catalogContentFields).map(([table, fields]) => [table,
       [1, 2].map(n => Object.fromEntries(fields.map(field => [field, field + n])))])) };
-  const p = pageGraph(); p.revision.id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const p = legacyPageGraph(); p.revision.id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
   for (const row of p.translations) row.revisionId = p.revision.id;
   for (const empty of [{}, { mediaRefs: [], mediaAssets: [] }]) {
     assert.equal(hashCatalogContent({ ...c, ...empty }), "5a34ea627645ae1f1b7c033fd77db669275027c57a2f77c8c7a204bf6181fb3e");
@@ -123,13 +123,13 @@ test("media hash binds labels, captions, order, asset metadata and inspector che
   assert.ok(mediaHashSnapshot(g, "page"));
 });
 
-test("public media DTO localizes labels and omits storage/checksum/actor metadata", () => {
+test("public media DTO exposes Indonesian labels and omits storage/checksum/actor metadata and legacy English text", () => {
   const g = mediaGraph();
-  for (const locale of ["id", "en"]) {
-    const dto = publicRevisionMedia(g, "page", locale);
-    assert.equal(dto[0].alt, locale === "id" ? "QA gambar" : "QA image");
-    for (const secret of ["storageKey", "checksum", "createdAt", "actorId"]) assert.ok(!JSON.stringify(dto).includes(secret));
-  }
+  g.mediaRefs[0].altEn = "legacy English alt"; g.mediaRefs[0].captionEn = "legacy English caption";
+  const dto = publicRevisionMedia(g, "page");
+  assert.equal(dto[0].alt, "QA gambar");
+  assert.equal(dto[0].caption, "");
+  for (const secret of ["storageKey", "checksum", "createdAt", "actorId", "altEn", "captionEn", "legacy English"]) assert.ok(!JSON.stringify(dto).includes(secret));
 });
 
 test("all media operations require trusted identity, ignoring forged request roles", async () => {
@@ -170,11 +170,11 @@ test("inspected limits override browser claims; adapter/driver errors are saniti
 test("reference inputs require exact IDs/version and bounded literal text before DB access", async () => {
   const api = createMediaReferences({ db, resolveActor: actor });
   const input = { revisionId: randomUUID(), productId: randomUUID(), expectedVersion: 1,
-    assetId: randomUUID(), altId: "", altEn: "", captionId: "", captionEn: "", sortOrder: 0 };
+    assetId: randomUUID(), altId: "", captionId: "", sortOrder: 0 };
   for (const value of [null, {}, { ...input, expectedVersion: 2147483647 }, { ...input, assetId: "x" }]) {
     await assert.rejects(api.saveCatalog(value), code("INVALID_INPUT"));
   }
-  await assert.rejects(api.savePage({ ...input, altEn: "x".repeat(501) }), code("INVALID_MEDIA"));
+  await assert.rejects(api.savePage({ ...input, altId: "x".repeat(501) }), code("INVALID_MEDIA"));
   await assert.rejects(api.savePage(input), code("PERSISTENCE_FAILED"));
 });
 

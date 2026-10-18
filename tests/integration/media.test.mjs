@@ -21,6 +21,8 @@ import { allTables } from "../../scripts/lib/test-migration-plan.mjs";
 import { mediaTables, verifyMediaProtection } from "../../scripts/lib/media-protection.mjs";
 import { verifyCatalogProtection } from "../../scripts/lib/catalog-protection.mjs";
 import { verifyPageProtection } from "../../scripts/lib/page-protection.mjs";
+import { loadPageGraph } from "../../src/server/pages/drafts.mjs";
+import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
 import { fields } from "../fixtures/page-content.mjs";
 import { imageAsset, inspectedImage } from "../fixtures/media.mjs";
 
@@ -35,7 +37,7 @@ const root = async (db, id, domain = "page") => {
   const table = domain === "page" ? s.pageRevisions : s.catalogRevisions;
   return (await db.select().from(table).where(eq(table.id, id)))[0];
 };
-const text = { altId: "QA gambar atau video", altEn: "QA image or video", captionId: "", captionEn: "", sortOrder: 0 };
+const text = { altId: "QA gambar atau video", captionId: "", sortOrder: 0 };
 const rollback = new Error("rollback synthetic media fixture");
 const withRollback = async run => {
   const client = await connectTestOwner();
@@ -58,8 +60,7 @@ const registerVideo = async (db, posterId) => {
 };
 const completePage = async db => {
   const revision = await pages(db).createDraft({ pageKey: "about" });
-  await pages(db).saveTranslation({ revisionId: revision.id, expectedVersion: 1, locale: "id", fields: fields() });
-  await pages(db).saveTranslation({ revisionId: revision.id, expectedVersion: 2, locale: "en", fields: fields() });
+  await pages(db).saveTranslation({ revisionId: revision.id, expectedVersion: 1, fields: fields() });
   return root(db, revision.id);
 };
 const completeCatalog = async db => {
@@ -68,12 +69,10 @@ const completeCatalog = async db => {
   const category = await c.createCatalogCategory(db, { revisionId: revision.id, expectedVersion: version++, slug: "qa-media-category-" + randomUUID(), sortOrder: 0 });
   const product = await c.createCatalogProduct(db, { revisionId: revision.id, expectedVersion: version++, slug: "qa-media-product-" + randomUUID(), sortOrder: 0, categoryId: category.categoryId });
   const variant = await c.createProductVariant(db, { revisionId: revision.id, expectedVersion: version++, productId: product.productId, code: "standard", basePrice: 250000, sortOrder: 0 });
-  for (const locale of ["id", "en"]) {
-    const t = { locale, title: "QA synthetic " + locale, description: "" };
-    await c.saveCategoryTranslation(db, { revisionId: revision.id, categoryId: category.categoryId, expectedVersion: version++, ...t });
-    await c.saveProductTranslation(db, { revisionId: revision.id, productId: product.productId, expectedVersion: version++, ...t });
-    await c.saveVariantTranslation(db, { revisionId: revision.id, productId: product.productId, variantId: variant.variantId, expectedVersion: version++, ...t });
-  }
+  const t = { title: "QA synthetic", description: "" };
+  await c.saveCategoryTranslation(db, { revisionId: revision.id, categoryId: category.categoryId, expectedVersion: version++, ...t });
+  await c.saveProductTranslation(db, { revisionId: revision.id, productId: product.productId, expectedVersion: version++, ...t });
+  await c.saveVariantTranslation(db, { revisionId: revision.id, productId: product.productId, variantId: variant.variantId, expectedVersion: version++, ...t });
   return { revision: await root(db, revision.id, "catalog"), categoryId: category.categoryId, productId: product.productId };
 };
 const publish = async (api, revision) => api.publish(token(await api.approve(token(await api.submit(token(revision))))));
@@ -128,16 +127,16 @@ test("asset metadata and registration audits cannot be modified or deleted even 
   ]) await rejectSql(db, client, statement, [asset.id]);
 }));
 
-test("page reference create/update/remove consumes one exact draft version and preserves bilingual text", () => withRollback(async db => {
+test("page reference create/update/remove consumes one exact draft version and preserves Indonesian text", () => withRollback(async db => {
   const revision = await completePage(db), asset = await registerImage(db);
   const ref = await refs(db).savePage({ ...token(revision), assetId: asset.id, ...text });
-  assert.equal(ref.version, 4);
-  const changed = await refs(db).savePage({ revisionId: revision.id, expectedVersion: 4, referenceId: ref.id, assetId: asset.id,
-    ...text, altEn: "QA changed image", captionId: "<script>literal</script>", sortOrder: 5 });
-  assert.equal(changed.version, 5); assert.equal(changed.altEn, "QA changed image");
+  assert.equal(ref.version, 3);
+  const changed = await refs(db).savePage({ revisionId: revision.id, expectedVersion: 3, referenceId: ref.id, assetId: asset.id,
+    ...text, altId: "QA gambar diubah", captionId: "<script>literal</script>", sortOrder: 5 });
+  assert.equal(changed.version, 4); assert.equal(changed.altId, "QA gambar diubah");
   await assert.rejects(refs(db).savePage({ ...token(revision), assetId: asset.id, ...text }), code("REVISION_CONFLICT"));
-  const removed = await refs(db).removePage({ revisionId: revision.id, expectedVersion: 5, referenceId: ref.id });
-  assert.equal(removed.version, 6);
+  const removed = await refs(db).removePage({ revisionId: revision.id, expectedVersion: 4, referenceId: ref.id });
+  assert.equal(removed.version, 5);
   assert.equal((await loadRevisionMedia(db, revision.id, "page")).mediaRefs.length, 0);
 }));
 
@@ -171,7 +170,7 @@ test("references cap at twelve in both writer and raw SQL without version loss o
   }
 }));
 
-test("partial media labels may be drafted but both locales are required before submitting", () => withRollback(async db => {
+test("partial media labels may be drafted but the Indonesian label is required before submitting", () => withRollback(async db => {
   const page = await completePage(db), cat = await completeCatalog(db), asset = await registerImage(db);
   const p = await refs(db).savePage({ ...token(page), assetId: asset.id, ...text, altId: "" });
   await assert.rejects(pages(db).submit({ revisionId: page.id, expectedVersion: p.version }), error => error.code === "NOT_READY");
@@ -198,7 +197,7 @@ test("catalog approval freezes media; clone edits stay isolated and published DT
   assert.equal(graph.mediaRefs[0].id, saved.id); assert.equal(graph.mediaAssets.length, 2);
   await refs(db).saveCatalog({ revisionId: clone.id, expectedVersion: 1, referenceId: saved.id, productId: fixture.productId,
     assetId: video.id, ...text, altId: "QA replacement" });
-  assert.equal((await getPublishedCatalog(db)).media[0].altId, text.altId);
+  assert.equal((await getPublishedCatalog(db)).media[0].alt, text.altId);
   const next = await catalog(db).submit({ revisionId: clone.id, expectedVersion: 2 });
   assert.notEqual(next.contentHash, live.contentHash);
 }));
@@ -213,18 +212,34 @@ test("page media is approved with content and replaces live media only on explic
   ]) await rejectSql(db, client, statement, [revision.id]);
   const clone = await pages(db).cloneDraft({ sourceRevisionId: revision.id, expectedSourceVersion: saved.version });
   const changed = await refs(db).savePage({ revisionId: clone.id, expectedVersion: 1, referenceId: saved.id, assetId: second.id,
-    ...text, altId: "QA pengganti", altEn: "QA replacement" });
+    ...text, altId: "QA pengganti" });
   const next = await pages(db).submit({ revisionId: clone.id, expectedVersion: changed.version });
   await assert.rejects(pages(db).approve({ ...token(next), expectedHash: live.contentHash }), error => error.code === "HASH_CONFLICT");
   const approval = await pages(db).approve(token(next));
-  assert.equal((await getPublishedPage(db, { pageKey: "about", locale: "id" })).media[0].asset.id, first.id);
+  assert.equal((await getPublishedPage(db, { pageKey: "about" })).media[0].asset.id, first.id);
   await pages(db).publish(token(approval));
-  for (const locale of ["id"]) {
-    const dto = await getPublishedPage(db, { pageKey: "about", locale });
-    assert.equal(dto.media[0].asset.id, second.id);
-    assert.equal(dto.media[0].alt, locale === "id" ? "QA pengganti" : "QA replacement");
-    assert.ok(!JSON.stringify(dto).includes("storageKey")); assert.ok(!JSON.stringify(dto).includes("checksum"));
-  }
+  const dto = await getPublishedPage(db, { pageKey: "about" });
+  assert.equal(dto.media[0].asset.id, second.id);
+  assert.equal(dto.media[0].alt, "QA pengganti");
+  assert.ok(!JSON.stringify(dto).includes("storageKey")); assert.ok(!JSON.stringify(dto).includes("checksum"));
+}));
+
+test("legacy English alt/caption stay in the immutable hash, never reach output and are not cloned", () => withRollback(async db => {
+  const revision = await completePage(db), asset = await registerImage(db);
+  const saved = await refs(db).savePage({ ...token(revision), assetId: asset.id, ...text });
+  // A snapshot from before the single-language change: English columns filled directly in the draft.
+  await db.update(s.pageMediaRefs).set({ altEn: "legacy English alt", captionEn: "legacy English caption" })
+    .where(eq(s.pageMediaRefs.id, saved.id));
+  const live = await publish(pages(db), { id: revision.id, version: saved.version });
+  const frozen = await root(db, revision.id);
+  assert.equal(hashPageContent(await loadPageGraph(db, frozen)), live.contentHash, "legacy columns are still hashed");
+  const dto = await getPublishedPage(db, { pageKey: "about" });
+  assert.ok(!JSON.stringify(dto).includes("legacy English"));
+  assert.deepEqual(dto.media.map(row => Object.keys(row).sort()), [["alt", "asset", "caption", "id", "poster", "sortOrder"]]);
+  const clone = await pages(db).cloneDraft({ sourceRevisionId: revision.id, expectedSourceVersion: saved.version });
+  const [copied] = (await loadRevisionMedia(db, clone.id, "page")).mediaRefs;
+  assert.equal(copied.altId, text.altId); assert.equal(copied.altEn, ""); assert.equal(copied.captionEn, "");
+  assert.equal(hashPageContent(await loadPageGraph(db, await root(db, revision.id))), live.contentHash, "old hash unchanged");
 }));
 
 test("raw reference reparenting and updates to frozen assets/posters are denied", () => withRollback(async (db, client) => {
@@ -324,7 +339,7 @@ test("media attachment versus text edit and submit serialize with one exact-vers
       await client.query("BEGIN"); await client.query("SELECT id FROM page_revisions WHERE id=$1 FOR UPDATE", [current.id]);
       pending = [
         refs(drizzle(a)).savePage({ ...token(current), assetId: fixture.asset.id, ...text }),
-        submit ? pages(drizzle(b)).submit(token(current)) : pages(drizzle(b)).saveTranslation({ ...token(current), locale: "en", fields: fields() }),
+        submit ? pages(drizzle(b)).submit(token(current)) : pages(drizzle(b)).saveTranslation({ ...token(current), fields: fields() }),
       ].map(promise => promise.then(value => ({ value }), error => ({ error })));
       await blocked(client, pids); await client.query("ROLLBACK");
       const results = await Promise.all(pending); pending = [];

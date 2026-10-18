@@ -10,7 +10,7 @@ import { createCatalogDraft, updateVariantPrice, cloneCatalogDraft, saveCategory
 
 const input = () => ({ revisionId: randomUUID(), productId: randomUUID(), variantId: randomUUID(), expectedVersion: 1, basePrice: 250000 });
 const modifierInput = () => ({ ...input(), groupId: randomUUID(), optionId: randomUUID(), code: "qa-code", selectionType: "multiple",
-  minSelections: 0, maxSelections: 2, sortOrder: 0, priceDelta: 150000, locale: "id", title: "QA modifier", description: "" });
+  minSelections: 0, maxSelections: 2, sortOrder: 0, priceDelta: 150000, title: "QA modifier", description: "" });
 const rejectInvalid = async value => {
   let dbAccessed = false;
   const db = new Proxy({}, { get: () => { dbAccessed = true; throw new Error("DB must not be accessed for invalid input"); } });
@@ -46,11 +46,11 @@ test("unexpected driver errors are replaced without raw details or cause", async
   };
   for (const run of [() => createCatalogDraft(db), () => updateVariantPrice(db, input()),
     () => cloneCatalogDraft(db, { sourceRevisionId: randomUUID(), expectedSourceVersion: 1 }),
-    () => saveCategoryTranslation(db, { revisionId: randomUUID(), categoryId: randomUUID(), expectedVersion: 1, locale: "id", title: "QA", description: "" }),
-    () => saveProductTranslation(db, { revisionId: randomUUID(), productId: randomUUID(), expectedVersion: 1, locale: "en", title: "QA", description: "" }),
+    () => saveCategoryTranslation(db, { revisionId: randomUUID(), categoryId: randomUUID(), expectedVersion: 1, title: "QA", description: "" }),
+    () => saveProductTranslation(db, { revisionId: randomUUID(), productId: randomUUID(), expectedVersion: 1, title: "QA", description: "" }),
     () => createProductVariant(db, { ...input(), code: "standard", sortOrder: 0 }),
     () => updateProductVariant(db, { ...input(), code: "standard", sortOrder: 0 }),
-    () => saveVariantTranslation(db, { ...input(), locale: "id", title: "QA", description: "" }),
+    () => saveVariantTranslation(db, { ...input(), title: "QA", description: "" }),
     ...[createModifierGroup, updateModifierGroup, createModifierOption, updateModifierOption,
       saveModifierGroupTranslation, saveModifierOptionTranslation].map(save => () => save(db, modifierInput())),
     ...[createCatalogCategory, createCatalogProduct, updateCategoryPlacement, updateProductPlacement]
@@ -112,9 +112,9 @@ test("modifier option input rejects group/scope, invalid code/delta/sort before 
   }
 });
 
-test("modifier translation validates full scope, exact locale and plain text before DB access", async () => {
+test("modifier translation validates full scope and plain text before DB access", async () => {
   for (const save of [saveModifierGroupTranslation, saveModifierOptionTranslation]) {
-    const fields = [{ groupId: null }, { locale: "jp" }, { title: " \t\n\u00a0" },
+    const fields = [{ groupId: null }, { title: " \t\n\u00a0" },
       { title: "QA\0" }, { description: null }, { description: "QA\0" }];
     if (save === saveModifierOptionTranslation) fields.push({ optionId: "bad" });
     await invalidModifierInputs(save, fields);
@@ -142,25 +142,24 @@ test("variant create/update reject invalid scope, version, code, price and sort 
 test("variant translation validates complete composite scope and text before DB access", async () => {
   let dbAccessed = false;
   const db = new Proxy({}, { get: () => { dbAccessed = true; throw new Error("Unexpected DB access"); } });
-  const valid = { ...input(), locale: "id", title: "QA variant", description: "" };
+  const valid = { ...input(), title: "QA variant", description: "" };
   for (const value of [null, {}, ...[{ revisionId: "bad" }, { productId: null }, { variantId: null },
-    { expectedVersion: 0 }, { locale: "jp" }, { title: " \t\n\u00a0" }, { title: "QA\0" },
+    { expectedVersion: 0 }, { title: " \t\n\u00a0" }, { title: "QA\0" },
     { description: null }, { description: "QA\0" }].map(fields => ({ ...valid, ...fields }))]) {
     await assert.rejects(saveVariantTranslation(db, value), error => error instanceof CatalogDraftError && error.code === "INVALID_INPUT");
   }
   assert.equal(dbAccessed, false);
 });
 
-test("translation writers reject invalid locale, title, description, scope and version before DB access", async () => {
+test("translation writers reject invalid title, description, scope and version before DB access", async () => {
   let dbAccessed = false;
   const db = new Proxy({}, { get: () => { dbAccessed = true; throw new Error("Unexpected DB access"); } });
   for (const [save, key] of [[saveCategoryTranslation, "categoryId"], [saveProductTranslation, "productId"]]) {
-    const valid = { revisionId: randomUUID(), [key]: randomUUID(), expectedVersion: 1, locale: "id", title: "QA title", description: "" };
+    const valid = { revisionId: randomUUID(), [key]: randomUUID(), expectedVersion: 1, title: "QA title", description: "" };
     for (const value of [null, {},
       ...[undefined, null, "bad", 1].map(id => ({ ...valid, [key]: id })),
       ...["bad", null].map(revisionId => ({ ...valid, revisionId })),
       ...[0, -1, 0.5, "1", 2147483647, null].map(expectedVersion => ({ ...valid, expectedVersion })),
-      ...["jp", "ID", null, undefined].map(locale => ({ ...valid, locale })),
       ...["", " \t\n\u00a0", null, 1, "QA\0title"].map(title => ({ ...valid, title })),
       ...[undefined, null, 1, "QA\0description"].map(description => ({ ...valid, description })),
     ]) {

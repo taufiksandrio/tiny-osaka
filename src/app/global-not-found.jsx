@@ -1,7 +1,7 @@
 import Link from "next/link";
 import "@/styles/globals.css";
 
-// Served for any unmatched URL (for example the retired /en/*). Indonesian only, with an explicit html lang.
+// Served for any unmatched URL (including any address with a language prefix). Indonesian only, with an explicit html lang.
 export const metadata = { title: "Halaman tidak ditemukan | Tiny Osaka", robots: { index: false, follow: false } };
 
 const GlobalNotFound = () => (

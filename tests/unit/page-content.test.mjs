@@ -5,7 +5,7 @@ import { PageContentError, validatePageFields, validatePageReadiness } from "../
 import { hashPageContent } from "../../src/server/pages/content-hash.mjs";
 import { createPageWorkflow } from "../../src/server/pages/workflow.mjs";
 import { getPublishedPage } from "../../src/server/pages/published.mjs";
-import { fields, pageGraph, rich } from "../fixtures/page-content.mjs";
+import { fields, legacyPageGraph, pageGraph, rich } from "../fixtures/page-content.mjs";
 
 const code = expected => error => error instanceof PageContentError && error.code === expected;
 const badContent = run => assert.throws(run, code("INVALID_CONTENT"));
@@ -19,15 +19,15 @@ test("nine fixed page identities map to existing routes and immutable template d
   for (const page of Object.values(pageDefinitions)) {
     assert.ok(Object.isFrozen(page));
     assert.ok(isInternalPageLink(page.path || "/"));
-    // Links saved before ADR-038 keep validating so snapshots can still be cloned.
-    assert.ok(isInternalPageLink("/id" + page.path)); assert.ok(isInternalPageLink("/en" + page.path));
+    // ADR-038: language-prefixed links are not internal links (those addresses are 404).
+    assert.ok(!isInternalPageLink("/id" + page.path)); assert.ok(!isInternalPageLink("/en" + page.path));
   }
   for (const key of ["unknown", "__proto__", "constructor", 1, null]) assert.equal(getPageDefinition(key), null);
 });
 
 test("partial drafts are allowed; submission requires Indonesian title and body while legacy rows remain valid", () => {
-  assert.equal(validatePageFields("about", "id", {}), true);
-  badContent(() => validatePageFields("about", "id", {}, { ready: true }));
+  assert.equal(validatePageFields("about", {}), true);
+  badContent(() => validatePageFields("about", {}, { ready: true }));
   for (const key of Object.keys(pageDefinitions)) {
     assert.equal(validatePageReadiness(pageGraph(key)), true);
     const missing = pageGraph(key); missing.translations = missing.translations.filter(row => row.locale !== "id");
@@ -35,34 +35,44 @@ test("partial drafts are allowed; submission requires Indonesian title and body 
   }
 });
 
-test("unknown locale, template fields, layout and prototype keys are rejected", () => {
-  for (const locale of ["jp", "ID", null]) assert.throws(() => validatePageFields("about", locale, {}), code("INVALID_INPUT"));
+test("legacy English rows are ignored by readiness, never required or rejected", () => {
+  for (const key of Object.keys(pageDefinitions)) {
+    assert.equal(validatePageReadiness(legacyPageGraph(key)), true);
+    const broken = legacyPageGraph(key); broken.translations[1].fields = { forged: "x" };
+    assert.equal(validatePageReadiness(broken), true);
+    const onlyLegacy = legacyPageGraph(key); onlyLegacy.translations.shift();
+    assert.throws(() => validatePageReadiness(onlyLegacy), code("NOT_READY"));
+  }
+});
+
+test("unknown page, template fields, layout and prototype keys are rejected", () => {
+  assert.throws(() => validatePageFields("unknown", {}), code("INVALID_INPUT"));
   for (const extra of ["style", "className", "html", "template", "pageKey", "__proto__", "constructor", "href"]) {
     const value = JSON.parse(JSON.stringify(fields()));
     Object.defineProperty(value, extra, { value: "forged", enumerable: true });
-    badContent(() => validatePageFields("about", "id", value));
+    badContent(() => validatePageFields("about", value));
   }
-  for (const value of [null, [], "html", new Date()]) badContent(() => validatePageFields("about", "id", value));
+  for (const value of [null, [], "html", new Date()]) badContent(() => validatePageFields("about", value));
 });
 
 test("text requires bounded strings; blank required fields and NUL fail", () => {
   for (const value of ["", " \n\t", 1, null, "private\0content", "x".repeat(241)]) {
     const f = fields(); f.title = value;
-    badContent(() => validatePageFields("about", "id", f, { ready: true }));
+    badContent(() => validatePageFields("about", f, { ready: true }));
   }
   const large = fields(); large.summary = "x".repeat(2001);
-  badContent(() => validatePageFields("about", "id", large));
+  badContent(() => validatePageFields("about", large));
 });
 
 test("structured text supports headings/lists/marks/internal links and preserves literal text", () => {
   const f = fields();
   f.body = { blocks: [
     { type: "heading", level: 2, content: [{ text: "QA", marks: ["bold", "italic"] }] },
-    { type: "paragraph", content: [{ text: "<script>alert(1)</script>", href: "/id/menu" }] },
+    { type: "paragraph", content: [{ text: "<script>alert(1)</script>", href: "/menu" }] },
     { type: "list", ordered: false, items: [[{ text: "QA list" }]] },
   ] };
   const before = structuredClone(f);
-  assert.equal(validatePageFields("about", "id", f, { ready: true }), true);
+  assert.equal(validatePageFields("about", f, { ready: true }), true);
   assert.deepEqual(f, before);
 });
 
@@ -77,16 +87,16 @@ test("rich document rejects arbitrary HTML/media nodes, nested structures and un
     { type: "paragraph", content: [{ type: "paragraph", content: [] }] },
     { type: "list", ordered: "yes", items: [] },
     { type: "paragraph", content: [{ text: "QA" }], onClick: "x" },
-  ]) { const f = fields(); f.body = { blocks: [block] }; badContent(() => validatePageFields("about", "id", f)); }
+  ]) { const f = fields(); f.body = { blocks: [block] }; badContent(() => validatePageFields("about", f)); }
 });
 
 test("link allowlist refuses external/protocol-relative/encoded/query and unsupported paths", () => {
   for (const href of ["javascript:alert(1)", "data:text/html,x", "https://example.com", "//example.com",
-    "/id/menu?x=1", "/id/%6denu", "/id/../en/menu", "/id/menu#x", "/jp/menu", "/id/menu/sample-01",
+    "/id", "/en", "/en/menu", "/id/menu?x=1", "/id/%6denu", "/id/../en/menu", "/id/menu#x", "/jp/menu", "/id/menu/sample-01",
     " /id/menu", "/id/menu/", "/id\\menu", "/menu?x=1", "/menu/", "/menu#x", " /menu", "/menu/sample-01", "/%6denu", "/../menu", "/\\menu"]) {
     assert.equal(isInternalPageLink(href), false);
     const f = fields(); f.body.blocks[0].content[0].href = href;
-    badContent(() => validatePageFields("about", "id", f));
+    badContent(() => validatePageFields("about", f));
   }
 });
 
@@ -95,24 +105,24 @@ test("rich documents enforce block/span/size limits and nonempty review content"
     { blocks: Array.from({ length: 101 }, () => rich().blocks[0]) },
     { blocks: [{ type: "paragraph", content: Array.from({ length: 101 }, () => ({ text: "QA" })) }] },
     { blocks: [{ type: "paragraph", content: [{ text: "x".repeat(4001) }] }] },
-  ]) { const f = fields(); f.body = document; badContent(() => validatePageFields("about", "id", f)); }
+  ]) { const f = fields(); f.body = document; badContent(() => validatePageFields("about", f)); }
   const empty = fields(); empty.body = { blocks: [] };
-  assert.equal(validatePageFields("about", "id", empty), true);
-  badContent(() => validatePageFields("about", "id", empty, { ready: true }));
+  assert.equal(validatePageFields("about", empty), true);
+  badContent(() => validatePageFields("about", empty, { ready: true }));
   const large = fields(); large.body = { blocks: Array.from({ length: 20 }, () => rich("x".repeat(4000)).blocks[0]) };
-  badContent(() => validatePageFields("about", "id", large));
+  badContent(() => validatePageFields("about", large));
 });
 
-test("readiness refuses duplicate locales, foreign scopes, wrong template and invalid roots", () => {
+test("readiness refuses duplicate Indonesian rows, foreign scopes, wrong template and invalid roots", () => {
   for (const mutate of [
-    g => { g.translations[1].locale = "id"; }, g => { g.translations[0].revisionId = token.revisionId; },
+    g => { g.translations.push({ ...g.translations[0] }); }, g => { g.translations[0].revisionId = token.revisionId; },
     g => { g.page.template = "home"; }, g => { g.revision.pageKey = "home"; },
     g => { g.revision.version = 0; }, g => { delete g.translations[0].fields.title; },
   ]) { const g = pageGraph(); mutate(g); assert.throws(() => validatePageReadiness(g), code("NOT_READY")); }
 });
 
 test("hash tolerates JSON object/locale order and excludes workflow metadata", () => {
-  const a = pageGraph(), b = structuredClone(a);
+  const a = legacyPageGraph(), b = structuredClone(a);
   b.translations.reverse();
   for (const row of b.translations) row.fields = Object.fromEntries(Object.entries(row.fields).reverse());
   b.revision.status = "published"; b.revision.createdAt = new Date(); b.revision.contentHash = "ignored";
@@ -160,11 +170,11 @@ test("invalid revision/version/hash, source and template inputs fail before pers
   await assert.rejects(owner().saveTranslation({ ...token, expectedVersion: 2147483647 }), code("INVALID_INPUT"));
 });
 
-test("database failures expose no raw secrets and published reader validates page/locale", async () => {
+test("database failures expose no raw secrets and published reader validates the page", async () => {
   await assert.rejects(owner().createDraft({ pageKey: "about" }), code("PERSISTENCE_FAILED"));
   await assert.rejects(owner().submit(token), code("PERSISTENCE_FAILED"));
-  await assert.rejects(getPublishedPage(db, { pageKey: "about", locale: "id" }), code("PERSISTENCE_FAILED"));
-  for (const input of [null, { pageKey: "unknown", locale: "en" }, { pageKey: "about", locale: "jp" }]) {
+  await assert.rejects(getPublishedPage(db, { pageKey: "about" }), code("PERSISTENCE_FAILED"));
+  for (const input of [null, { pageKey: "unknown" }, {}]) {
     await assert.rejects(getPublishedPage(db, input), code("INVALID_INPUT"));
   }
 });

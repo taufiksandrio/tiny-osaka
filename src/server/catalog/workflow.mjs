@@ -44,7 +44,7 @@ export const createCatalogWorkflow = ({ db, resolveActor } = {}) => {
         if (!allowed[action].includes(revision.status)) fail("REVISION_CONFLICT", "Action is unavailable for this revision.");
         const graph = await loadCatalogGraph(tx, revision);
         if (action === "submit" && !validateCatalogReviewReadiness(graph).ready) {
-          fail("NOT_READY", "Complete bilingual catalog, pricing and media before submitting.");
+          fail("NOT_READY", "Complete catalog, pricing and media before submitting.");
         }
         const contentHash = hashCatalogContent(graph);
         if (action === "submit") {

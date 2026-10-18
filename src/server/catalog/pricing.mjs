@@ -19,7 +19,7 @@ const addUnique = (values, value) => {
   values.add(value);
 };
 
-// Pricing readiness only. Bilingual content, approval and publication validators
+// Pricing readiness only. Content, approval and publication validators
 // are separate; incomplete drafts may exist in storage but cannot be priced.
 export const validatePricingProduct = (product) => {
   requireValid(product && isId(product.revisionId) && isId(product.productId), "Product scope is required.");

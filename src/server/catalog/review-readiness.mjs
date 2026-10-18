@@ -1,5 +1,6 @@
 import { validatePricingProduct } from "./pricing.mjs";
 import { validateRevisionMedia } from "../media/validation.mjs";
+import { STORED_LOCALE } from "../db/stored-language.mjs";
 
 export const catalogReviewTables = Object.freeze(["categoryEntries", "productEntries", "categoryTranslations", "productTranslations",
   "productVariants", "variantTranslations", "modifierGroups", "modifierGroupTranslations", "modifierOptions", "modifierOptionTranslations"]);
@@ -11,7 +12,7 @@ const code = value => typeof value === "string" && /^[a-z0-9]+(-[a-z0-9]+)*$/.te
 // allowEmpty: a store may legitimately end up with no products (last card deleted).
 export const validateCatalogReviewReadiness = (graph, { allowEmpty = false } = {}) => {
   const issues = [];
-  const issue = (code, entityType = "catalog", entityId = null, locale) => issues.push({ code, entityType, entityId, ...(locale ? { locale } : {}) });
+  const issue = (code, entityType = "catalog", entityId = null) => issues.push({ code, entityType, entityId });
   const finish = () => ({ revisionId: graph?.revision?.id ?? null, version: graph?.revision?.version ?? null,
     ready: issues.length === 0, issues: [...new Map(issues.map(row => [JSON.stringify(row), row])).values()]
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) });
@@ -33,9 +34,9 @@ export const validateCatalogReviewReadiness = (graph, { allowEmpty = false } = {
   const index = (list, keys, type) => {
     const map = new Map();
     for (const row of list) {
-      if (!row || !keys.filter(key => key !== "locale").every(key => uuid(row[key]))) { issue("INVALID_ID", type); continue; }
+      if (!row || !keys.every(key => uuid(row[key]))) { issue("INVALID_ID", type); continue; }
       const key = keys.map(key => row[key]).join(":");
-      if (map.has(key)) issue("DUPLICATE_ROW", type, row[keys.filter(field => field !== "locale").at(-1)]);
+      if (map.has(key)) issue("DUPLICATE_ROW", type, row[keys.at(-1)]);
       map.set(key, row);
     }
     return map;
@@ -72,18 +73,16 @@ export const validateCatalogReviewReadiness = (graph, { allowEmpty = false } = {
     for (const row of map.values()) if (!int4(row.sortOrder)) issue("INVALID_SORT", type, row[idKey]);
   }
   const localized = (name, parents, parentKeys, childKeys, type) => {
-    const translations = index(rows[name], [...childKeys, "locale"], type);
+    // Legacy non-Indonesian rows of old snapshots are ignored, never rejected.
+    const translations = index(rows[name].filter(row => row?.locale === STORED_LOCALE), childKeys, type);
     for (const row of translations.values()) {
       if (!parents.has(childKeys.map(key => row[key]).join(":"))) issue("ORPHAN_TRANSLATION", type, row[childKeys.at(-1)]);
-      if (!["id", "en"].includes(row.locale)) issue("INVALID_LOCALE", type, row[childKeys.at(-1)]);
       if (typeof row.title !== "string" || !row.title.trim() || typeof row.description !== "string" ||
-        row.title.includes("\0") || row.description.includes("\0")) issue("INVALID_TEXT", type, row[childKeys.at(-1)], ["id", "en"].includes(row.locale) ? row.locale : undefined);
+        row.title.includes("\0") || row.description.includes("\0")) issue("INVALID_TEXT", type, row[childKeys.at(-1)]);
     }
     for (const row of parents.values()) {
       const parentKey = parentKeys.map(key => row[key]).join(":");
-      for (const locale of ["id"]) {
-        if (!translations.has(`${parentKey}:${locale}`)) issue("MISSING_TRANSLATION", type, row[parentKeys.at(-1)], locale);
-      }
+      if (!translations.has(parentKey)) issue("MISSING_TRANSLATION", type, row[parentKeys.at(-1)]);
     }
   };
   localized("categoryTranslations", categoryEntries, ["categoryId"], ["categoryId"], "category");

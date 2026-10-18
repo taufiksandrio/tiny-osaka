@@ -1,7 +1,7 @@
 # Tiny Osaka — Codex Repository Instructions
 
 ## Mission & precedence
-Build and maintain Tiny Osaka's official conversion-first, bilingual Japanese street-food website and custom CMS. Read `docs/REQUIREMENTS.md` first. Existing approved decisions outrank proposals. If implementation conflicts with them, stop and propose a change; do not silently reinterpret the scope. Consult relevant `.agents/skills/` when the task triggers one.
+Build and maintain Tiny Osaka's official conversion-first, Indonesian-language Japanese street-food website and custom CMS. Read `docs/REQUIREMENTS.md` first. Existing approved decisions outrank proposals. If implementation conflicts with them, stop and propose a change; do not silently reinterpret the scope. Consult relevant `.agents/skills/` when the task triggers one.
 
 ## Mandatory workflow: PLAN → WAIT FOR APPROVAL → IMPLEMENT → VERIFY
 **Before any repository edit, code generation, dependency install, migration, Git commit, remote push, cloud action, or production operation:**
@@ -25,12 +25,13 @@ Do not interpret a vague instruction like “proceed” as authorization to depl
 
 ## Invariants & safety gates
 - No direct on-site checkout, payment, inventory quantities, internal analytics dashboard, automated social feed, `Restaurant` schema, in-CMS image retouch, or automatic merchant sync on save.
-- All content operations use server-side RBAC. Staff may draft/submit; Owner approves revisions and publishes/schedules/archives. Editing an approved revision invalidates that revision's approval; live content persists until approved replacement.
+- All content operations use server-side RBAC. Staff and Owner save pages and catalog products directly and changes go live on save (ADR-036, ADR-037); only Owner deletes catalog products and manages accounts and merchant sync. Scheduled publishing is removed.
+- Deleting a catalog product is permanent and immediate, done by Owner (ADR-037); the append-only audit rule applies to `catalog_deletion_log` only.
 - Catalog master in CMS. Platform sync only by Owner explicit action, with preview, per-platform enable switch, idempotency/retry/logs. Default OFF unless authorized partner API and sandbox verified. Saving never syncs.
-- Merchant price equality is a business rule; validate final modifier costs and detect external differences. A merchant app login does not imply API rights.
+- Merchant price equality is a business rule; validate the single product price and detect external differences (there are no modifiers). A merchant app login does not imply API rights.
 - Never call live merchant endpoints without separate explicit consent and approved sandbox/production boundaries.
 - GA4 tracks outbound order intent, never asserts completed orders. No PII in analytics parameters.
-- SEO ID/EN with verified public content; `Restaurant`/`LocalBusiness` structured data remains OUT OF SCOPE.
+- SEO in Indonesian only (ADR-038) with verified public content; `Restaurant`/`LocalBusiness` structured data remains OUT OF SCOPE.
 - Session max 24h; idle expiry 1h; secure reset and optional Owner MFA. Test server enforcement.
 - Release requires lint, build, unit, integration, Playwright E2E, and security checks. Lighthouse mobile >=90 is target QA, not promise. Target good CWV.
 - Deploy only after staging QA and explicit developer approval; no unapproved production migrations.

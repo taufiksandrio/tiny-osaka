@@ -22,7 +22,7 @@ export const currentPageRoot = async (tx, pageKey) => {
 export const readCurrentPage = async (tx, pageKey, api) => {
   const { root, updatedAt } = await currentPageRoot(tx, pageKey);
   return root ? { ...await api.read(null, root.id), updatedAt } :
-    { pageKey, id: null, version: 0, translations: [], mediaRefs: [], mediaAssets: [], updatedAt: null };
+    { pageKey, id: null, version: 0, fields: {}, mediaRefs: [], mediaAssets: [], updatedAt: null };
 };
 
 // Only called after current enabled membership is checked in the CMS transaction.
@@ -44,7 +44,7 @@ export const saveCurrentPage = async (tx, actor, input, api) => {
     await createPageDraft(tx, { pageKey: input.pageKey });
   await tx.insert(s.pageWorkflowEvents).values({ revisionId: next.id, action: root ? "clone" : "create", actorId: actor.subject });
   await api.batch(null, { revisionId: next.id, expectedVersion: next.version,
-    operations: [{ action: "save", data: { locale: "id", fields: input.fields } }, ...input.mediaOperations] });
+    operations: [{ action: "save", data: { fields: input.fields } }, ...input.mediaOperations] });
   const [saved] = await tx.select().from(s.pageRevisions).where(eq(s.pageRevisions.id, next.id));
   const graph = await loadPageGraph(tx, saved);
   validatePageReadiness(graph);

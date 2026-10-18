@@ -36,11 +36,9 @@ const withFixture = async (run, seed = true) => {
       }
       for (const revision of revisions) {
         await client.query("INSERT INTO category_entries(revision_id,category_id) VALUES ($1,$2)", [revision, ids.category]);
-        await client.query("INSERT INTO category_translations(revision_id,category_id,locale,title,description) VALUES ($1,$2,'en','QA existing category EN','QA English description')", [revision, ids.category]);
         for (const product of [ids.product, ids.otherProduct]) {
           await client.query("INSERT INTO product_entries(revision_id,product_id,category_id) VALUES ($1,$2,$3)", [revision, product, ids.category]);
         }
-        await client.query("INSERT INTO product_translations(revision_id,product_id,locale,title,description) VALUES ($1,$2,'en','QA existing product EN','QA English description')", [revision, ids.product]);
       }
       for (const [revision, product, variant] of [[ids.revision, ids.product, ids.variant],
         [ids.revision, ids.otherProduct, ids.otherVariant], [ids.otherRevision, ids.product, ids.otherRevisionVariant]]) {
@@ -85,21 +83,21 @@ const writers = [
   { save: saveProductTranslation, key: "productId", id: "product", table: "product_translations", column: "product_id" },
 ];
 const input = (ids, writer, fields = {}) => ({ revisionId: ids.revision, [writer.key]: ids[writer.id],
-  expectedVersion: 1, locale: "id", title: "QA 日本語 & Bahasa", description: "QA line one\nline two", ...fields });
+  expectedVersion: 1, title: "QA 日本語 & Bahasa", description: "QA line one\nline two", ...fields });
 const rejectCode = code => error => error instanceof CatalogDraftError && error.code === code;
 const versionOf = async (client, revision) => (await client.query("SELECT version FROM catalog_revisions WHERE id=$1", [revision])).rows[0].version;
 const translations = async (client, writer, ids, revision = ids.revision) => (await client.query(
   `SELECT locale,title,description FROM ${writer.table} WHERE revision_id=$1 AND ${writer.column}=$2 ORDER BY locale`,
   [revision, ids[writer.id]])).rows;
 
-test("inserts then updates one locale for category/product, with exact text and one version increment per save", () => withFixture(async ({ client, db, ids }) => {
+test("inserts then updates the Indonesian row for category/product, with exact text and one version increment per save", () => withFixture(async ({ client, db, ids }) => {
   let expectedVersion = 1;
   for (const writer of writers) {
     const before = await translations(client, writer, ids);
     const data = input(ids, writer, { expectedVersion, slug: "must-not-change", status: "published" });
     const result = await writer.save(db, data);
     assert.deepEqual(result, { revisionId: ids.revision, version: ++expectedVersion, [writer.key]: ids[writer.id],
-      locale: "id", title: data.title, description: data.description });
+      title: data.title, description: data.description });
     await writer.save(db, input(ids, writer, { expectedVersion: expectedVersion++, title: "QA updated", description: "" }));
     const after = await translations(client, writer, ids);
     assert.deepEqual(after, [...before, { locale: "id", title: "QA updated", description: "" }]);
@@ -110,19 +108,20 @@ test("inserts then updates one locale for category/product, with exact text and 
   assert.equal((await client.query("SELECT slug FROM categories WHERE id=$1", [ids.category])).rows[0].slug, `qa-draft-${ids.category}`);
 }));
 
-test("ID/EN and revisions remain isolated; HTML-like characters are literal text", () => withFixture(async ({ client, db, ids }) => {
+test("revisions stay isolated, legacy English rows are untouched; HTML-like characters are literal text", () => withFixture(async ({ client, db, ids }) => {
   let expectedVersion = 1;
   for (const writer of writers) {
+    // A row written before the single-language change; the application can no longer create one.
+    await client.query(`INSERT INTO ${writer.table}(revision_id,${writer.column},locale,title,description) VALUES ($1,$2,'en','QA legacy English','QA legacy English description')`, [ids.revision, ids[writer.id]]);
     const otherBefore = await translations(client, writer, ids, ids.otherRevision);
-    const enBefore = (await translations(client, writer, ids))[0];
+    const legacyBefore = (await translations(client, writer, ids)).find(row => row.locale === "en");
     const text = '<script>alert("QA")</script> & <b>literal text</b>';
     await writer.save(db, input(ids, writer, { expectedVersion: expectedVersion++, title: "  QA literal <tag>  ", description: text }));
-    const afterId = await translations(client, writer, ids);
-    assert.deepEqual(afterId[0], enBefore);
-    assert.equal(afterId[1].description, text);
-    assert.equal(afterId[1].title, "  QA literal <tag>  ");
-    await writer.save(db, input(ids, writer, { expectedVersion: expectedVersion++, locale: "en", title: "QA changed EN", description: "QA English updated" }));
-    assert.deepEqual((await translations(client, writer, ids))[1], afterId[1]);
+    const rows = await translations(client, writer, ids);
+    assert.deepEqual(rows.find(row => row.locale === "en"), legacyBefore);
+    const saved = rows.find(row => row.locale === "id");
+    assert.equal(saved.description, text);
+    assert.equal(saved.title, "  QA literal <tag>  ");
     assert.deepEqual(await translations(client, writer, ids, ids.otherRevision), otherBefore);
   }
   assert.equal(await versionOf(client, ids.otherRevision), 1);
@@ -154,10 +153,10 @@ test("missing and stale drafts are rejected without changing translation rows", 
   assert.equal(await versionOf(client, ids.revision), 2);
 }));
 
-test("invalid locale/blank names/null-byte text leave both data and token unchanged", () => withFixture(async ({ client, db, ids }) => {
+test("blank names/null-byte text leave both data and token unchanged", () => withFixture(async ({ client, db, ids }) => {
   for (const writer of writers) {
     const before = await translations(client, writer, ids);
-    for (const fields of [{ locale: "jp" }, { title: " \t\n\u00a0" }, { description: null }, { description: "QA\0" }]) {
+    for (const fields of [{ title: " \t\n\u00a0" }, { description: null }, { description: "QA\0" }]) {
       await assert.rejects(writer.save(db, input(ids, writer, fields)), rejectCode("INVALID_INPUT"));
     }
     assert.deepEqual(await translations(client, writer, ids), before);

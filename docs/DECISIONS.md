@@ -57,7 +57,7 @@ No user-approved technical choice should be silently recast as confirmed because
 
 ## ADR-002 — Phase 1A public homepage and locale paths
 
-Status update (2026-10-18): Superseded oleh ADR-038 untuk path locale (rute publik tanpa prefix bahasa; /en 404; /id 308).
+Status update (2026-10-18): Superseded oleh ADR-038 untuk path locale (rute publik tanpa prefix bahasa; `/id` dan `/en` 404 biasa).
 
 - Date: 2026-10-15.
 - Status: APPROVED, Phase 1A only.
@@ -1189,7 +1189,7 @@ Standing verified commit/push workflow applies; merge/deploy remain separate.
 
 ## ADR-034 - Indonesian-only website and simple atomic CMS forms (2026-10-17)
 
-Status update (2026-10-18): Diamandemen ADR-037 (katalog) dan ADR-038 (URL: /en kini 404; /id 308 ke padanan tanpa prefix).
+Status update (2026-10-18): Diamandemen ADR-037 (katalog) dan ADR-038 (URL: `/en` dan `/id` kini sama-sama 404 biasa tanpa alihan; lihat catatan penghapusan kode bahasa di akhir ADR-038).
 
 Explicitly approved by the user after replacing the bilingual/translation proposal.
 This decision supersedes bilingual requirements, mandatory ID/EN authoring and
@@ -1553,3 +1553,15 @@ playwright.config.mjs (url /id), tests e2e/integration/unit, scripts/run-publish
 Rollback. Kembalikan route [locale] dan next.config.mjs bersama; data tidak
 diubah sehingga tidak ada pemulihan data. Link yang sudah dibagikan tanpa prefix
 akan 404 setelah rollback bila tidak ada redirect balik.
+
+Status update (2026-10-18, amandemen ADR-038, penghapusan kode bahasa): alihan `/id` 308 dan semua teks "/id 308" di atas
+dan di ADR-034/ADR-038 sudah tidak berlaku. `/id` dan `/en` sama-sama 404 biasa tanpa alihan; `next.config.mjs` tanpa
+`redirects`. Kode aplikasi, API, UI, test, dan dokumen tidak lagi memodelkan bahasa: parameter/field `locale`,
+`isPageLocale`, `altEn`/`captionEn` di API, dan toleransi tautan rich text berprefiks `/id` `/en` dihapus. Lapisan data
+tetap (tanpa migrasi, tanpa perubahan hash): kolom `locale` (selalu `'id'` lewat satu konstanta
+`src/server/db/stored-language.mjs`), baris `en` dan `alt_en`/`caption_en` lama pada snapshot, dan argumen locale pada
+fungsi SQL `public_read_*`. Validasi mengabaikan baris non-`id`; klon draft menyalin baris/teks `id` saja. Penghapusan
+kolom/baris/fungsi tersebut (yang mengubah hash dan melanggar retensi ADR-034) membutuhkan ADR baru dan persetujuan
+terpisah. Tautan rich text lama berprefiks pada data tersimpan dibiarkan (hasilnya 404). Kontrak: docs/DATA_CONTRACTS.md
+bagian "Kontrak satu bahasa". Rollback: revert kode/test/dokumen; tidak ada perubahan data atau skema.
+

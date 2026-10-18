@@ -2,9 +2,21 @@
 
 ## Current language and editing contract (ADR-034)
 
-> DIAMANDEMEN ADR-038 (2026-10-18): rute publik tanpa prefix bahasa; /en dan /en/* 404 permanen; /id dan /id/* 308 ke padanan tanpa prefix. Kalimat tentang `/id` stabil dan redirect `/en` di bawah bersifat historis.
+> DIAMANDEMEN ADR-038 (2026-10-18): rute publik tanpa prefix bahasa; `/id`, `/en`, dan semua turunannya adalah 404 biasa tanpa alihan. Kalimat tentang `/id` stabil, redirect `/en`, dan `/id` 308 di bawah bersifat historis.
 
-Public content and CMS authoring are Indonesian-only. Existing `/id` paths remain stable; `/en/:path*` permanently redirects to `/id/:path*`. No English switch, alternate language output or automatic translation provider is used. Legacy English rows remain within immutable snapshots and hashes; new content requires only Indonesian. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
+> DIAMANDEMEN penghapusan kode bahasa (2026-10-18): kode aplikasi, API, UI, dan test tidak lagi memodelkan bahasa. Bagian di bawah yang menyebut bilingual, ID/EN, `locale`, `altEn`/`captionEn`, atau `/id` `/en` adalah historis kecuali tercantum di bagian "Kontrak satu bahasa" berikut.
+
+## Kontrak satu bahasa (berlaku sejak 2026-10-18)
+
+- Tanpa parameter, prop, atau field `locale`/`lang` pada fungsi JS, pembaca publik, payload request/response API, dan UI. `readPublicCatalog(client)`, `readPublicPage(client, key)`, `getPublishedPage(db, { pageKey })`, `validatePageFields(pageKey, fields, { ready })`, `savePageTranslation({ revisionId, expectedVersion, fields })`.
+- Penyimpan terjemahan katalog (`save*Translation`) tidak menerima `locale`; menulis baris Indonesia saja. Issue kesiapan katalog berbentuk `{ code, entityType, entityId }` (tanpa `locale`, tanpa `INVALID_LOCALE`).
+- API CMS halaman: `PUT /api/cms/pages/by-key/:key` dan batch tidak menerima `locale`; operasi media tidak menerima `altEn`/`captionEn` (field tak dikenal ditolak 400 oleh `exactInput`). Pembacaan halaman mengembalikan `fields` (objek template) sebagai pengganti `translations`; `mediaRefs` hanya memuat `id, revisionId, productId?, assetId, altId, captionId, sortOrder`.
+- Keluaran publik: halaman `{ pageKey, template, revisionId, version, fields, media }`; media `{ id, productId?, sortOrder, alt, caption, asset, poster }`. Tanpa `locale`, `altEn`, `captionEn`.
+- Tautan internal rich text hanya path kode tanpa prefix (`/menu`, `/about`, `/`). `/id/...` dan `/en/...` ditolak validasi (tautan lama pada data tersimpan dibiarkan dan menghasilkan 404).
+- Lapisan data yang terkunci skema (tanpa migrasi): kolom `locale text NOT NULL` pada enam tabel terjemahan (nilai selalu `'id'`, satu konstanta `src/server/db/stored-language.mjs`), kolom `alt_en`/`caption_en` (default `''`), serta fungsi SQL `public_read_catalog(p_locale)`/`public_read_page(p_key, p_locale)` yang dipanggil dengan `'id'`.
+- Baris `en` dan `alt_en`/`caption_en` terisi pada snapshot lama: loader graf tetap memuatnya dan daftar kolom hash tidak berubah (hash tidak berubah, dijaga test golden `tests/unit/legacy-hash-golden.test.mjs`); validasi/kesiapan mengabaikan baris non-`id` (tidak menolak); klon draft menyalin baris `id` dan teks `id` saja; keluaran API/publik tidak memuatnya.
+
+Public content and CMS authoring are Indonesian-only. No English switch, alternate language output or automatic translation provider is used. Legacy English rows remain within immutable snapshots and hashes; new content requires only Indonesian. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
 
 > USANG untuk katalog (ADR-037) dan halaman (ADR-036): Approval ADR-035, jadwal, dan "Schedules use Asia/Jakarta" tidak berlaku; scheduling dihapus. Staff dan Owner menyimpan langsung tayang; Hapus produk hanya Owner.
 
@@ -21,7 +33,7 @@ direct page save. Catalog permission boundaries otherwise remain unchanged.
 
 ## Earlier conceptual entities (not an implemented schema)
 
-`User(id,email,role,status,createdAt)`; `Session(userId,issuedAt,lastActiveAt,expiresAt)`; `AuditEvent(actor,action,target,revision,time,metadata)`; `ContentPage(id,type,slug,locale,status,publishedRevisionId)`; `PageRevision(id,pageId,fields,createdBy,approvedBy,approvedAt,scheduledFor,version)`; `Media(id,type,storageKey,mime,size,alt,posterKey,owner)`; `Product(id,slug,category,basePrice,media)`; `ProductTranslation(productId,locale,title,description,seo)`; `ModifierGroup(id,productId,min,max,selectionType)`; `ModifierOption(id,groupId,title,priceDelta)`; `MerchantMapping(productId,platform,externalId,verifiedProductUrl,verifiedStoreUrl,lastSyncHash)`; `SyncRun(id,initiator,platform,status,attempt,idempotencyKey,requestSummary,finishedAt,errorCategory)`; `PlatformSettings(platform,isEnabled,connectionStatus)`. Define real DB constraints and normalized relations during schema design.
+`User(id,email,role,status,createdAt)`; `Session(userId,issuedAt,lastActiveAt,expiresAt)`; `AuditEvent(actor,action,target,revision,time,metadata)`; `ContentPage(id,type,slug,status,publishedRevisionId)`; `PageRevision(id,pageId,fields,createdBy,approvedBy,approvedAt,scheduledFor,version)`; `Media(id,type,storageKey,mime,size,alt,posterKey,owner)`; `Product(id,slug,category,basePrice,media)`; `ProductTranslation(productId,locale,title,description,seo)`; `ModifierGroup(id,productId,min,max,selectionType)`; `ModifierOption(id,groupId,title,priceDelta)`; `MerchantMapping(productId,platform,externalId,verifiedProductUrl,verifiedStoreUrl,lastSyncHash)`; `SyncRun(id,initiator,platform,status,attempt,idempotencyKey,requestSummary,finishedAt,errorCategory)`; `PlatformSettings(platform,isEnabled,connectionStatus)`. Define real DB constraints and normalized relations during schema design.
 
 ## Invariants
 - No merchant platform UI/API fields should be assumed identical; independent adapters convert from CMS canonical model.
@@ -33,13 +45,13 @@ direct page save. Catalog permission boundaries otherwise remain unchanged.
 - Platform on/off is permission-restricted, separately logged; default OFF prior to verified authorized access.
 
 ## GA4 minimal measurement plan (proposed contract)
-- Standard page views plus `view_item` with stable item identifier and locale.
+- Standard page views plus `view_item` with stable item identifier.
 - Custom `click_order` event with `item_id` (if product-specific), `platform` (`gofood`/`grabfood`), `source_page` (non-PII path), `placement` (CTA placement) [parameter `locale` dihapus, ADR-038; ShopeeFood hanya link tersimpan di CMS (ADR-037), bukan nilai `platform` event sampai ditampilkan publik dan kontrak ini diperbarui]; event ini hanya niat order keluar, bukan pesanan selesai; use GA4 acquisition and approved campaign UTMs. Register appropriate custom dimensions in GA4 as necessary.
 - Do not send user's email, name, phone, cookies or other personal information as custom params.
 - Prevent duplicate analytics events across generic outbound tracking and custom CTA tracking.
 - `click_order` represents a click, NEVER a paid order or completed purchase.
 
-## Historical bilingual routing (superseded by ADR-034)
+## Historical bilingual routing (superseded by ADR-034 and ADR-038; no longer applies)
 `/id/...` and `/en/...` with shared slugs were approved in ADR-002/003 and are
 implemented for the public preview. Production canonical/hreflang/sitemap and
 verified public content remain future work; the preview remains noindex.
@@ -54,12 +66,12 @@ implementation review before execution.
 
 | Concept | Contract |
 |---|---|
-| Category/Product identity | Stable ID and shared locale slug; revision-specific fields never overwrite a live version |
+| Category/Product identity | Stable ID and shared slug; revision-specific fields never overwrite a live version |
 | CatalogRevision | Complete versioned catalog graph; draft edits use a concurrency token; submitted/approved snapshots are immutable (ADR-037: purge menghapus snapshot lama via catalog_purge_product) |
 | Revision children | Category, product, variant, translation, modifier and link rows belong to one revision; references cannot cross revisions |
 | Catalog publication | Singleton published-revision pointer; update atomically only to an exactly approved revision |
 | Approval | Revision ID/hash, actor and timestamp; changed payload requires a new draft and new approval |
-| Page/PageRevision | Stable template identity plus versioned allowed fields/ID+EN translations and separate published pointer |
+| Page/PageRevision | Stable template identity plus versioned allowed fields (one Indonesian row per revision in the stored translations table) and separate published pointer |
 | Media reference | Immutable storage reference plus metadata; no in-place mutation/deletion of assets referenced by live content (ADR-037: purge produk tidak menyentuh aset media) |
 | Ordering link | Platform, verified URL/scope and verification evidence; verified product URL else verified store URL; no fabricated fallback |
 
@@ -129,11 +141,11 @@ from crossing revisions. All six foreign keys use RESTRICT for update/delete;
 removal must explicitly handle children. Product/category lookup has a composite
 index on product_entries(revision_id, category_id).
 
-Locales are exactly id/en. Titles must contain content after PostgreSQL btrim
+The stored locale value is always id (the schema still allows id/en). Titles must contain content after PostgreSQL btrim
 removes ordinary surrounding spaces; description defaults to empty text. This
 is not full Unicode whitespace validation, rich-text sanitization, translation
-verification or proof that both locales exist. A future submit/publish validator
-must require the necessary bilingual fields and safe content. No sample facts
+verification or proof that a translation exists. A future submit/publish validator
+must require the necessary Indonesian fields and safe content. No sample facts
 or production menu values are inserted.
 
 The version column is only a concurrency token foundation: the future write
@@ -167,11 +179,11 @@ Six revision-owned tables extend the draft foundation:
 | Table | Contract |
 |---|---|
 | product_variants | PK revision/product/id; code unique per product revision; base_price; sort_order |
-| variant_translations | ID/EN title/description; FK revision/product/variant |
+| variant_translations | title/description (stored locale id); FK revision/product/variant |
 | modifier_groups | PK revision/product/id; unique code; single/multiple; min/max selections; sort_order |
-| modifier_group_translations | ID/EN title/description; FK revision/product/group |
+| modifier_group_translations | title/description (stored locale id); FK revision/product/group |
 | modifier_options | PK revision/product/group/id; code unique per group; option ID also unique per product revision; price_delta; sort_order |
-| modifier_option_translations | ID/EN title/description; FK revision/product/group/option |
+| modifier_option_translations | title/description (stored locale id); FK revision/product/group/option |
 
 All six new FKs use RESTRICT update/delete and include revision/product scope.
 Groups apply to every variant of their product. There is no product-level base
@@ -181,11 +193,11 @@ pricing readiness, not automatically seeded. Multiple variants require an explic
 selection. Standard is an internal code, not verified public product content.
 
 Storage permits incomplete drafts. SQL checks local min/max ordering, single
-selection max <= 1, allowed locale, nonblank ordinary-space-trimmed titles, code
+selection max <= 1, nonblank ordinary-space-trimmed titles, code
 format, amount bounds and nonnegative sort order. Cross-row readiness (at least
 one variant, standard for a simple product, enough options for configured max)
 is checked by validatePricingProduct. Publication still needs its own full
-bilingual-content, immutable-revision and approval validation. No such workflow
+content, immutable-revision and approval validation. No such workflow
 or runtime write grant is introduced by this step.
 
 Pure module src/server/catalog/pricing.mjs accepts a server-loaded graph:
@@ -271,10 +283,10 @@ reviewed protections. Runtime app still cannot use the internal persistence cont
 
 > Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
-saveCategoryTranslation(db, { revisionId, categoryId, expectedVersion, locale,
+saveCategoryTranslation(db, { revisionId, categoryId, expectedVersion,
 title, description }) and saveProductTranslation(db, { revisionId, productId,
-expectedVersion, locale, title, description }) are internal server-only writers.
-They validate UUIDs, writable int4 version, exact id/en locale, nonblank title
+expectedVersion, title, description }) are internal server-only writers.
+They validate UUIDs, writable int4 version, nonblank title
 using JS trim for validation, and string description. Empty description is valid;
 null/omitted description is rejected instead of silently clearing existing text.
 NUL characters are rejected because PostgreSQL text cannot represent them.
@@ -285,15 +297,15 @@ or HTML sanitization; future rendering must escape text and never insert it as H
 A shared advanceDraftVersion helper is used by price and both translation writers.
 Inside a transaction, compare/increment the draft root, check that the referenced
 category/product entry exists in that revision, then upsert only title/description
-for the exact revision/identity/locale composite key. New locale rows can be added;
-other locales/revisions, root status and shared identity/slug stay unchanged.
+for the exact revision/identity composite key (stored locale id). Legacy rows of other locales and
+other revisions, root status and shared identity/slug stay unchanged.
 Unknown extra input properties are not persisted. Missing parent returns
 ENTRY_NOT_FOUND with root increment rolled back. Stale/missing root conflicts and
 all SQL failures likewise preserve data/version atomically. Every successful save
 increments once, including unchanged text. Validation failures happen before DB.
 
 Only category/product translations are writable here. Variant/modifier labels,
-product/category creation, rich text, auth/RBAC/audit, bilingual publish-readiness,
+product/category creation, rich text, auth/RBAC/audit, publish-readiness,
 approval and public routes remain separate work. Runtime app grants remain denied;
 future endpoints must authorize a least-privilege context. Root-version protection
 still requires every child writer to follow the same transaction contract.
@@ -319,10 +331,10 @@ Code conflicts return VARIANT_CODE_CONFLICT; first/sole violations return
 VARIANT_RULE_VIOLATION; all rule/scope failures roll back the root increment.
 
 saveVariantTranslation(db, { revisionId, productId, variantId, expectedVersion,
-locale, title, description }) validates full scope, version and the same plain-text
+title, description }) validates full scope, version and the same plain-text
 rules as category/product translations. Parent variant must exist in this exact
-product/revision. Upsert only title/description for the composite locale key;
-other locales/revisions and variant identity/prices/code/order remain unchanged.
+product/revision. Upsert only title/description for the composite key;
+legacy other-locale rows, other revisions and variant identity/prices/code/order remain unchanged.
 Return version and saved fields. Shared text validation preserves literal content,
 rejects empty names/NUL and permits an explicit empty description; not HTML parsing.
 
@@ -352,8 +364,8 @@ without business price ceiling. Edits affect only code/delta/sort, never parent
 product/revision/group or ID. No repeatable option policy or deletion is added.
 
 saveModifierGroupTranslation/saveModifierOptionTranslation accept their full
-revision/product/group/(option) scope, expectedVersion, locale, title, description.
-Use existing id/en literal-text rules and exact scoped locale upsert; only text
+revision/product/group/(option) scope, expectedVersion, title, description.
+Use existing literal-text rules and exact scoped upsert; only text
 fields change. Required parent must exist in that scope. Root token advances
 once in the same transaction as every successful group/option/label write.
 Rule, code, parent/scope, stale or SQL failures roll back both child and token.
@@ -396,7 +408,7 @@ or exponential combination enumeration. Empty category entries are allowed if
 localized; an empty catalog is not ready. Individual descriptions may be empty.
 
 Return { revisionId, version, ready, issues }, with deterministic deduplicated
-issue objects { code, entityType, entityId, locale? }. No content/SQL/credentials
+issue objects { code, entityType, entityId }. No content/SQL/credentials
 are included in issues. ready means STRUCTURE complete for review, never verified
 restaurant facts, good translations, Owner approval, publication or merchant parity.
 
@@ -430,7 +442,7 @@ no endpoint, UI, login, session exception or runtime grant is introduced here.
 
 Methods take { revisionId, expectedVersion }; approve/reject/publish/archive also
 require expectedHash. Staff/Owner may submit; all other transitions require Owner.
-Submit loads and validates the complete bilingual/pricing graph under a root
+Submit loads and validates the complete Indonesian catalog/pricing graph under a root
 UPDATE lock, calculates SHA-256 and inserts an immutable submission receipt.
 Approve rehashes and binds an approval to that exact submitted revision/hash.
 Reject freezes the source as rejected. Editing frozen content requires
@@ -468,7 +480,7 @@ PERSISTENCE_FAILED. Ordinary database owners remain administrative principals;
 trigger protection is not a substitute for runtime RBAC or restricted grants.
 No checkout, merchant API, sync, business price cap or verified content is added.
 
-## Phase 2 group 3: fixed bilingual page content (ADR-022)
+## Phase 2 group 3: fixed page content (ADR-022; Indonesian-only since ADR-034/038)
 
 Seven tables extend the catalog schema without altering applied 0000-0003:
 pages(key,template); page_revisions(id,page_key,status,version,content_hash,created_at);
@@ -493,13 +505,13 @@ promotion scheduling/merchant operation system. Media references are group 4.
 
 Technical text caps: short 160, title 240, summary 2000 JS string units. Strings
 cannot contain NUL. Draft fields may be absent/empty; submission requires every
-allowed field nonblank (or visible rich content) in both id/en. Unknown fields
-including layout/style/template keys are rejected. Locale fallback is prohibited.
+allowed field nonblank (or visible rich content) in Indonesian. Unknown fields
+including layout/style/template keys are rejected. Legacy non-Indonesian rows are ignored.
 
 Rich JSON document: { blocks: [...] }; blocks are paragraph {type,content},
 heading {type,level:2|3,content}, or list {type,ordered:boolean,items:[inline,...]}.
 An inline is an array of {text,marks?,href?}; marks contain unique bold/italic.
-href must exactly match an existing code-owned page path with /id or /en prefix.
+href must exactly match an existing code-owned page path without any language prefix.
 External/protocol-relative URLs, schemes, query/fragment, encoded/traversal paths
 and unsupported product detail links are denied. No raw HTML/media/embed/style node.
 Literal angle brackets are text; future renderer must use safe React text nodes,
@@ -507,7 +519,7 @@ never dangerouslySetInnerHTML. No browser renderer/editor is installed in this g
 
 Bounded flat shape: max 100 blocks, 100 inline spans per array, 100 list items,
 1000 spans per document and 4000 units per span text. Serialized input max 65536
-UTF-8 bytes per locale; DB requires jsonb object and <=131072 formatted bytes.
+UTF-8 bytes per page; DB requires jsonb object and <=131072 formatted bytes.
 Node allowlists avoid recursive HTML parsing and reject unsupported structures.
 
 createPageWorkflow({db,resolveActor}) is the authorized write boundary. Trusted
@@ -516,17 +528,17 @@ Unwired/error/invalid actor fails AUTH_REQUIRED; request identity/roles are igno
 Internal drafts.mjs primitives are server-only persistence helpers, not HTTP APIs.
 No runtime grants or actual auth/session endpoints are introduced.
 
-createDraft({pageKey}); saveTranslation({revisionId,expectedVersion,locale,fields});
+createDraft({pageKey}); saveTranslation({revisionId,expectedVersion,fields});
 cloneDraft({sourceRevisionId,expectedSourceVersion}); submit({revisionId,expectedVersion})
 are Staff/Owner actions. approve/reject/publish/archive add expectedHash and require
-Owner. Save replaces one locale fields object, advances version once, and locks root
+Owner. Save replaces the Indonesian fields object, advances version once, and locks root
 FOR UPDATE in the same transaction. Missing/stale/frozen revisions conflict. Clone
-locks exact source FOR SHARE, copies only translations to a new draft UUID/version 1
+locks exact source FOR SHARE, copies only the Indonesian translation row (and Indonesian media text) to a new draft UUID/version 1
 with hash NULL and no inherited receipt/approval/audit. Exhausted versions can clone.
 
-Submission validates both locales then freezes exact root version and computes SHA256.
-Hash format 1 binds page key/template, revision ID/pageKey/version and both scoped
-translations/fields. JSON object keys and locale rows sort deterministically;
+Submission validates the Indonesian row (legacy rows ignored) then freezes exact root version and computes SHA256.
+Hash format 1 binds page key/template, revision ID/pageKey/version and every stored
+translation row including its locale column and fields (unchanged format; old snapshots with English rows keep their hash). JSON object keys and rows sort deterministically;
 block/span/list order remains meaningful. Status/timestamps/actors are excluded.
 Every workflow transition and published read revalidates structure and integrity.
 
@@ -543,9 +555,9 @@ duplicate audit. Historical publication requires a fresh reviewed clone. Live ar
 or pointer deletion is denied until a replacement is published. Audits store action,
 revision, opaque server actor subject, UUID and timestamp without content/PII.
 
-getPublishedPage(db,{pageKey,locale}) accepts no revision selector. Returns null when
-not published; otherwise {pageKey,template,revisionId,version,locale,fields} for that
-exact locale only. Unknown key/locale is INVALID_INPUT; group 5 handles route/404 mapping.
+getPublishedPage(db,{pageKey}) accepts no revision selector. Returns null when
+not published; otherwise {pageKey,template,revisionId,version,fields,media}.
+Unknown key is INVALID_INPUT; group 5 handles route/404 mapping.
 Approval/audit identities are omitted. Public routes remain fixture/noindex now.
 
 Errors: AUTH_REQUIRED, FORBIDDEN, INVALID_INPUT, INVALID_CONTENT, NOT_READY,
@@ -596,16 +608,17 @@ only and cannot stop privileged external storage changes.
 
 catalog_media_refs and page_media_refs use composite (revision_id,id) PK and asset
 FK, alt_id/alt_en (<=500), caption_id/caption_en (<=2000), sort_order nonnegative.
+(alt_en/caption_en are legacy columns: never written by the application, default empty, still part of the media hash.)
 Catalog additionally has product_id and composite FK to exact revision/product.
 No numeric inventory or media tokens/styles enter templates. Alt labels apply to
-images and accessible video labels/posters; caption may be empty. Both alt locales
+images and accessible video labels/posters; caption may be empty. The alt label
 must be nonblank before submission. Draft labels may be incomplete. Literal text
 needs safe React rendering later; no HTML insertion is introduced.
 
 createMediaReferences({db,resolveActor}) exposes saveCatalog/savePage and
 removeCatalog/removePage to trusted Staff/Owner. Inputs require revisionId,
 expectedVersion (1..2147483646), assetId for save and referenceId for edit/remove;
-catalog also requires productId. Save includes all four localized text fields and
+catalog also requires productId. Save includes altId, captionId and
 sortOrder. References cannot be reparented; remove then attach to the other draft.
 Each successful create/edit/remove increments root version once in its transaction.
 Missing/stale/frozen scope or SQL failure rolls back child and version together.
@@ -627,8 +640,8 @@ and immutable, while approval/receipts remain uncopied. Root submit/readiness
 validates media; page transitions and both hash checks protect exact content.
 
 Published DTOs expose asset ID/kind/dimensions/duration/external ID and poster
-metadata with revision-owned labels/order. Page reader returns the requested
-locale; catalog graph includes both localized labels and productId. Private keys,
+metadata with revision-owned labels/order. Page reader returns alt/caption
+labels; catalog output includes labels and productId. Private keys,
 checksums, raw media tables and registration actors are omitted. Reader delivery
 is a metadata contract, not a publicly accessible upload or byte-serving endpoint.
 
@@ -641,10 +654,10 @@ physical storage, image optimization, custom iframe HTML or automatic network sy
 ## Phase 2 public application read boundary
 
 Runtime calls public.public_read_catalog(locale) and public.public_read_page(key,
-locale) with parameters. Both return null without a matching live publication,
-published revision and approval hash. Locale must be id/en. No arbitrary revision
-lookup is accepted. Catalog DTO has localized categories/products/variant and
-modifier labels; page DTO has fixed fields and localized media. Media omits
+locale) with parameters; the application always passes the stored value id from one constant. Both return null without a matching live publication,
+published revision and approval hash. No arbitrary revision
+lookup is accepted. Catalog DTO has categories/products/variant and
+modifier labels; page DTO has fixed fields and media labels. Media omits
 storage key, checksum, actor and audit history. Runtime has EXECUTE only, no table
 SELECT/write or Owner role membership. Privileged internal Drizzle readers remain
 for workflow tests and are not the public runtime path.
