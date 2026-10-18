@@ -31,6 +31,8 @@ export const reviewedMigrations = Object.freeze([
     hash: "92c63a272f8192c2eebaf221325c0c67cd674eac82c8f5f82a223582096500e9" }),
   Object.freeze({ tag: "0014_catalog_card_crud", when: 1792216320000,
     hash: "da9e2e1a8ec2a1db9adf3237a8337a0d0de8666e833e6d052d491772d3fe375e" }),
+  Object.freeze({ tag: "0015_catalog_order_links", when: 1792216380000,
+    hash: "64c694563b15638beb782fbdeb0b979884372eef6e4660f5bc3ec2e54c9fa403" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -42,15 +44,15 @@ export const allTables = Object.freeze([...contentTables, "publication_jobs", "p
 // 0014 adds the append-only deletion log. allTables stays the 0000-0013 set so fixtures that lock/clean
 // "all tables" keep working before and after 0014; use tablesForState for exact schema checks.
 export const deletionTables = Object.freeze(["catalog_deletion_log"]);
-// Tables that exist at a given applied-history length (0012/0013 add jobs; 0014 adds the deletion log).
+// Tables that exist at a given applied-history length (0012/0013 add jobs; 0014 adds the deletion log; 0015 only adds columns, no new table).
 export const tablesForState = length => [...allTables.filter(name => length >= 13 || !["publication_jobs", "publication_events"].includes(name)),
   ...(length >= 15 ? deletionTables : [])].sort();
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0014 plan."); };
+const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: files, history or objects differ from the reviewed 0000-0015 plan."); };
 
 export const validateDevMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 15 || !Array.isArray(files) || files.length !== 15) refuse();
+    journal.entries?.length !== 16 || !Array.isArray(files) || files.length !== 16) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -63,7 +65,7 @@ export const validateDevMigrationFiles = (journal, files) => {
 // Only reviewed catalog/media states (including the forward intermediate) are allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateDevMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![12, 13, 14, 15].includes(history.length) ||
+  if (!Array.isArray(history) || ![12, 13, 14, 15, 16].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_dev_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();

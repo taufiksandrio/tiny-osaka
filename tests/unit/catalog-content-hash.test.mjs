@@ -8,6 +8,29 @@ const graph = () => ({
     [table, [1, 2].map(n => Object.fromEntries(fields.map(field => [field, field + n])))])),
 });
 
+// Order links (migration 0015) must not change the hash of any snapshot that has no link.
+test("snapshots without order links keep their pre-0015 hash; any link changes it", () => {
+  const fixed = { revision: { id: "00000000-0000-4000-8000-000000000001", version: 3, status: "published" } };
+  const numeric = ["sortOrder", "basePrice", "priceDelta", "minSelections", "maxSelections"];
+  for (const [table, fields] of Object.entries(catalogContentFields)) {
+    fixed[table] = [1, 2].map(n => Object.fromEntries(fields.map(field => [field, numeric.includes(field) ? n : field + n])));
+  }
+  // Pinned digest produced by the content-hash implementation that predates the link columns.
+  const legacy = "779e1b848adef17ad5caf4149408b4ddf601599017f6167448aaa31a47344b7d";
+  assert.equal(hashCatalogContent(fixed), legacy);
+  const nulls = structuredClone(fixed);
+  for (const row of nulls.productEntries) Object.assign(row, { grabfoodUrl: null, gofoodUrl: null, shopeefoodUrl: null });
+  assert.equal(hashCatalogContent(nulls), legacy);
+  const seen = new Set([legacy]);
+  for (const key of ["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]) {
+    const linked = structuredClone(nulls); linked.productEntries[0][key] = "https://a.example/x";
+    const digest = hashCatalogContent(linked);
+    assert.ok(!seen.has(digest), key); seen.add(digest);
+    linked.productEntries[0][key] = "https://a.example/y";
+    assert.ok(!seen.has(hashCatalogContent(linked)), key + " value");
+  }
+});
+
 test("hash is deterministic across row order, property order and workflow metadata", () => {
   const a = graph(), b = structuredClone(a);
   b.revision.status = "published"; b.revision.contentHash = "ignored"; b.revision.createdAt = new Date();

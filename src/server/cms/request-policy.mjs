@@ -1,7 +1,8 @@
 export class CmsRequestError extends Error {
-  constructor(code, status) { super(code); this.code = code; this.status = status; }
+  // detail (optional): small JSON-safe object returned to the client next to the code, e.g. { field, message }.
+  constructor(code, status, detail) { super(code); this.code = code; this.status = status; if (detail) this.detail = detail; }
 }
-export const cmsFail = (code, status = 400) => { throw new CmsRequestError(code, status); };
+export const cmsFail = (code, status = 400, detail) => { throw new CmsRequestError(code, status, detail); };
 export const cmsJson = (value, status = 200) => Response.json(value, { status,
   headers: { "Cache-Control": "no-store", "Pragma": "no-cache", "X-Content-Type-Options": "nosniff" } });
 // Bodyless mutations (DELETE) use this alone; JSON mutations get it through readCmsInput.

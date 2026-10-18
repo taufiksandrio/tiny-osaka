@@ -51,16 +51,16 @@ try {
   // Preserve the original test lock so all versions of this runner serialize.
   await client.query("SELECT pg_advisory_lock(76210982)");
   const initialState = await checkHistory(client);
-  if (initialState === 15) {
-    console.log("test: reviewed 0000-0014 already applied; no changes made.");
+  if (initialState === 16) {
+    console.log("test: reviewed 0000-0015 already applied; no changes made.");
   } else {
     // Check the known starting state again inside the migration transaction.
     await applyReviewedMigration(client, files.slice(initialState), async () => {
-      if (await checkHistory(client) !== 15) throw new TestMigrationPlanError("Migration final state verification failed.");
+      if (await checkHistory(client) !== 16) throw new TestMigrationPlanError("Migration final state verification failed.");
     }, async () => {
       if (await checkHistory(client) !== initialState) throw new TestMigrationPlanError("Migration starting state changed.");
     });
-    console.log("test: applied reviewed catalog card CRUD plan up to 0014; 31 public and 9 auth tables owned by tiny_osaka_test_owner.");
+    console.log("test: applied reviewed catalog card CRUD plan up to 0015 (order links); 31 public and 9 auth tables owned by tiny_osaka_test_owner.");
   }
 } catch (error) {
   console.error(error instanceof TestDatabaseGuardError || error instanceof TestMigrationPlanError

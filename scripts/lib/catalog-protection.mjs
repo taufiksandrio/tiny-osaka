@@ -24,6 +24,20 @@ const verifyDeletionObjects = async (client, owner) => {
   assert.ok(triggers.every(row => row.tgenabled === "O"));
 };
 
+// Migration 0015: three nullable text columns with https/length CHECKs on product_entries (no new table or trigger).
+const verifyOrderLinkColumns = async client => {
+  const names = ["grabfood_url", "gofood_url", "shopeefood_url"];
+  const { rows: columns } = await client.query(`SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='product_entries' AND column_name = ANY($1::text[]) ORDER BY column_name`, [names]);
+  assert.deepEqual(columns.map(row => row.column_name), [...names].sort());
+  assert.ok(columns.every(row => row.data_type === "text" && row.is_nullable === "YES" && row.column_default === null));
+  const wanted = names.map(name => `product_entries_${name}_check`);
+  const { rows: checks } = await client.query(`SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint
+    WHERE conrelid='public.product_entries'::regclass AND contype='c' AND conname = ANY($1::text[]) ORDER BY conname`, [wanted]);
+  assert.deepEqual(checks.map(row => row.conname), [...wanted].sort());
+  for (const row of checks) assert.ok(row.def.includes("https://") && row.def.includes("2048"));
+};
+
 export const verifyCatalogProtection = async (client, owner, state = 4) => {
   const source = readFileSync(new URL("../../drizzle/0002_catalog_publication.sql", import.meta.url), "utf8");
   const expected = [...source.matchAll(/CREATE FUNCTION public\.(catalog_\w+)\(\) RETURNS trigger\s+LANGUAGE plpgsql SET search_path = pg_catalog AS \$\$([\s\S]*?)\$\$;/g)];
@@ -51,6 +65,7 @@ export const verifyCatalogProtection = async (client, owner, state = 4) => {
     assert.deepEqual(fn.proconfig, ["search_path=pg_catalog"]);
   }
   if (state >= 15) await verifyDeletionObjects(client, owner);
+  if (state >= 16) await verifyOrderLinkColumns(client);
   const wanted = [];
   const add = (table, name, fn, type = 31, deferred = false) => wanted.push({
     table, name, fn, type, deferred, initially: deferred, enabled: "O",

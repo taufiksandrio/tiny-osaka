@@ -10,6 +10,7 @@ import { loadCatalogGraph } from "./review.mjs";
 import { validateCatalogReviewReadiness } from "./review-readiness.mjs";
 import { hashCatalogContent } from "./content-hash.mjs";
 import { slugify, slugCandidate } from "./product-input.mjs";
+import { ORDER_LINK_KEYS } from "./order-links.mjs";
 
 // Catalog card service (ADR-037). Every write builds a complete replacement snapshot, publishes
 // it in the same transaction and never calls a merchant endpoint. Callers hold an authenticated,
@@ -33,7 +34,8 @@ const loadLive = async tx => {
 // The version token covers only what the editor can change, so concurrent edits of
 // different cards never conflict and an identical re-save is recognised as a no-op.
 export const productVersion = card => createHash("sha256")
-  .update(JSON.stringify([card.slug, card.name, card.description, card.price, card.image?.assetId ?? null, card.image?.alt ?? ""])).digest("hex");
+  .update(JSON.stringify([card.slug, card.name, card.description, card.price, card.image?.assetId ?? null, card.image?.alt ?? "",
+    ...ORDER_LINK_KEYS.map(key => card[key] ?? null)])).digest("hex");
 
 // One shared price per product. Stage 1 keeps the hidden `standard` variant as the source.
 const priceOf = variants => {
@@ -53,7 +55,8 @@ export const buildCards = graph => {
     const imageId = asset ? (asset.kind === "image" ? asset.id : asset.posterId) : null;
     const card = { id: entry.productId, slug: identity.slug, name: translation?.title ?? identity.slug, description: translation?.description ?? "",
       price: priceOf(graph.productVariants.filter(row => row.productId === entry.productId)), sortOrder: entry.sortOrder,
-      image: imageId ? { assetId: imageId, alt: ref.altId } : null };
+      image: imageId ? { assetId: imageId, alt: ref.altId } : null,
+      ...Object.fromEntries(ORDER_LINK_KEYS.map(key => [key, entry[key] ?? null])) };
     return { ...card, version: productVersion(card) };
   });
   // Newest first: sort_order is a monotonic counter assigned at creation; slug breaks legacy ties.
@@ -147,6 +150,13 @@ const applyImage = async (tx, draftId, productId, image) => {
   await bumpDraft(tx, draftId);
 };
 
+// Order links live on the draft's product_entries row (stored only; saving never syncs or contacts a platform).
+const applyOrderLinks = async (tx, draftId, productId, links) => {
+  await tx.update(s.productEntries).set(links)
+    .where(and(eq(s.productEntries.revisionId, draftId), eq(s.productEntries.productId, productId)));
+  await bumpDraft(tx, draftId);
+};
+
 const cloneLive = async (tx, live, excludeProductId) => drafts.cloneCatalogDraft(tx, { sourceRevisionId: live.revision.id,
   expectedSourceVersion: live.revision.version, ...(excludeProductId ? { excludeProductId } : {}) });
 
@@ -177,6 +187,9 @@ export const createProduct = async (tx, actor, input) => {
     productId: created.productId, locale: "id", title: input.name, description: input.description });
   await addStandardVariant(tx, draft.id, titled.version, created.productId, input.price);
   if (image) await applyImage(tx, draft.id, created.productId, image);
+  // A new card has no links yet, so null means "nothing to store".
+  const links = Object.fromEntries(Object.entries(input.orderLinks ?? {}).filter(([, value]) => value !== null));
+  if (Object.keys(links).length) await applyOrderLinks(tx, draft.id, created.productId, links);
   const saved = await publishDraft(tx, actor, draft.id, "create");
   return publicDto(findCard(await loadCatalogGraph(tx, saved), created.slug));
 };
@@ -199,7 +212,10 @@ export const updateProduct = async (tx, actor, slug, input) => {
   } else if (input.image?.mode === "clear" && current.image) image = input.image;
   const sameImage = !image || (image.mode === "set" ? image.assetId === current.image?.assetId && image.alt === current.image?.alt
     : image.mode === "alt" && image.alt === current.image.alt);
-  if (input.name === current.name && input.description === current.description && input.price === current.price && sameImage) return publicDto(current);
+  // Only the keys that were sent AND differ from the stored value count as a change (absent key = keep).
+  const links = Object.fromEntries(Object.entries(input.orderLinks ?? {}).filter(([key, value]) => value !== current[key]));
+  const sameLinks = Object.keys(links).length === 0;
+  if (input.name === current.name && input.description === current.description && input.price === current.price && sameImage && sameLinks) return publicDto(current);
   const draft = await cloneLive(tx, live);
   const titled = await drafts.saveProductTranslation(tx, { revisionId: draft.id, expectedVersion: draft.version,
     productId: current.id, locale: "id", title: input.name, description: input.description });
@@ -213,6 +229,7 @@ export const updateProduct = async (tx, actor, slug, input) => {
     await addStandardVariant(tx, draft.id, titled.version, current.id, input.price);
   }
   if (image && !sameImage) await applyImage(tx, draft.id, current.id, image);
+  if (!sameLinks) await applyOrderLinks(tx, draft.id, current.id, links);
   const saved = await publishDraft(tx, actor, draft.id, "save");
   return publicDto(findCard(await loadCatalogGraph(tx, saved), slug));
 };
