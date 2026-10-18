@@ -18,6 +18,21 @@ const nextConfig = {
     minimumCacheTTL: 3600,
   },
   // ADR-038: public URLs have no language segment and nothing redirects; any prefixed address is a normal 404.
+  // Baseline security headers. No CSP yet (a wrong policy would break pages); add it report-only first.
+  // HSTS only for the production target, which is always served over HTTPS (never for local/staging hosts).
+  async headers() {
+    const baseline = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    ];
+    if (process.env.PUBLIC_DATABASE_TARGET === "production") {
+      baseline.push({ key: "Strict-Transport-Security", value: "max-age=15552000" });
+    }
+    return [{ source: "/:path*", headers: baseline }];
+  },
 };
 
 export default nextConfig;

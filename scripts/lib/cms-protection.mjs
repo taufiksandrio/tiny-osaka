@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
-export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true, publishing = true, deletion = true } = {}) => {
+export const verifyCmsProtection = async (client, owner, { absent = false, catalog = true, media = true, publishing = true, deletion = true, otherDatabase } = {}) => {
   const cms = owner.replace("_owner", "_cms"), app = owner.replace("_owner", "_app");
   const role = (await client.query("SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,rolcanlogin,rolconnlimit,(SELECT count(*)::int FROM pg_auth_members WHERE member=r.oid) AS memberships FROM pg_roles r WHERE rolname=$1", [cms])).rows[0];
   assert.ok(role, "Provision isolated CMS role first.");
   assert.equal(role.rolcanlogin, true); assert.equal(role.rolconnlimit, 5); assert.equal(role.memberships, 0);
   for (const key of ["rolsuper", "rolcreatedb", "rolcreaterole", "rolreplication", "rolbypassrls", "rolinherit"]) assert.equal(role[key], false);
-  const database = owner.replace("_owner", ""), other = database.includes("_dev") ? "tiny_osaka_test" : "tiny_osaka_dev";
+  const database = owner.replace("_owner", "");
+  // otherDatabase === null skips the cross-database check (managed hosts have no sibling dev/test database; their
+  // default databases keep the PUBLIC CONNECT privilege). Local callers omit it and keep the original behavior.
+  const other = otherDatabase === undefined ? (database.includes("_dev") ? "tiny_osaka_test" : "tiny_osaka_dev") : otherDatabase;
   assert.equal((await client.query("SELECT has_database_privilege($1,$2,'CONNECT') AS own", [cms, database])).rows[0].own, true);
-  const isolation = (await client.query("SELECT has_database_privilege($1,$2,'CONNECT') AS other,has_schema_privilege($1,'public','CREATE') AS create", [cms, other])).rows[0];
-  assert.equal(isolation.other, false); assert.equal(isolation.create, false);
+  assert.equal((await client.query("SELECT has_schema_privilege($1,'public','CREATE') AS create", [cms])).rows[0].create, false);
+  if (other !== null) assert.equal((await client.query("SELECT has_database_privilege($1,$2,'CONNECT') AS other", [cms, other])).rows[0].other, false);
   const reads = ["pages", "page_revisions", "page_translations", "page_submissions", "page_approvals", "page_publications", "page_workflow_events", "page_media_refs", "media_assets"];
   const inserts = reads.filter(table => table !== "media_assets"), updates = ["page_revisions", "page_translations", "page_publications"];
   if (catalog) {

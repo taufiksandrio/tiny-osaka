@@ -10,8 +10,8 @@ export const provisionAccount = async ({ client, email, password, role, name = "
     throw new Error("Invalid internal account input; use a valid email and a unique 6-128 character password.");
   }
   const { rows: [identity] } = await client.query("SELECT current_database() AS database,current_user AS role");
-  if (!["test", "dev"].some(target => identity.database === `tiny_osaka_${target}` && identity.role === `tiny_osaka_${target}_owner`)) {
-    throw new Error("Account provisioning requires a verified local owner connection.");
+  if (!["test", "dev", "staging", "production"].some(target => identity.database === `tiny_osaka_${target}` && identity.role === `tiny_osaka_${target}_owner`)) {
+    throw new Error("Account provisioning requires a verified owner connection.");
   }
   const normalizedEmail = email.trim().toLowerCase();
   const digest = await hashPassword(password);

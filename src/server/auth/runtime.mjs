@@ -8,7 +8,7 @@ let service;
 const poolKey = Symbol.for("tiny-osaka.auth.pool");
 export const getAuthService = () => {
   if (!service) {
-    if (!process.env.BETTER_AUTH_SECRET) {
+    if (!process.env.BETTER_AUTH_SECRET && ["dev", "test"].includes(process.env.PUBLIC_DATABASE_TARGET || "dev")) {
       try { loadEnvFile(".env.auth.local"); } catch { /* Configuration error below stays generic. */ }
     }
     const config = getAuthConfig();
