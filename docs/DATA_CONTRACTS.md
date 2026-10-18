@@ -2,7 +2,11 @@
 
 ## Current language and editing contract (ADR-034)
 
+> DIAMANDEMEN ADR-038 (2026-10-18): rute publik tanpa prefix bahasa; /en dan /en/* 404 permanen; /id dan /id/* 308 ke padanan tanpa prefix. Kalimat tentang `/id` stabil dan redirect `/en` di bawah bersifat historis.
+
 Public content and CMS authoring are Indonesian-only. Existing `/id` paths remain stable; `/en/:path*` permanently redirects to `/id/:path*`. No English switch, alternate language output or automatic translation provider is used. Legacy English rows remain within immutable snapshots and hashes; new content requires only Indonesian. Draft saves batch bounded edits/media references into one transaction under an exact root version lock. No workflow transition may be smuggled into that batch.
+
+> USANG untuk katalog (ADR-037) dan halaman (ADR-036): Approval ADR-035, jadwal, dan "Schedules use Asia/Jakarta" tidak berlaku; scheduling dihapus. Staff dan Owner menyimpan langsung tayang; Hapus produk hanya Owner.
 
 ADR-035 adds a distinct Owner approval command after Save all. It checks current database membership, exact version/hash and readiness, then atomically submits/approves/publishes or schedules the same revision. Staff cannot invoke this command. Invalid schedules, conflicts and failed readiness roll back the complete transition; a save batch cannot contain approval or publication commands.
 
@@ -30,7 +34,7 @@ direct page save. Catalog permission boundaries otherwise remain unchanged.
 
 ## GA4 minimal measurement plan (proposed contract)
 - Standard page views plus `view_item` with stable item identifier and locale.
-- Custom `click_order` event with `item_id` (if product-specific), `platform` (`gofood`/`grabfood`), `source_page` (non-PII path), `placement` (CTA placement), `locale`; use GA4 acquisition and approved campaign UTMs. Register appropriate custom dimensions in GA4 as necessary.
+- Custom `click_order` event with `item_id` (if product-specific), `platform` (`gofood`/`grabfood`), `source_page` (non-PII path), `placement` (CTA placement) [parameter `locale` dihapus, ADR-038; ShopeeFood hanya link tersimpan di CMS (ADR-037), bukan nilai `platform` event sampai ditampilkan publik dan kontrak ini diperbarui]; event ini hanya niat order keluar, bukan pesanan selesai; use GA4 acquisition and approved campaign UTMs. Register appropriate custom dimensions in GA4 as necessary.
 - Do not send user's email, name, phone, cookies or other personal information as custom params.
 - Prevent duplicate analytics events across generic outbound tracking and custom CTA tracking.
 - `click_order` represents a click, NEVER a paid order or completed purchase.
@@ -42,6 +46,8 @@ verified public content remain future work; the preview remains noindex.
 
 ## Phase 2A catalog/content contracts (approved design direction)
 
+> USANG sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2. Kontrak hidup: product {slug, nama, deskripsi, harga IDR, gambar{assetId,alt}, grabfoodUrl, gofoodUrl, shopeefoodUrl}. Lihat bagian "ADR-037" di akhir dokumen.
+
 This section refines the earlier entity sketch; it is not SQL or a platform API
 contract. See PHASE2_PLAN.md and ADR-006. Final constraints and migrations require
 implementation review before execution.
@@ -49,12 +55,12 @@ implementation review before execution.
 | Concept | Contract |
 |---|---|
 | Category/Product identity | Stable ID and shared locale slug; revision-specific fields never overwrite a live version |
-| CatalogRevision | Complete versioned catalog graph; draft edits use a concurrency token; submitted/approved snapshots are immutable |
+| CatalogRevision | Complete versioned catalog graph; draft edits use a concurrency token; submitted/approved snapshots are immutable (ADR-037: purge menghapus snapshot lama via catalog_purge_product) |
 | Revision children | Category, product, variant, translation, modifier and link rows belong to one revision; references cannot cross revisions |
 | Catalog publication | Singleton published-revision pointer; update atomically only to an exactly approved revision |
 | Approval | Revision ID/hash, actor and timestamp; changed payload requires a new draft and new approval |
 | Page/PageRevision | Stable template identity plus versioned allowed fields/ID+EN translations and separate published pointer |
-| Media reference | Immutable storage reference plus metadata; no in-place mutation/deletion of assets referenced by live content |
+| Media reference | Immutable storage reference plus metadata; no in-place mutation/deletion of assets referenced by live content (ADR-037: purge produk tidak menyentuh aset media) |
 | Ordering link | Platform, verified URL/scope and verification evidence; verified product URL else verified store URL; no fabricated fallback |
 
 ### Price and modifier validation
@@ -79,6 +85,8 @@ implementation review before execution.
 ### Approval and public-read boundaries
 
 Staff may draft/submit; only Owner may approve/reject/publish/schedule/archive.
+
+> Diselaraskan ADR-036/037: halaman dan katalog disimpan langsung tayang oleh Owner dan Staff aktif; hanya Hapus produk katalog yang eksklusif Owner; scheduling dihapus.
 The future server must enforce this independently of the UI. Any edit after
 submission/approval creates a new candidate without approval; live content
 persists until an approved replacement is published. Auth identity foreign keys
@@ -92,6 +100,8 @@ unapproved replacements. Schedules use Asia/Jakarta and idempotent, atomic
 transitions. Sanitization, upload limits and RBAC remain required future gates.
 
 ## Phase 2B1 draft catalog schema (2026-10-16)
+
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
 ADR-009 approves the JS schema and generated SQL for review, not execution.
 Names below refer to the seven tables defined in `src/server/db/schema.mjs`.
@@ -141,6 +151,8 @@ does not redefine those requirements or imply Phase 2 is complete. Constraint
 behavior in PostgreSQL must be tested after a separately approved local migration.
 
 ## Phase 2C1: pricing/variants/modifiers (2026-10-16)
+
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
 The user replaced the previously discussed IDR 100000 ceiling with NO business
 price ceiling before implementation. Use nonnegative integer IDR amounts in
@@ -228,6 +240,8 @@ freezing, full catalog copying, approval invalidation, publication or a CMS UI.
 
 ## Phase 2D2: copying a catalog draft (2026-10-16)
 
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
+
 cloneCatalogDraft(db, { sourceRevisionId, expectedSourceVersion }) validates UUID
 and source version 1..2147483647 before DB access. It accepts only the exact draft
 source version. A FOR SHARE lock on the root persists for the transaction, blocking
@@ -254,6 +268,8 @@ draft-only; future approved/live copying, RBAC/audit/publication require separat
 reviewed protections. Runtime app still cannot use the internal persistence context.
 
 ## Phase 2D3: category/product plain-text translations (2026-10-16)
+
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
 saveCategoryTranslation(db, { revisionId, categoryId, expectedVersion, locale,
 title, description }) and saveProductTranslation(db, { revisionId, productId,
@@ -283,6 +299,8 @@ future endpoints must authorize a least-privilege context. Root-version protecti
 still requires every child writer to follow the same transaction contract.
 
 ## Phase 2D4: versioned variant and variant-translation writers (2026-10-16)
+
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
 createProductVariant(db, { revisionId, productId, expectedVersion, code, basePrice,
 sortOrder }) inserts a DB-generated variant UUID. Caller-supplied extra fields,
@@ -315,6 +333,8 @@ approval/publication and stable slug freeze are separate work. Runtime grants st
 denied; root locking protects compliant writers, not arbitrary SQL.
 
 ## Phase 2D5: versioned modifier groups/options and localized labels (2026-10-16)
+
+> Historis/usang sejak ADR-037 (2026-10-18): varian/kategori/modifier dihapus dari admin/API/publik; skema dihapus tahap 2.
 
 createModifierGroup/updateModifierGroup accept revisionId, productId,
 expectedVersion, code, selectionType, minSelections, maxSelections, sortOrder
@@ -638,3 +658,11 @@ Displayed minimum price is the cheapest valid variant plus each group's minimum
 required lowest-cost options, calculated through the existing pricing validator.
 The chooser validates selections and safe-integer totals; it creates no order,
 cart, payment or quantity. Real media storage/optimization remains Phase 3.
+
+## ADR-037: katalog kartu, hapus permanen, gambar, link order (2026-10-18)
+
+- Tabel `catalog_deletion_log` (append-only; peran CMS SELECT saja): aktor, waktu, slug, nama. Fungsi `catalog_purge_product` (migrasi 0014, SECURITY DEFINER, eksekusi peran CMS saja).
+- Migrasi 0015: tiga kolom nullable di `product_entries` untuk link GrabFood/GoFood/ShopeeFood (hanya disimpan; tidak tampil di publik; tanpa sync). Snapshot lama harus berhash identik; klon wajib menyalin kolom.
+- API: `POST /api/cms/catalog` (tambah), `PATCH /api/cms/catalog/products/[slug]` (ubah), hapus produk (Owner saja); tanpa id revisi. Body dapat memuat imageAssetId, imageAlt, grabfoodUrl, gofoodUrl, shopeefoodUrl.
+- Galat: `INVALID_ORDER_URL` 400, `INVALID_IMAGE_ALT`, `PRODUCT_CONFLICT` 409.
+- Allowlist host link order (OFFICIAL_ORDER_HOSTS) kosong; harus diisi di server dan klien sebelum tampil publik (B-2).

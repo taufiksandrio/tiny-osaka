@@ -57,6 +57,8 @@ No user-approved technical choice should be silently recast as confirmed because
 
 ## ADR-002 — Phase 1A public homepage and locale paths
 
+Status update (2026-10-18): Superseded oleh ADR-038 untuk path locale (rute publik tanpa prefix bahasa; /en 404; /id 308).
+
 - Date: 2026-10-15.
 - Status: APPROVED, Phase 1A only.
 - Approver: user, explicit "setuju" after the file-by-file Phase 1A plan.
@@ -506,6 +508,8 @@ No user-approved technical choice should be silently recast as confirmed because
 
 ## ADR-014 - Development pricing migration and read-only verification
 
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
+
 - Date: 2026-10-16.
 - Status: IMPLEMENTED locally; dev now has reviewed 0000/0001.
 - Approver: user "oke lanjut" after the concrete dev-only file/command plan
@@ -538,6 +542,8 @@ No user-approved technical choice should be silently recast as confirmed because
   needed. No file-only rollback, drop/reset/truncate/CASCADE cleanup was run.
 
 ## ADR-015 - Internal draft creation and version-guarded variant price edits
+
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
 
 - Date: 2026-10-16.
 - Status: IMPLEMENTED; unit and isolated test-DB acceptance passed.
@@ -580,6 +586,8 @@ No user-approved technical choice should be silently recast as confirmed because
 
 ## ADR-016 - Atomic draft catalog cloning with a shared source lock
 
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
+
 - Date: 2026-10-16.
 - Status: IMPLEMENTED; unit/writer/clone integration acceptance passed.
 - Approver: user "setuju" after concrete files/commands, ten-child-table cloning
@@ -616,6 +624,8 @@ No user-approved technical choice should be silently recast as confirmed because
 - No dev mutation, schema/migration, new dependency, commit/push or deployment.
 
 ## ADR-017 - Version-guarded category/product translation upserts
+
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
 
 - Date: 2026-10-16.
 - Status: IMPLEMENTED; unit/regression/integration acceptance passed.
@@ -655,6 +665,8 @@ No user-approved technical choice should be silently recast as confirmed because
 
 ## ADR-018 - Draft variant creation/editing and localized labels
 
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
+
 - Date: 2026-10-16.
 - Status: IMPLEMENTED; unit/regression/integration acceptance passed.
 - Approver: user "setuju" after concrete file/command plan, first/sole standard
@@ -691,6 +703,8 @@ No user-approved technical choice should be silently recast as confirmed because
 - No schema/migration/install/commit/push/production operation or deployment.
 
 ## ADR-019 - Draft modifier group/option and ID/EN label writers
+
+Status update (2026-10-18): Superseded sebagian oleh ADR-037: varian/modifier/kategori/terjemahan katalog tidak lagi dipakai (dihapus dari admin/API/publik); kode dan tabel tetap sampai tahap 2.
 
 - Date: 2026-10-16.
 - Status: IMPLEMENTED; focused unit/regression/integration acceptance passed.
@@ -1175,6 +1189,8 @@ Standing verified commit/push workflow applies; merge/deploy remain separate.
 
 ## ADR-034 - Indonesian-only website and simple atomic CMS forms (2026-10-17)
 
+Status update (2026-10-18): Diamandemen ADR-037 (katalog) dan ADR-038 (URL: /en kini 404; /id 308 ke padanan tanpa prefix).
+
 Explicitly approved by the user after replacing the bilingual/translation proposal.
 This decision supersedes bilingual requirements, mandatory ID/EN authoring and
 per-section save controls in earlier decisions and skills. Public and CMS UI use
@@ -1211,6 +1227,8 @@ before rolling back active publication; never edit a frozen revision or delete h
 
 
 ## ADR-035 - One Owner approval immediately publishes content (2026-10-17)
+
+Status update (2026-10-18): Tidak berlaku untuk katalog sejak ADR-037; scheduling dihapus.
 
 Approved by the user after the scoped plan, with the explicit requirement that
 content replaces the previous version immediately unless a publication schedule
@@ -1305,6 +1323,8 @@ a persistent scheduler. Scheduled publication still requires the existing worker
 
 ## ADR-036 - Direct page Save for Owner and Staff, no scheduling (2026-10-17)
 
+Status update (2026-10-18): Amended by ADR-037: katalog tanpa review/approval, scheduling dihapus dari kode.
+
 The user explicitly approved the scoped plan after requesting a simpler page
 flow. This supersedes Owner-only publication and draft/review/approval UI for
 website pages in earlier requirements, repository instructions and CMS skills.
@@ -1357,3 +1377,179 @@ credentials, applied SQL/history and jobs/events. PR15 can read the resulting
 Indonesian snapshots; reverting the app does not restore the previous live text.
 Use a separately approved content replacement if needed. Keep the old worker
 stopped and inspect any pending jobs before restoring scheduling behavior.
+
+## ADR-037 - Katalog kartu sederhana, hapus permanen, gambar, dan link order (2026-10-18)
+
+Status: Diterima user 2026-10-17/18. Branch feat/catalog-card-crud. Keputusan ini
+menggantikan model katalog berbasis revisi/kategori/varian/modifier dan
+mengamandemen ADR-014 sampai ADR-019 dan ADR-036 (bagian katalog dan scheduling).
+Dokumen/AGENTS.md yang bertentangan diperbarui menurut daftar di bagian 3 draf ini.
+Tidak ada dependency baru (Next, sharp, shadcn yang terpasang dipakai ulang).
+
+Keputusan produk. (1) Katalog adalah satu halaman /admin/catalog berupa grid card
+(gambar atau placeholder, nama, deskripsi, harga IDR, tombol Edit dan Hapus).
+Tambah/Ubah lewat modal; tidak ada id/revisi di URL admin dan semua route ber-id
+dihapus tanpa redirect (404). Waktu ubah ditampilkan dalam WIB. (2) Kategori dan
+varian/modifier dihapus dari admin, API, dan situs publik; skema/tabelnya baru
+dihapus di tahap 2. Setiap produk memiliki satu harga integer IDR. (3) Owner dan
+Staff aktif boleh Tambah/Ubah dan perubahan langsung tayang; Hapus hanya Owner,
+ditegakkan server-side (sesi, Origin/CSRF, keanggotaan DB aktif). (4) Urutan
+"terbaru di atas" memakai sort_order (penghitung pembuatan monoton, lebih besar =
+lebih baru, slug sebagai pemecah seri), bukan createdAt; berlaku di admin, publik,
+dan beranda (4 produk terbaru, tanpa kontrol manual). Slug otomatis dari nama,
+immutable, bentrok diberi -2, -3.
+
+Hapus permanen. Hapus adalah hard delete langsung tanpa dialog konfirmasi
+(permintaan user, risiko diterima). Dalam satu transaksi dengan kunci publikasi:
+klon snapshot live tanpa produk itu (hash baru, receipt aktor Owner nyata, pointer
+live dipindah), hapus snapshot katalog lain beserta turunannya dan baris
+catalog_media_refs, hapus baris products, tulis satu baris catalog_deletion_log
+(aktor, waktu, slug, nama), lalu invalidasi cache publik. Fungsi
+catalog_purge_product (migrasi 0014) berstatus SECURITY DEFINER dan hanya dapat
+dieksekusi peran CMS. Karena FK RESTRICT dari publication_jobs ke snapshot, satu
+produk dapat tetap dirujuk oleh job lama sehingga snapshot lama tertentu tidak
+dapat dihapus; akibatnya setelah hapus bisa tersisa lebih dari satu snapshot
+(snapshot live baru ditambah snapshot yang dipegang job lama). Ini diterima dan
+dicatat sebagai tindak lanjut tahap 2. CATATAN: klaim "lebih dari satu snapshot" adalah ASUMSI DESAIN yang
+belum dibuktikan test; test hapus permanen hanya mencakup kasus tanpa job lama
+(perilaku dengan job lama dan FK RESTRICT belum diuji). Aset media (media_assets dan berkas) tidak
+disentuh dan tetap di Pustaka media. Slug produk terhapus dapat langsung dipakai
+ulang (URL lama dapat menampilkan produk lain; diterima). Merchant mapping belum
+ada; saat sync dibangun, mapping produk terhapus dibuang dan muncul di preview.
+
+Scheduling. Seluruh kode scheduling dihapus (route, UI, worker, helper). Tabel
+publication_jobs dan data/event lama dipertahankan sampai tahap 2. Ini mengamandemen
+ADR-036 yang mempertahankan kode historis dan "Catalog review/Owner approval
+retained", serta ADR-035 untuk katalog.
+
+Gambar. Upload gambar opsional pada modal lewat pipeline media yang ada
+(/api/cms/media/upload, dua langkah: unggah saat Simpan, lalu imageAssetId +
+imageAlt). Teks alternatif WAJIB bila ada gambar. Satu gambar per produk; Ganti
+mengganti semua rujukan produk, Lepas menghapus rujukan (aset tetap). Modal TANPA
+pratinjau gambar (keputusan user); gambar terlihat di card. Validasi isi file di
+server (jpeg/png/webp, <= 10.000.000 byte, <= 4096 px), tanpa crop/retouch di CMS.
+Alt disimpan di catalog_media_refs.alt_id (tanpa perubahan skema). Cache publik
+aset live 1 jam (Cache-Control public, max-age=3600, ETag = checksum, tanpa
+immutable, tanpa Vary: Cookie); origin /media/<idLama> 404 segera setelah ditarik;
+salinan di cache browser/optimizer/CDN dapat bertahan hingga 3600 detik
+(images.minimumCacheTTL disamakan). Admin tetap private, no-store. Perbaikan CWV
+gambar publik (optimizer Next, rasio tetap, prioritas card pertama) masuk scope.
+
+Pelonggaran AC-30 (header cache). Header /media/<id> publik tidak boleh membawa
+Vary: Cookie (terpenuhi). Namun Next 16.4.1 menambahkan Vary: rsc, next-router-*
+pada semua route App Router dan tidak dapat dihilangkan secara andal (percobaan
+headers() di next.config hanya menambah, tidak menghapus). Diterima. Opsi bila
+perlu: buang di reverse proxy/CDN yang dipasang kelak (mis. proxy_hide_header
+Vary pada nginx).
+
+Link order opsional. Modal memuat tiga input opsional: GrabFood, GoFood,
+ShopeeFood (tidak required; satu link per platform per produk), disimpan lewat
+migrasi 0015 (tiga kolom nullable pada product_entries; hash snapshot lama harus
+identik; klon wajib menyalin kolom). Link HANYA disimpan: tidak tampil di situs
+publik dan tidak tampil di card admin; tidak ada event GA4 baru dan tidak ada
+panggilan jaringan ke platform. Validasi server-side: https saja, panjang
+terbatas, host dicocokkan persis dengan allowlist. Allowlist host DIBIARKAN KOSONG
+dan harus diisi dari host resmi yang dikonfirmasi user sebelum link boleh
+ditampilkan di publik (agen tidak boleh mengarang host). Catatan B-2:
+OFFICIAL_ORDER_HOSTS di src/server/catalog/order-links.mjs dan salinan klien di
+src/features/cms/catalog/order-links.mjs saat ini kosong sehingga host https
+apa pun diterima; daftar HARUS diisi di kedua tempat sebelum link ditampilkan ke
+publik. Tampilan publik
+(termasuk label "Pesan via ...", rel noopener noreferrer nofollow, GA4
+click_order dan nilai platform shopeefood) memerlukan spec lanjutan dan pembaruan
+REQUIREMENTS/DATA_CONTRACTS. Ini input manual, bukan integrasi merchant; login
+aplikasi merchant tidak berarti hak API.
+
+Migrasi. 0014 (purge: catalog_deletion_log, catalog_purge_product, grant, constraint
+aksi audit termasuk delete) dan 0015 (kolom link order) hanya dijalankan di DB
+lokal test; DB dev tertunda sampai user menyetujui pra-cek (dump, tinjau SQL).
+Tidak ada DB produksi/VPS; tidak ada migrasi produksi tanpa persetujuan terpisah.
+Migrasi 0015 tidak mengubah 0014.
+
+Konflik dengan keputusan lama dan konsekuensi (semua disetujui user):
+- ADR-014 sampai ADR-019 (migrasi harga, draft, klon atomik, terjemahan, varian,
+  modifier): fitur varian/modifier/terjemahan katalog dihentikan. Ditandai
+  "superseded by ADR-037" untuk perilaku; kode dan tabel tetap ada sampai tahap 2.
+- ADR-036: bagian "Catalog review/Owner approval is otherwise retained" dan
+  penyimpanan kode scheduling diamandemen (lihat Scheduling).
+- ADR-034/035 untuk katalog: form name/category/price, varian otomatis, Setujui
+  Owner, dan scheduling tidak berlaku lagi.
+- AGENTS.md "validate final modifier costs": tidak berlaku selama modifier tidak
+  ada; kesetaraan harga merchant menjadi harga tunggal produk (tanggung jawab
+  Owner). Perubahan AGENTS.md dilakukan HANYA oleh user.
+- AGENTS.md "Staff may draft/submit; Owner approves revisions and publishes":
+  dilonggarkan untuk halaman (ADR-036) dan katalog; Staff menyimpan langsung
+  tayang, hanya Hapus katalog yang eksklusif Owner.
+- Audit append-only dan snapshot beku immutable: DILEMAHKAN. Hard delete menghapus
+  snapshot/receipt lama; satu-satunya jejak adalah catalog_deletion_log
+  (append-only, peran CMS SELECT saja). Trigger beku/immutabilitas dihormati
+  lewat fungsi SECURITY DEFINER yang menambah permukaan serangan.
+- DATA_CONTRACTS/REQUIREMENTS: model varian/modifier/kategori dan revisi katalog
+  harus ditandai usang (bagian 3).
+
+Tidak berubah: tanpa checkout/pembayaran/stok; tidak ada sync merchant otomatis
+(menyimpan, menghapus, mengunggah, mengubah link tidak pernah sync; default OFF);
+RBAC server-side; GA4 hanya niat order keluar tanpa PII; SEO tanpa
+Restaurant/LocalBusiness; tidak ada alamat/harga/URL menu fiktif.
+
+Risiko diterima: (a) tidak ada rollback produk yang sudah dihapus kecuali backup
+mingguan VPS yang sama (kehilangan total VPS = kehilangan backup); (b) salah klik
+Hapus tidak dapat dibatalkan karena tanpa dialog (mitigasi: tombol terpisah,
+nonaktif saat request, hanya Owner, log, hasil diumumkan); (c) audit append-only
+melemah; (d) slug yang dipakai ulang dapat membuat URL lama menampilkan produk
+lain; (e) aset yatim dari upload yang tidak disimpan; (f) cache gambar yang ditarik
+bertahan hingga 1 jam; (g) Staff dapat mengubah link order yang langsung tayang
+bila kelak ditampilkan (mitigasi: allowlist, audit aktor); (h) satu produk dapat
+meninggalkan beberapa snapshot karena FK RESTRICT job lama.
+
+Verifikasi dicatat di SECURITY_AND_QA.md setelah tes dijalankan; test upload yang
+terhalang Windows dijalankan dengan storage tiruan atau di Linux/WSL/CI dan yang
+tidak dijalankan dilaporkan jujur. Verified commit/push/PR mengikuti alur berlaku;
+merge dan deploy terpisah.
+
+Rollback. Kembalikan app/UI/docs/next.config.mjs bersama. Produk yang sudah
+dihapus TIDAK dapat dipulihkan kecuali dari backup; migrasi 0014 tidak otomatis
+reversibel. Rollback 0015: DROP kolom link (kehilangan link tersimpan; backup dulu;
+hanya DB lokal/dev). Aset media dan data job/event tidak terpengaruh. Jaga app dan
+data pada versi yang sama; tanpa deploy/tindakan cloud.
+
+## ADR-038 - Situs satu bahasa (Indonesia), URL tanpa prefix bahasa (2026-10-18)
+
+Status: Diterima user 2026-10-18 (kutipan: "tombol pilihan dihapus dan satu bahasa
+jadi default, alamat eng dihapus selamanya"; "gausah ada langg, hanya url/menu").
+Melanjutkan ADR-034 (situs Indonesia saja) dan mengamandemen ADR-002 (path locale),
+ADR-034 (URL /id tetap stabil; /en redirect), serta keputusan bilingual awal.
+
+Keputusan. (1) Tidak ada tombol/pemilih bahasa di navigasi publik maupun admin.
+(2) Rute publik tanpa segmen bahasa: /, /menu, /menu/<slug>, /about, /guides,
+/guides/<slug>, /promos, /location. Rute dipindah dari src/app/[locale] ke route
+group (mis. src/app/(site)) dengan <html lang="id">. (3) /en dan /en/* menjadi 404
+permanen, tanpa redirect, tanpa konten/terjemahan Inggris publik (membalik
+redirect permanen /en ke /id pada ADR-034). (4) /id dan /id/* diarahkan 308 ke
+padanan tanpa prefix (menjaga bookmark/link bersama). (5) Tanpa hreflang dan tanpa
+alternates; canonical menunggu domain final dan SEO Phase 3 (halaman tetap
+noindex sekarang). Tautan rich-text berawalan /id atau /en pada snapshot lama
+dirender sebagai padanan tanpa prefix; snapshot/hash immutable tidak diubah.
+(6) Tabel/data terjemahan Inggris di DB dibiarkan (kolom locale, check
+locale IN ('id','en'), baris en); penanganan dijadwalkan di tahap 2. Pembaca
+publik tidak lagi memakai parameter locale dari URL; locale tetap 'id' di
+lapisan data sampai tahap 2.
+
+Pelonggaran AGENTS.md: baris "SEO ID/EN with verified public content" diubah
+oleh USER menjadi "SEO Indonesia dengan konten publik terverifikasi"; misi
+"bilingual" dan REQUIREMENTS yang menyebut ID/EN disesuaikan.
+
+Dampak SEO. Halaman tetap robots noindex, jadi URL /id kemungkinan belum
+terindeks; 308 menjaga link lama. Tidak ada sitemap/canonical sampai Phase 3.
+Tidak ada Restaurant/LocalBusiness schema. Tidak ada klaim publik baru.
+
+Modul terdampak (rencana, bukan sekarang): src/app/[locale] (dipindah), next.config.mjs
+(redirect /id 308, hapus redirect /en dan / ke /id; /en dibiarkan 404), SiteHeader,
+SiteFooter, HomeContent, PageIntro, MenuCard, PublishedContent, PublicRichText,
+AdminHeader/AdminNav/AdminShell (tautan /id), src/server/public/data.mjs,
+src/server/pages/templates.mjs (isPageLocale/isInternalPageLink),
+playwright.config.mjs (url /id), tests e2e/integration/unit, scripts/run-published-qa.mjs.
+
+Rollback. Kembalikan route [locale] dan next.config.mjs bersama; data tidak
+diubah sehingga tidak ada pemulihan data. Link yang sudah dibagikan tanpa prefix
+akan 404 setelah rollback bila tidak ada redirect balik.

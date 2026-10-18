@@ -5,7 +5,7 @@
 The admin uses local shadcn/ui JSX components with a light neutral/red theme.
 Use http://localhost:3000/admin/login to match the configured authentication
 origin. After login, /admin shows actual published-page counts and /admin/pages
-opens the bilingual page/revision editor. Desktop navigation appears in the
+opens the page editor (Indonesian-only since ADR-034/038). Desktop navigation appears in the
 sidebar; mobile uses the header menu button. Owner security links are role-gated.
 Account menu, mobile Sheet and revision confirmation support keyboard navigation
 and restore focus when closed. API authorization remains enforced on the server.
@@ -15,7 +15,7 @@ src/styles/admin.css, imported through globals.css for Tailwind compilation.
 Variables and style resets apply only under .admin-root. See docs/DEPENDENCIES.md,
 ADR-028 in docs/DECISIONS.md and docs/SECURITY_AND_QA.md for packages and verification.
 
-Website Tiny Osaka memiliki beranda dan halaman pendukung bilingual dengan konten
+Website Tiny Osaka memiliki beranda dan halaman pendukung satu bahasa Indonesia (ADR-038) dengan konten
 contoh. Suite otomatis Phase 1C lulus setelah perbaikan aksesibilitas; review
 manual dan gate keamanan/release tetap terbuka.
 Website ini masih merupakan pratinjau development, belum siap dirilis.
@@ -222,6 +222,8 @@ catatan tidak memulihkan dependency lokal yang mungkin sudah terhapus.
 
 ## Phase 1A — beranda bilingual (15 Oktober 2026)
 
+> Historis. Diamandemen ADR-038 (2026-10-18): sejak itu rute publik berada di `src/app/(site)` tanpa prefix bahasa; `[locale]`, pemilih bahasa, hreflang, dan halaman EN di bagian ini tidak berlaku lagi.
+
 Lingkup disetujui: beranda `/id` dan `/en`, header/footer, pemilih bahasa,
 hero, tiga slot menu contoh, pengantar restoran, dan informasi pemesanan.
 Semua konten halaman dirender server-side. Warna krem/merah/arang dikunci
@@ -277,6 +279,8 @@ Jangan menggunakan pembersihan massal atau mengembalikan seluruh working tree
 ke HEAD, karena baseline belum di-commit. Tinjau perbedaan sebelum pemulihan.
 
 ## Phase 1B — halaman pendukung (15 Oktober 2026)
+
+> Historis. Diamandemen ADR-038 (2026-10-18): sejak itu rute publik berada di `src/app/(site)` tanpa prefix bahasa; `[locale]`, pemilih bahasa, hreflang, dan halaman EN di bagian ini tidak berlaku lagi.
 
 Halaman baru memakai desain 1A dan konten server-rendered. Rute berikut tersedia
 dengan prefix `/id` dan `/en`, memakai slug yang sama untuk kedua bahasa:
@@ -351,6 +355,8 @@ Jangan memakai pembersihan massal working tree. Backup lokal bersifat sementara,
 bukan backup permanen. Tidak ada commit, push, atau deployment pada tahap ini.
 
 ## Phase 1C — suite E2E dan aksesibilitas
+
+> Historis. Diamandemen ADR-038 (2026-10-18): sejak itu rute publik berada di `src/app/(site)` tanpa prefix bahasa; `[locale]`, pemilih bahasa, hreflang, dan halaman EN di bagian ini tidak berlaku lagi.
 
 Alat development dipin ke `@playwright/test@1.64.1` (Apache-2.0) dan
 `@axe-core/playwright@4.14.0` (MPL-2.0). Keduanya mendukung Node.js 22.16.0.
@@ -488,7 +494,16 @@ yang disebutkan di atas. Instalasi dependency lama dapat dipulihkan dengan
 tidak dihapus otomatis. Pertahankan semua perubahan website 1A/1B/navbar dan
 file untracked lainnya; jangan memakai pembersihan massal working tree.
 
+## Katalog kartu dan satu bahasa (ADR-037/038, 2026-10-18)
+
+- Katalog: satu halaman /admin/catalog berupa grid card; Tambah/Ubah lewat modal (Owner dan Staff, langsung tayang); Hapus permanen hanya Owner. Tanpa kategori/varian/modifier; scheduling dihapus. Gambar opsional dengan alt wajib; link order GrabFood/GoFood/ShopeeFood hanya disimpan (allowlist host masih kosong).
+- Situs satu bahasa: URL tanpa prefix; /en 404; /id 308.
+- Migrasi 0014 (purge) dan 0015 (kolom link order) hanya dijalankan di DB lokal test; dev/produksi menunggu persetujuan.
+- Rollback: kembalikan app/UI/docs/next.config.mjs bersama; produk terhapus hanya pulih dari backup. Rincian di docs/DECISIONS.md ADR-037/038.
+
 ## Struktur
+
+> Catatan: pohon `[locale]/` di bawah historis; sejak ADR-038 rute publik di `src/app/(site)`.
 
 ```text
 src/

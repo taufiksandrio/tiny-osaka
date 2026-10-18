@@ -4,7 +4,7 @@
 
 ## Peta project
 
-- Publik: `src/app/[locale]`, `src/features/public-site`
+- Publik: `src/app/(site)`, `src/features/public-site`
 - Admin CMS: `src/app/admin`, `src/features/cms`, `src/app/api`
 - Server: `src/server/{auth,catalog,cms,db,media,pages,public,publishing}`
 - Skema & migrasi: `drizzle/`, `drizzle.config.mjs`
