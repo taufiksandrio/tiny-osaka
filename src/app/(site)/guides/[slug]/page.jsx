@@ -2,9 +2,15 @@ import { usesPublishedContent } from "@/server/public/data.mjs";
 import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { content } from "@/features/public-site/content";
 import { getPageContent } from "@/features/public-site/page-content";
 import { sampleGuides } from "@/features/public-site/fixtures/guides";
 import PageIntro from "@/features/public-site/components/PageIntro";
+import { SamplePhoto } from "@/features/public-site/components/MenuCard";
+import OrderingNotice from "@/features/public-site/components/OrderingNotice";
 
 const getGuide = (slug) => {
   const guide = sampleGuides.find((sample) => sample.slug === slug);
@@ -32,25 +38,22 @@ const GuidePage = async ({ params }) => {
       <PageIntro copy={copy}
         intro={{ title: `${copy.guides.titlePrefix} ${guide.title}`, label: guide.title, eyebrow: copy.guides.status, description: copy.guides.articleNote }}
         parents={[{ label: copy.pages.guides.label, href: "/guides" }]} />
-      <article className="page-section container guide-article">
-        <div className={`menu-placeholder guide-placeholder tone-${guide.tone}`}>
-          <span className="sample-tag">{copy.guides.status}</span>
-          <span className="slot-number" aria-hidden="true">{guide.number}</span>
-          <span className="photo-note">{copy.guides.image}</span>
-        </div>
-        <div className="article-body">
+      <article className="site-section container guide-article">
+        <div className="guide-media"><div className="guide-sample-photo"><SamplePhoto tag={copy.guides.status} note={copy.guides.image} number={guide.number} /></div></div>
+        <div className="site-prose site-prose-article">
           {copy.guides.sections.map((section, index) => (
             <section className="article-section" key={section.title} aria-labelledby={`guide-section-${index}`}>
-              <span className="article-number" aria-hidden="true">0{index + 1}</span>
-              <div><h2 id={`guide-section-${index}`}>{section.title}</h2><p>{section.body}</p></div>
+              <h2 id={`guide-section-${index}`}><span className="article-number" aria-hidden="true">0{index + 1}</span>{section.title}</h2><p>{section.body}</p>
             </section>
           ))}
-          <div className="article-links">
-            <Link className="text-link" href="/guides"><span aria-hidden="true">←</span>{copy.backGuides}</Link>
-            <Link className="text-link" href="/menu">{copy.toMenu}<span aria-hidden="true">→</span></Link>
-          </div>
+        </div>
+        <Separator />
+        <div className="article-actions">
+          <Button asChild variant="outline"><Link href="/guides"><ArrowLeft aria-hidden="true" />{copy.backGuides}</Link></Button>
+          <Button asChild><Link href="/menu">{copy.toMenu}<ArrowRight aria-hidden="true" /></Link></Button>
         </div>
       </article>
+      <OrderingNotice copy={content} />
     </main>
   );
 };

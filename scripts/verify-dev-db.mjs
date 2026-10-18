@@ -32,7 +32,8 @@ try {
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='drizzle' ORDER BY c.relname
   `);
-  assert.equal(validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner }), 17);
+  const devState = validateDevMigrationState({ history, objects, relations, metadataOwner: metadata?.owner });
+  assert.ok([17, 18].includes(devState), "dev must be at reviewed state 17 or 18");
   const { rows: foreignKeys } = await owner.query(`
     SELECT c.confupdtype, c.confdeltype FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
@@ -40,10 +41,10 @@ try {
   `);
   assert.ok(foreignKeys.every(row => row.confupdtype === "r" && row.confdeltype === "r"));
   // Content is not asserted empty: media_assets, pages and the deletion log survive the 0016 reset.
-  await verifyCatalogProtection(owner, "tiny_osaka_dev_owner", 17);
+  await verifyCatalogProtection(owner, "tiny_osaka_dev_owner", devState);
   await verifyPageProtection(owner, "tiny_osaka_dev_owner");
   await verifyMediaProtection(owner, "tiny_osaka_dev_owner");
-  await verifyPublicReadProtection(owner, "tiny_osaka_dev_owner");
+  await verifyPublicReadProtection(owner, "tiny_osaka_dev_owner", { orderLinks: devState >= 18 });
   await verifyAuthProtection(owner, "tiny_osaka_dev_owner");
   await verifyCmsProtection(owner, "tiny_osaka_dev_owner");
   await owner.query("ROLLBACK");
@@ -74,7 +75,7 @@ try {
     assert.equal(access.allowed, false);
   }
   await app.query("ROLLBACK");
-  console.log("dev: verified reviewed 0000-0016 history, owner-owned tables, RESTRICT FKs and runtime privilege isolation (read-only).");
+  console.log("dev: verified reviewed 0000-0017 history, owner-owned tables, RESTRICT FKs and runtime privilege isolation (read-only).");
 } catch {
   console.error("Dev verification failed; no raw errors or credentials logged.");
   process.exitCode = 1;

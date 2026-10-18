@@ -120,6 +120,13 @@
       "when": 1792308540559,
       "tag": "0016_drop_language_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792394940000,
+      "tag": "0017_public_read_order_links",
+      "breakpoints": true
     }
   ]
 }

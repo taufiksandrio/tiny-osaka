@@ -7,7 +7,13 @@ export const ORDER_URL_MAX = 2048;
 // SINGLE place for the host check. An empty list means "not enforced": any https host is accepted for now.
 // The official host list per platform is added here later, BEFORE these links are shown on the public site.
 // Hosts must be exact lowercase hostnames (no wildcard, no suffix match, punycode for IDN).
-export const OFFICIAL_ORDER_HOSTS = Object.freeze({ grabfoodUrl: Object.freeze([]), gofoodUrl: Object.freeze([]), shopeefoodUrl: Object.freeze([]) });
+// Filled 2026-10-18 from hosts observed in dev data and clearly owned by the platform. ShopeeFood stays empty
+// (no link seen, no host approved yet): the public path fails closed for it. Keep in sync with the CMS copy.
+export const OFFICIAL_ORDER_HOSTS = Object.freeze({
+  grabfoodUrl: Object.freeze(["app.grab.com"]),
+  gofoodUrl: Object.freeze(["gofood.link"]),
+  shopeefoodUrl: Object.freeze([]),
+});
 
 export const isOfficialOrderHost = (key, hostname, hosts = OFFICIAL_ORDER_HOSTS) => {
   const allowed = hosts[key];
@@ -48,4 +54,33 @@ export const checkOrderUrl = (key, input, { hosts = OFFICIAL_ORDER_HOSTS } = {})
   if (!isOfficialOrderHost(key, url.hostname, hosts)) return fail(key, "host");
   // The database CHECK is case-sensitive: store the scheme in lowercase, the rest as pasted.
   return { ok: true, value: `https://${raw.slice(8)}` };
+};
+
+// Public order links (menu card dialog). Fixed display order and public platform ids.
+export const PUBLIC_ORDER_PLATFORMS = Object.freeze([
+  Object.freeze({ platform: "gofood", key: "gofoodUrl" }),
+  Object.freeze({ platform: "grabfood", key: "grabfoodUrl" }),
+  Object.freeze({ platform: "shopeefood", key: "shopeefoodUrl" }),
+]);
+
+// Returns [{ platform, href }] in the order GoFood, GrabFood, ShopeeFood. Fail closed: a platform whose
+// allowlist is empty yields no link (unlike the CMS save check, which only enforces a non-empty list), and
+// every link must pass checkOrderUrl (https, no userinfo/port, exact host). Never throws, never fetches.
+export const publicOrderLinks = (entry, hosts = OFFICIAL_ORDER_HOSTS) => {
+  const links = [];
+  for (const { platform, key } of PUBLIC_ORDER_PLATFORMS) {
+    const allowed = hosts?.[key];
+    const value = entry?.[key];
+    if (!Array.isArray(allowed) || allowed.length === 0 || typeof value !== "string") continue;
+    const result = checkOrderUrl(key, value, { hosts });
+    if (result.ok && result.value) links.push({ platform, href: result.value });
+  }
+  return links;
+};
+
+// Replaces the three raw link fields of an entry by `orderLinks`; the raw URLs never leave the server.
+export const withPublicOrderLinks = (entry, hosts = OFFICIAL_ORDER_HOSTS) => {
+  const publicEntry = { ...entry, orderLinks: publicOrderLinks(entry, hosts) };
+  for (const key of ORDER_LINK_KEYS) delete publicEntry[key];
+  return publicEntry;
 };

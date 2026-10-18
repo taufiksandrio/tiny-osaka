@@ -42,7 +42,7 @@ test("alt is required only when an image exists; links are optional", () => {
   assert.deepEqual(validateProduct({ ...base, hasImage: false, alt: "" }), {});
   assert.deepEqual(Object.keys(validateProduct({ ...base, hasImage: true, alt: "  " })), ["alt"]);
   assert.deepEqual(validateProduct({ ...base, grabfoodUrl: "", gofoodUrl: "   ", shopeefoodUrl: "" }), {});
-  const errors = validateProduct({ ...base, grabfoodUrl: "http://x.example.test/a", gofoodUrl: "https://ok.example.test/a", shopeefoodUrl: "javascript:alert(1)" });
+  const errors = validateProduct({ ...base, grabfoodUrl: "http://x.example.test/a", gofoodUrl: "https://gofood.link/a", shopeefoodUrl: "javascript:alert(1)" });
   assert.deepEqual(Object.keys(errors).sort(), ["grabfoodUrl", "shopeefoodUrl"]);
   assert.equal(errors.grabfoodUrl, "Link GrabFood harus diawali https://.");
 });
@@ -54,12 +54,12 @@ test("client link rules match the server checkOrderUrl", () => {
 });
 test("buildPayload on create sends only filled links and the uploaded image", () => {
   assert.deepEqual(buildPayload({ ...base, alt: "", grabfoodUrl: "", gofoodUrl: " ", shopeefoodUrl: "" }), { name: "A", description: "", price: 100 });
-  assert.deepEqual(buildPayload({ ...base, alt: " Foto ", gofoodUrl: " https://shop.example.test/a " }, undefined, ID),
-    { name: "A", description: "", price: 100, gofoodUrl: "https://shop.example.test/a", imageAssetId: ID, imageAlt: "Foto" });
+  assert.deepEqual(buildPayload({ ...base, alt: " Foto ", gofoodUrl: " https://gofood.link/a " }, undefined, ID),
+    { name: "A", description: "", price: 100, gofoodUrl: "https://gofood.link/a", imageAssetId: ID, imageAlt: "Foto" });
 });
 test("buildPayload on edit sends only changed links and follows the image contract", () => {
-  const product = { slug: "a", grabfoodUrl: "https://shop.example.test/g", gofoodUrl: null, shopeefoodUrl: null, image: { assetId: ID, alt: "Lama" } };
-  const same = { ...base, alt: "Lama", grabfoodUrl: "https://shop.example.test/g", gofoodUrl: "", shopeefoodUrl: "" };
+  const product = { slug: "a", grabfoodUrl: "https://app.grab.com/g", gofoodUrl: null, shopeefoodUrl: null, image: { assetId: ID, alt: "Lama" } };
+  const same = { ...base, alt: "Lama", grabfoodUrl: "https://app.grab.com/g", gofoodUrl: "", shopeefoodUrl: "" };
   assert.deepEqual(buildPayload(same, product), { name: "A", description: "", price: 100 }); // nothing changed: no link or image keys
   assert.equal(buildPayload({ ...same, grabfoodUrl: "" }, product).grabfoodUrl, null); // cleared = null
   assert.equal("gofoodUrl" in buildPayload({ ...same, grabfoodUrl: "" }, product), false);

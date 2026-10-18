@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
 import * as catalog from "../../src/server/catalog/drafts.mjs";
 import { createCatalogWorkflow } from "../../src/server/catalog/workflow.mjs";
 import { createPageWorkflow } from "../../src/server/pages/workflow.mjs";
@@ -25,7 +26,8 @@ export const emptyTracking = () => ({ revisions: [], categories: [], products: [
 export const assertEmptyTestDatabase = async client => {
   for (const table of allTables) assert.equal(Number((await client.query(`SELECT count(*) FROM public.${table}`)).rows[0].count), 0, table);
 };
-export const createPublicFixture = async (client, tracked) => {
+// orderLinks (optional): { grabfoodUrl, gofoodUrl, shopeefoodUrl } written to the DRAFT product entry before submit.
+export const createPublicFixture = async (client, tracked, { orderLinks = null } = {}) => {
   await client.query("SELECT pg_advisory_lock(76210986)");
   await assertEmptyTestDatabase(client);
   return drizzle(client).transaction(async db => {
@@ -54,6 +56,10 @@ export const createPublicFixture = async (client, tracked) => {
       [catalog.saveModifierOptionTranslation, { ...scope, groupId: group.groupId, optionId: option.optionId }, "Extra"],
     ]) await save(db, { ...input, expectedVersion: version++, title: `QA ${title}`, description: "QA synthetic" });
     await refs.saveCatalog({ ...scope, expectedVersion: version++, assetId: image.id, ...mediaText });
+    if (orderLinks) {
+      await db.execute(sql`UPDATE public.product_entries SET grabfood_url = ${orderLinks.grabfoodUrl ?? null}, gofood_url = ${orderLinks.gofoodUrl ?? null},
+        shopeefood_url = ${orderLinks.shopeefoodUrl ?? null} WHERE revision_id = ${revision.id} AND product_id = ${product.productId}`);
+    }
     const approved = await catalogWorkflow(db).approve(token(await catalogWorkflow(db).submit({ revisionId: revision.id, expectedVersion: version })));
     for (const key of Object.keys(pageDefinitions)) {
       const wf = pageWorkflow(db);
@@ -100,7 +106,7 @@ export const cleanupPublicFixture = async (client, tracked) => {
     for (const table of allTables) await client.query(`ALTER TABLE public.${table} ENABLE TRIGGER USER`);
     const owner = "tiny_osaka_test_owner";
     await verifyCatalogProtection(client, owner); await verifyPageProtection(client, owner);
-    await verifyMediaProtection(client, owner); await verifyPublicReadProtection(client, owner);
+    await verifyMediaProtection(client, owner); await verifyPublicReadProtection(client, owner, { orderLinks: true });
     await verifyPublishingProtection(client, owner);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }

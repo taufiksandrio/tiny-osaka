@@ -1,9 +1,12 @@
 import { usesPublishedContent } from "@/server/public/data.mjs";
 import { PublishedPage, publishedMetadata } from "@/features/public-site/components/PublishedContent";
-import Link from "next/link";
+import { content } from "@/features/public-site/content";
 import { getPageContent, getPageMetadata } from "@/features/public-site/page-content";
 import { sampleGuides } from "@/features/public-site/fixtures/guides";
 import PageIntro from "@/features/public-site/components/PageIntro";
+import GuideCard, { GuideGrid } from "@/features/public-site/components/GuideCard";
+import { SamplePhoto } from "@/features/public-site/components/MenuCard";
+import OrderingNotice from "@/features/public-site/components/OrderingNotice";
 
 export const generateMetadata = async () => usesPublishedContent() ? publishedMetadata("guides") : getPageMetadata("guides");
 
@@ -13,23 +16,16 @@ const GuidesPage = async () => {
   return (
     <main id="main-content" tabIndex={-1}>
       <PageIntro copy={copy} intro={copy.pages.guides} />
-      <section className="page-section container" aria-labelledby="guides-heading">
-        <h2 className="section-title" id="guides-heading">{copy.guides.heading}</h2>
-        <div className="menu-grid">
-          {sampleGuides.map((guide) => (
-            <article className="menu-card" key={guide.slug}>
-              <div className={`menu-placeholder tone-${guide.tone}`}>
-                <span className="sample-tag">{copy.guides.status}</span>
-                <span className="slot-number" aria-hidden="true">{guide.number}</span>
-                <span className="photo-note">{copy.guides.image}</span>
-              </div>
-              <div className="menu-card-copy"><h3>{guide.title}</h3><p>{copy.guides.summary}</p>
-                <Link className="text-link card-link" href={`/guides/${guide.slug}`}>{copy.guides.read}<span aria-hidden="true">→</span><span className="sr-only"> — {guide.title}</span></Link>
-              </div>
-            </article>
-          ))}
-        </div>
+      <section className="site-section container" aria-labelledby="guides-heading">
+        <h2 className="sr-only" id="guides-heading">{copy.guides.heading}</h2>
+        <GuideGrid>
+          {sampleGuides.map((guide) => <li key={guide.slug}>
+            <GuideCard title={guide.title} summary={copy.guides.summary} href={`/guides/${guide.slug}`} readLabel={copy.guides.read}
+              cover={<SamplePhoto tag={copy.guides.status} note={copy.guides.image} number={guide.number} />} />
+          </li>)}
+        </GuideGrid>
       </section>
+      <OrderingNotice copy={content} />
     </main>
   );
 };

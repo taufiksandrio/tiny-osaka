@@ -390,8 +390,8 @@ test("all seventeen tables are empty and all protection functions/triggers remai
   try {
     for (const table of workflowTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
-    // Tepat 17: migrasi 0001..0016 (0016 = kolom bahasa dihapus) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 17);
+    // Tepat 18: migrasi 0001..0017 (0017 = public_read_catalog memuat link order) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 18);
   } finally { await client.end(); }
 });
 

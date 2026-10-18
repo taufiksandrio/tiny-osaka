@@ -1,15 +1,23 @@
 import { test, expect, publicPaths } from "./fixtures";
 
-const labels = { main: "Navigasi utama", menu: "Menu", promo: "Promo & event", footer: "Halaman lainnya", guides: "Panduan makanan", breadcrumb: "Jejak halaman" };
+const labels = { main: "Navigasi utama", mobileMain: "Navigasi seluler", openMenu: "Buka menu", menu: "Menu", promo: "Promo & event", footer: "Halaman lainnya", guides: "Panduan makanan", breadcrumb: "Jejak halaman" };
+
+// Desktop shows the inline main nav; below 768 px the same four links live in the Sheet opened by "Buka menu".
+const mainNav = async page => {
+  const inline = page.getByRole("navigation", { name: labels.main });
+  if (await inline.isVisible()) return inline;
+  await page.getByRole("button", { name: labels.openMenu, exact: true }).click();
+  return page.getByRole("navigation", { name: labels.mobileMain });
+};
 
 test("homepage CTA, product detail and breadcrumb", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".hero-actions").getByRole("link").first().click();
+  await page.locator('.home-hero a[href="/menu"]').first().click();
   await expect(page).toHaveURL(/\/menu$/);
-  await page.locator(".menu-card").first().getByRole("link").click();
+  await page.locator(".product-grid .product-card-link").first().click();
   await expect(page).toHaveURL(/\/menu\/sample-01$/);
   await expect(page.locator(".notice-box")).toContainText("bukan produk resmi");
-  await expect(page.locator(".info-list")).toContainText("Belum tersedia");
+  await expect(page.locator(".detail-list")).toContainText("Belum tersedia");
   await expect(page.locator(".ordering-section .platform-card")).toHaveCount(2);
   await expect(page.locator(".ordering-section a, .ordering-section button")).toHaveCount(0);
   await expect(page.locator(".ordering-section")).toContainText("Tautan belum tersedia");
@@ -19,18 +27,19 @@ test("homepage CTA, product detail and breadcrumb", async ({ page }) => {
 
 test("navbar promo, guide footer and ordering anchor", async ({ page }) => {
   await page.goto("/");
-  const navbar = page.getByRole("navigation", { name: labels.main });
+  const navbar = await mainNav(page);
   await expect(navbar.getByRole("link")).toHaveCount(4);
   await navbar.getByRole("link", { name: labels.promo, exact: true }).click();
   await expect(page).toHaveURL(/\/promos$/);
-  await expect(page.locator(".empty-state")).toBeVisible();
+  await expect(page.getByText("Belum ada informasi promo pada pratinjau ini.")).toBeVisible();
   await page.getByRole("navigation", { name: labels.footer }).getByRole("link", { name: labels.guides, exact: true }).click();
   await expect(page).toHaveURL(/\/guides$/);
-  await page.locator(".menu-card").first().getByRole("link").click();
+  await page.locator('a[href="/guides/takoyaki"]').first().click();
   await expect(page).toHaveURL(/\/guides\/takoyaki$/);
   await page.getByRole("navigation", { name: labels.breadcrumb }).getByRole("link", { name: labels.guides, exact: true }).click();
   await expect(page).toHaveURL(/\/guides$/);
-  await page.getByRole("navigation", { name: labels.main }).getByRole("link").last().click();
+  const orderingLink = (await mainNav(page)).getByRole("link").last();
+  await orderingLink.click();
   await expect(page).toHaveURL("http://127.0.0.1:3030/#ordering");
   await expect(page.locator("#ordering")).toBeInViewport();
 });

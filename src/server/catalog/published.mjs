@@ -5,6 +5,7 @@ import { loadCatalogGraph } from "./review.mjs";
 import { hashCatalogContent } from "./content-hash.mjs";
 import { CatalogDraftError } from "./drafts.mjs";
 import { publicRevisionMedia } from "../media/validation.mjs";
+import { withPublicOrderLinks } from "./order-links.mjs";
 
 // No revision ID argument: callers cannot turn this into a draft reader.
 export const getPublishedCatalog = async db => {
@@ -23,12 +24,8 @@ export const getPublishedCatalog = async db => {
       const content = { ...graph };
       delete content.mediaRefs;
       delete content.mediaAssets;
-      // Order links are admin-only until a separate decision shows them publicly (migration 0015).
-      content.productEntries = content.productEntries.map(entry => {
-        const publicEntry = { ...entry };
-        for (const field of ["grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]) delete publicEntry[field];
-        return publicEntry;
-      });
+      // Raw order URLs never leave the server: only links passing the exact-host allowlist are exposed, as orderLinks.
+      content.productEntries = content.productEntries.map(entry => withPublicOrderLinks(entry));
       return { ...content, media: publicRevisionMedia(graph, "catalog"), revision: { id: row.revision.id, version: row.revision.version } };
     });
   } catch {
