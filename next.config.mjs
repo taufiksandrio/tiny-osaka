@@ -1,4 +1,4 @@
-import { buildSecurityHeaders } from "./src/server/security/headers.mjs";
+import { buildHeaderRules } from "./src/server/security/headers.mjs";
 
 const nextConfig = {
   // Keep automated production QA separate from the user's running dev server.
@@ -23,7 +23,7 @@ const nextConfig = {
   // Security headers (CSP Report-Only, HSTS production-only, X-Robots-Tag when not indexing) come from
   // src/server/security/headers.mjs.
   async headers() {
-    return [{ source: "/:path*", headers: buildSecurityHeaders(process.env) }];
+    return buildHeaderRules(process.env);
   },
 };
 

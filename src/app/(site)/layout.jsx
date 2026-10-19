@@ -1,4 +1,5 @@
 import { usesPublishedContent } from "@/server/public/data.mjs";
+import { getPublicRobotsMetadata } from "@/server/public/indexing.mjs";
 import { content } from "@/features/public-site/content";
 import SiteHeader from "@/features/public-site/components/SiteHeader";
 import SiteFooter from "@/features/public-site/components/SiteFooter";
@@ -9,11 +10,11 @@ const siteFont = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-site"
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+export const generateMetadata = async () => ({
   title: usesPublishedContent() ? "Tiny Osaka" : content.metadata.title,
   description: usesPublishedContent() ? "Tiny Osaka" : content.metadata.description,
-  robots: { index: false, follow: false },
-};
+  robots: getPublicRobotsMetadata(),
+});
 
 const SiteLayout = ({ children }) => {
   const copy = usesPublishedContent() ? { ...content, footerNote: "Tiny Osaka", footerPreview: "Informasi dari konten terbit." } : content;

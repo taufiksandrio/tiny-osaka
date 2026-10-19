@@ -20,7 +20,7 @@
 
 ## Phase 4: Marketing, SEO, analytics
 - [Diamandemen ADR-038: konten Indonesia saja.] Content ID/EN, CMS templates, campaign CTA URLs with verified links, GA4 event strategy, UTM and Search Console. Manual Instagram/TikTok embeds, privacy/consent assessment.
-- Acceptance: GA4 event payloads mocked/tested; sitemap only approved published pages; proper canonical/hreflang [diamandemen ADR-038: canonical dan sitemap hanya halaman tayang; tanpa hreflang]; no Restaurant schema.
+- Acceptance: GA4 event payloads mocked/tested; sitemap only approved published pages; proper canonical/hreflang [diamandemen ADR-038: canonical dan sitemap hanya halaman tayang; tanpa hreflang]; no Restaurant schema. [Sitemap/canonical: dimajukan ke hardening PR-2, amandemen ADR-038 2026-10-19; Search Console dan GA4 tetap di fase ini.]
 
 ## Phase 5: Deployment and readiness
 - On-demand staging, protected admin, weekly same-VPS backups plus tested restore, monitoring, production runbooks and manual deploy approval. No live merchant integration required.
@@ -33,4 +33,4 @@
 **Each phase is subdivided into PR-sized tasks.** Before a task, Codex presents file-by-file plan and STOPs for explicit approval. Production deployment always requires separate permission.
 
 ## Tindak lanjut tahap 2 (ADR-037/038, butuh persetujuan terpisah)
-- Hapus tabel/kolom kategori, varian, modifier dan terjemahan katalog (ulangi dry-run catalog-variants-report); nasib publication_jobs/event dan FK RESTRICT; (kolom/baris locale en: selesai oleh ADR-039/migrasi 0016); host resmi allowlist link order; tampilan publik link order + GA4 click_order; canonical/sitemap Phase 3; prosedur penarikan gambar darurat; pengukuran CWV nyata; migrasi 0014/0015 ke dev/staging; backup off-VPS. Daftar lengkap: docs/specs/adr-037-038-draft.md bagian 4.
+- Hapus tabel/kolom kategori, varian, modifier dan terjemahan katalog (ulangi dry-run catalog-variants-report); nasib publication_jobs/event dan FK RESTRICT; (kolom/baris locale en: selesai oleh ADR-039/migrasi 0016); host resmi allowlist link order; tampilan publik link order + GA4 click_order; [canonical/sitemap sudah dimajukan ke hardening PR-2; Search Console tetap Phase 3]; prosedur penarikan gambar darurat; pengukuran CWV nyata; migrasi 0014/0015 ke dev/staging; backup off-VPS. Daftar lengkap: docs/specs/adr-037-038-draft.md bagian 4.
