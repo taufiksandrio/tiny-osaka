@@ -1,3 +1,5 @@
+import { buildSecurityHeaders } from "./src/server/security/headers.mjs";
+
 const nextConfig = {
   // Keep automated production QA separate from the user's running dev server.
   distDir: process.env.QA_NEXT_DIST_DIR === ".next-qa" ? ".next-qa" : ".next",
@@ -18,20 +20,10 @@ const nextConfig = {
     minimumCacheTTL: 3600,
   },
   // ADR-038: public URLs have no language segment and nothing redirects; any prefixed address is a normal 404.
-  // Baseline security headers. No CSP yet (a wrong policy would break pages); add it report-only first.
-  // HSTS only for the production target, which is always served over HTTPS (never for local/staging hosts).
+  // Security headers (CSP Report-Only, HSTS production-only, X-Robots-Tag when not indexing) come from
+  // src/server/security/headers.mjs.
   async headers() {
-    const baseline = [
-      { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "X-Frame-Options", value: "DENY" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-    ];
-    if (process.env.PUBLIC_DATABASE_TARGET === "production") {
-      baseline.push({ key: "Strict-Transport-Security", value: "max-age=15552000" });
-    }
-    return [{ source: "/:path*", headers: baseline }];
+    return [{ source: "/:path*", headers: buildSecurityHeaders(process.env) }];
   },
 };
 
