@@ -19,7 +19,9 @@ const SecurityForm = ({ enabled }) => {
         setSetup(await authRequest("/two-factor/enable", { password: form.get("password") }));
         event.target.reset();
       }
-    } catch (error) { setMessage(error.message); }
+    } catch (error) {
+      setMessage(error.message === "Permintaan gagal. Periksa isian Anda." ? (setup ? "Kode tidak valid. Periksa kode di aplikasi authenticator." : "Password salah atau permintaan gagal.") : error.message);
+    }
     finally { setBusy(false); }
   };
   return <>

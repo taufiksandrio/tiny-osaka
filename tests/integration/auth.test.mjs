@@ -154,3 +154,95 @@ test("local auth integration: real library sessions, reset, MFA and privilege bo
     });
   } finally { await fixture.cleanup(); }
 });
+
+test("account password change regression (PR-3): wrong password, session revocation, audit, validation, transport, MFA RBAC", async t => {
+  const fixture = await createAuthFixture();
+  const { accounts: [owner, staff], password, pool } = fixture;
+  const signIn = async (account, input) => {
+    const jar = cookieJar();
+    const response = await callAuth(fixture, "/sign-in/email", { email: account.email, password: input }, jar);
+    return { jar, response };
+  };
+  const change = (jar, body, options) => callAuth(fixture, "/change-password", body, jar, options);
+  const auditCount = async (event, userId) => Number((await fixture.owner.query("SELECT count(*) FROM cms_auth.audit WHERE event=$1 AND user_id=$2", [event, userId])).rows[0].count);
+  try {
+    await t.test("session constants are 24h absolute and 1h idle (AC-10)", async () => {
+      const { ABSOLUTE_SESSION_MS, IDLE_SESSION_MS } = await import("../../src/server/auth/policy.mjs");
+      assert.equal(ABSOLUTE_SESSION_MS, 24 * 60 * 60 * 1000);
+      assert.equal(IDLE_SESSION_MS, 60 * 60 * 1000);
+      const { jar } = await signIn(owner, password);
+      const row = (await fixture.owner.query("SELECT extract(epoch FROM expires_at-created_at) AS span FROM cms_auth.sessions WHERE user_id=$1", [owner.id])).rows[0];
+      assert.ok(Math.abs(Number(row.span) - 86400) <= 2);
+      await fixture.owner.query("UPDATE cms_auth.session_activity SET last_active_at=clock_timestamp()-interval '61 minutes' WHERE session_id IN (SELECT id FROM cms_auth.sessions WHERE user_id=$1)", [owner.id]);
+      assert.equal(await (await callAuth(fixture, "/get-session", undefined, jar)).json(), null);
+    });
+    await fixture.expireLimits();
+    await t.test("Owner without MFA logs in normally (AC-11)", async () => {
+      const { response } = await signIn(owner, password);
+      assert.equal(response.status, 200);
+      assert.notEqual((await response.json()).twoFactorRedirect, true);
+    });
+    await fixture.expireLimits();
+    await t.test("MFA endpoints: anonymous 401, Staff 403 (AC-9)", async () => {
+      for (const path of ["/two-factor/enable", "/two-factor/disable", "/two-factor/generate-backup-codes"]) {
+        assert.equal((await callAuth(fixture, path, { password })).status, 401);
+        const { jar } = await signIn(staff, password);
+        assert.equal((await callAuth(fixture, path, { password }, jar)).status, 403);
+      }
+    });
+    await fixture.expireLimits();
+    await t.test("transport rules: no session 401, bad origin 403, non-JSON 415 (AC-6)", async () => {
+      assert.equal((await change(null, { currentPassword: password, newPassword: "Zz9!newpass" })).status, 401);
+      const { jar } = await signIn(staff, password);
+      assert.equal((await change(jar, { currentPassword: password, newPassword: "Zz9!newpass" }, { headers: { origin: "https://evil.invalid" } })).status, 403);
+      const response = await fixture.service.handle(new Request(fixture.env.BETTER_AUTH_URL + "/api/auth/change-password", {
+        method: "POST", headers: { "content-type": "text/plain", origin: fixture.env.BETTER_AUTH_URL, cookie: jar.header() },
+        body: JSON.stringify({ currentPassword: password, newPassword: "Zz9!newpass" }) }));
+      assert.equal(response.status, 415);
+      assert.equal((await signIn(staff, password)).response.status, 200);
+    });
+    await fixture.expireLimits();
+    await t.test("wrong current password is rejected generically and changes nothing (AC-3, AC-7)", async () => {
+      const { jar } = await signIn(staff, password);
+      const before = await auditCount("password_changed", staff.id);
+      const response = await change(jar, { currentPassword: "wrong-current-pw", newPassword: "Zz9!newpass" });
+      assert.ok(response.status >= 400 && response.status < 500 || response.status === 401);
+      const text = await (await change(jar, { currentPassword: "wrong-current-pw", newPassword: "Zz9!newpass" })).text();
+      for (const secret of ["wrong-current-pw", "Zz9!newpass", password]) assert.ok(!text.includes(secret));
+      assert.equal(await auditCount("password_changed", staff.id), before);
+      assert.equal((await signIn(staff, password)).response.status, 200);
+    });
+    await fixture.expireLimits();
+    for (const [label, account, index] of [["Owner", owner, 0], ["Staff", staff, 1]]) {
+      await t.test(`${label}: change-password revokes other sessions, keeps current, audits actor (AC-2, AC-4, AC-7)`, async () => {
+        const next = `Nw${index}!` + randomUUID().slice(0, 12);
+        const current = await signIn(account, password), other = await signIn(account, password);
+        const before = await auditCount("password_changed", account.id);
+        const otherActorBefore = await auditCount("password_changed", (index ? owner : staff).id);
+        const response = await change(current.jar, { currentPassword: password, newPassword: next });
+        assert.equal(response.status, 200);
+        assert.ok(!(await response.text()).includes(next));
+        assert.equal(await (await callAuth(fixture, "/get-session", undefined, other.jar)).json(), null);
+        assert.equal((await (await callAuth(fixture, "/get-session", undefined, current.jar)).json())?.user?.role, account === owner ? "owner" : "staff");
+        assert.equal(await auditCount("password_changed", account.id), before + 1);
+        assert.equal(await auditCount("password_changed", (index ? owner : staff).id), otherActorBefore);
+        assert.equal((await signIn(account, password)).response.status, 401);
+        assert.equal((await signIn(account, next)).response.status, 200);
+        const audit = JSON.stringify((await fixture.owner.query("SELECT * FROM cms_auth.audit")).rows);
+        for (const secret of [password, next]) assert.ok(!audit.includes(secret));
+        account.currentPassword = next;
+      });
+      await fixture.expireLimits();
+    }
+    await t.test("password length 6-128 enforced server-side on change-password (AC-5)", async () => {
+      const pw = owner.currentPassword;
+      const { jar } = await signIn(owner, pw);
+      assert.equal((await change(jar, { currentPassword: pw, newPassword: "A1!bc" })).status, 400);
+      assert.equal((await change(jar, { currentPassword: pw, newPassword: "A1!" + "x".repeat(126) })).status, 400);
+      assert.equal((await signIn(owner, pw)).response.status, 200);
+      assert.equal((await change(jar, { currentPassword: pw, newPassword: "A1!" + "x".repeat(125) })).status, 200);
+      owner.currentPassword = "A1!" + "x".repeat(125);
+      await assert.rejects(provisionAccount({ client: fixture.owner, email: `qa-max-${randomUUID()}@example.invalid`, role: "staff", name: "QA max", password: "A1!" + "x".repeat(126) }), /Invalid internal account input/);
+    });
+  } finally { await fixture.cleanup(); }
+});

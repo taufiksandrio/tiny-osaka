@@ -10,7 +10,7 @@ const AdminNav = ({ role, onNavigate }) => {
     { href: "/admin/pages", title: "Halaman website", icon: Files },
     { href: "/admin/catalog", title: "Katalog menu", icon: UtensilsCrossed },
     { href: "/admin/media", title: "Pustaka media", icon: Images },
-    ...(role === "owner" ? [{ href: "/admin/security", title: "Keamanan", icon: ShieldCheck }] : []),
+    { href: "/admin/account", title: "Akun", icon: ShieldCheck },
   ];
   return <nav aria-label="Navigasi CMS" className="grid gap-1">
     <p className="px-3 pb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Workspace</p>
