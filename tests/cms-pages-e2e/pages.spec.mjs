@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 const errors = new WeakMap(), origin = "http://127.0.0.1:3033";
 test.beforeEach(async ({ page }) => {
   const current = []; errors.set(page, current); page.on("pageerror", error => current.push(error.message));
+  page.on("console", message => { if (message.text().includes("Content Security Policy")) current.push(message.text()); }); // AC-21
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 });
 test.afterEach(async ({ page }) => expect(errors.get(page)).toEqual([]));

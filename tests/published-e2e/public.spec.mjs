@@ -6,6 +6,7 @@ const runtimeErrors = new WeakMap();
 test.beforeEach(async ({ page }) => {
   const errors = []; runtimeErrors.set(page, errors);
   page.on("pageerror", error => errors.push(error.message));
+  page.on("console", message => { if (message.text().includes("Content Security Policy")) errors.push(message.text()); }); // AC-21
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 });
 test.afterEach(async ({ page }) => expect(runtimeErrors.get(page)).toEqual([]));

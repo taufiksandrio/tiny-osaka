@@ -20,7 +20,7 @@ const nextConfig = {
     minimumCacheTTL: 3600,
   },
   // ADR-038: public URLs have no language segment and nothing redirects; any prefixed address is a normal 404.
-  // Security headers (CSP Report-Only, HSTS production-only, X-Robots-Tag when not indexing) come from
+  // Security headers (enforced CSP, HSTS production-only, X-Robots-Tag when not indexing) come from
   // src/server/security/headers.mjs.
   async headers() {
     return buildHeaderRules(process.env);
