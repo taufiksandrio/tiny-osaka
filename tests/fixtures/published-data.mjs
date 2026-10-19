@@ -12,7 +12,11 @@ import { verifyMediaProtection } from "../../scripts/lib/media-protection.mjs";
 import { verifyPublicReadProtection } from "../../scripts/lib/public-read-protection.mjs";
 import { pageDefinitions } from "../../src/server/pages/templates.mjs";
 import { fields, rich } from "./page-content.mjs";
-import { inspectedImage } from "./media.mjs";
+import { createHash } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import { storageRoot } from "../../src/server/media/storage.mjs";
 import { verifyPublishingProtection } from "../../scripts/lib/publishing-protection.mjs";
 import { createMediaAssets } from "../../src/server/media/assets.mjs";
 import { createMediaReferences } from "../../src/server/media/references.mjs";
@@ -21,7 +25,19 @@ export const token = row => ({ revisionId: row.revisionId ?? row.id, expectedVer
 const resolveActor = async () => ({ subject: "qa-public-owner", role: "owner" });
 export const catalogWorkflow = db => createCatalogWorkflow({ db, resolveActor });
 export const pageWorkflow = db => createPageWorkflow({ db, resolveActor });
-export const emptyTracking = () => ({ revisions: [], categories: [], products: [], pageRevisions: [], pages: [], assets: [] });
+export const emptyTracking = () => ({ revisions: [], categories: [], products: [], pageRevisions: [], pages: [], assets: [], files: [] });
+// Real 1600x1200 PNG in the test media root: /media/<id> serves a file whose size and SHA-256 match the media row.
+const writeQaImage = async tracked => {
+  const storageKey = randomUUID() + ".png";
+  const bytes = await sharp({ create: { width: 1600, height: 1200, channels: 3, background: { r: 196, g: 98, b: 52 } } }).png().toBuffer();
+  const root = storageRoot({ PUBLIC_DATABASE_TARGET: "test" });
+  await mkdir(root, { recursive: true });
+  const file = path.join(root, storageKey);
+  tracked.files.push(file);
+  await writeFile(file, bytes, { flag: "wx" });
+  return { storageKey, mime: "image/png", byteSize: bytes.length, width: 1600, height: 1200, durationMs: null, verified: true,
+    checksum: createHash("sha256").update(bytes).digest("hex") };
+};
 
 export const assertEmptyTestDatabase = async client => {
   for (const table of allTables) assert.equal(Number((await client.query(`SELECT count(*) FROM public.${table}`)).rows[0].count), 0, table);
@@ -31,8 +47,9 @@ export const createPublicFixture = async (client, tracked, { orderLinks = null }
   await client.query("SELECT pg_advisory_lock(76210986)");
   await assertEmptyTestDatabase(client);
   return drizzle(client).transaction(async db => {
-    const assets = createMediaAssets({ db, resolveActor, inspectFile: async key => inspectedImage(key) });
-    const image = await assets.registerFile({ storageKey: randomUUID() + ".png" }); tracked.assets.push(image.id);
+    const assets = createMediaAssets({ db, resolveActor, inspectFile: async key => ({ ...stored, storageKey: key }) });
+    const stored = await writeQaImage(tracked);
+    const image = await assets.registerFile({ storageKey: stored.storageKey }); tracked.assets.push(image.id);
     const youtube = await assets.registerYoutube({ videoId: "Abc_123-xyz", posterId: image.id }); tracked.assets.push(youtube.id);
     const refs = createMediaReferences({ db, resolveActor });
     const mediaText = { altId: "QA gambar", captionId: "QA keterangan", sortOrder: 0 };
@@ -70,6 +87,8 @@ export const createPublicFixture = async (client, tracked, { orderLinks = null }
       data.body = rich("QA body <script>literal only</script>");
       let saved = await wf.saveTranslation({ revisionId: page.id, expectedVersion: 1, fields: data });
       if (key === "about") saved = await refs.savePage({ revisionId: page.id, expectedVersion: saved.version, assetId: youtube.id, ...mediaText });
+      // The home hero renders only from CMS media (HomeContent), so the home page gets the image as well.
+      if (key === "home") saved = await refs.savePage({ revisionId: page.id, expectedVersion: saved.version, assetId: image.id, altId: "QA gambar", captionId: "Takoyaki Shio Negi · Tiny Osaka", sortOrder: 0 });
       const ready = await wf.approve(token(await wf.submit({ revisionId: page.id, expectedVersion: saved.version })));
       await wf.publish(token(ready));
     }
@@ -109,5 +128,6 @@ export const cleanupPublicFixture = async (client, tracked) => {
     await verifyMediaProtection(client, owner); await verifyPublicReadProtection(client, owner, { orderLinks: true });
     await verifyPublishingProtection(client, owner);
     await client.query("COMMIT");
+    for (const file of tracked.files) await rm(file, { force: true });
   } catch (error) { await client.query("ROLLBACK"); throw error; }
 };

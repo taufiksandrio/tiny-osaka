@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { readFile } from "node:fs/promises";
 
 const runtimeErrors = new WeakMap();
 test.beforeEach(async ({ page }) => {
@@ -32,18 +31,22 @@ test.afterEach(async ({ page }) => expect(runtimeErrors.get(page)).toEqual([]));
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
       await expect(page.locator(".preview-banner")).toHaveCount(0);
       await expect(page.locator("main script")).toHaveCount(0);
-      await expect(page.locator("main")).toContainText(`<script>literal only</script>`);
+      // Guide index shows summaries only; the literal-text check lives on the guide DETAIL pages (they render the body).
+      if (key.startsWith("guide-")) await expect(page.locator("main")).toContainText("<script>literal only</script>");
       if (key === "home") {
         const hero = page.locator(".home-art-image"); await expect(hero).toBeVisible();
         await expect.poll(() => hero.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
         await expect(page.locator(".home-art figcaption")).toHaveText("Takoyaki Shio Negi · Tiny Osaka");
         await expect(page.locator('.home-theme [data-slot="button"]').first()).toHaveAttribute("href", "/menu");
         const icon = await request.get("/icon.png"); expect(icon.status()).toBe(200); expect(icon.headers()["content-type"]).toContain("image/png");
-        await expect(hero).toHaveAttribute("src", "/images/02a - Takoyaki Shio Negi.jpeg");
-        expect(await hero.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([1600, 1200]);
-        const photo = await request.get("/images/02a%20-%20Takoyaki%20Shio%20Negi.jpeg");
-        expect(photo.status()).toBe(200); expect(photo.headers()["content-type"]).toContain("image/jpeg");
-        expect(Buffer.compare(await photo.body(), await readFile("public/images/02a - Takoyaki Shio Negi.jpeg"))).toBe(0);
+        // Hero is CMS media: the img goes through /_next/image and the original bytes are served at /media/<id>.
+        const mediaPath = new URL(await hero.getAttribute("src"), "http://127.0.0.1").searchParams.get("url");
+        expect(mediaPath).toMatch(/^\/media\/[0-9a-f-]{36}$/);
+        const photo = await request.get(mediaPath);
+        expect(photo.status()).toBe(200); expect(photo.headers()["content-type"]).toContain("image/png");
+        const bytes = await photo.body();
+        expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([1600, 1200]);
         const dimensions = await hero.boundingBox();
         expect(dimensions.width / dimensions.height).toBeCloseTo(4 / 3, 2);
       }
