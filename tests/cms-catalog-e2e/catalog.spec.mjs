@@ -112,7 +112,7 @@ test("public menu lists newest products first without category or variant UI", a
   const titles = await page.getByRole("listitem").locator("h3").allTextContents();
   expect(titles.slice(0, 3)).toEqual([...names].reverse());
   await page.goto("/menu");
-  const shown = await page.locator("main article h2").allTextContents();
+  const shown = await page.locator("main ul[role=list] li h2").allTextContents();
   expect(shown.filter(title => names.includes(title))).toEqual([...names].reverse());
   await expect(page.locator("main")).not.toContainText("Varian, topping"); await expect(page.locator("main fieldset")).toHaveCount(0);
   await cleanup(page, names);
@@ -120,7 +120,7 @@ test("public menu lists newest products first without category or variant UI", a
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 const UUID_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", UUID_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-const LINK = "https://example.test/pesan/produk";
+const GO = "https://gofood.link/pesan/produk", GRAB = "https://app.grab.com/pesan/produk", SHOPEE = "https://example.test/pesan/produk";
 const openAdd = async page => {
   await page.getByRole("button", { name: "Tambah produk", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Tambah produk" }); await expect(dialog).toBeVisible(); return dialog;
@@ -133,28 +133,30 @@ test("order links are optional, saved, shown in Edit, cleared with null, and nev
   await addProduct(page, { name: plain, description: "Sama", price: 9000 });
   const dialog = await openAdd(page);
   await fillModal(page, { name: linked, description: "Sama", price: 9000 });
-  await dialog.getByLabel("Link GrabFood", { exact: true }).fill(" " + LINK + "/grab ");
-  await dialog.getByLabel("Link GoFood", { exact: true }).fill(LINK + "/go");
-  await dialog.getByLabel("Link ShopeeFood", { exact: true }).fill(LINK + "/shopee");
+  await dialog.getByLabel("Link GrabFood", { exact: true }).fill(" " + GRAB + " ");
+  await dialog.getByLabel("Link GoFood", { exact: true }).fill(GO);
+  await dialog.getByLabel("Link ShopeeFood", { exact: true }).fill(SHOPEE);
   await save(dialog); await expect(dialog).toBeHidden();
   const stored = (await cards(page)).find(row => row.name === linked);
-  expect([stored.grabfoodUrl, stored.gofoodUrl, stored.shopeefoodUrl]).toEqual([LINK + "/grab", LINK + "/go", LINK + "/shopee"]);
+  expect([stored.grabfoodUrl, stored.gofoodUrl, stored.shopeefoodUrl]).toEqual([GRAB, GO, SHOPEE]);
   expect((await cards(page)).find(row => row.name === plain)).toMatchObject({ grabfoodUrl: null, gofoodUrl: null, shopeefoodUrl: null });
   const html = name => page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) }).evaluate((el, label) => el.innerHTML.split(label).join("NAMA"), name);
   expect(await html(linked)).toBe(await html(plain));
   const card = page.getByRole("listitem").filter({ hasText: linked });
   await expect(card.locator("a")).toHaveCount(0); await expect(card.locator("button")).toHaveCount(2);
-  await expect(card).not.toContainText(/GrabFood|GoFood|ShopeeFood/); expect(await card.innerHTML()).not.toContain("example.test");
+  await expect(card).not.toContainText(/GrabFood|GoFood|ShopeeFood/); expect(await card.innerHTML()).not.toMatch(/gofood\.link|app\.grab\.com|example\.test/);
   // Edit prefills, an untouched save keeps links, clearing one sends null and leaves the others.
   await card.getByRole("button", { name: "Edit " + linked }).click();
   const edit = page.getByRole("dialog", { name: "Ubah produk" });
-  await expect(edit.getByLabel("Link GoFood", { exact: true })).toHaveValue(LINK + "/go");
+  await expect(edit.getByLabel("Link GoFood", { exact: true })).toHaveValue(GO);
   await save(edit); await expect(edit).toBeHidden();
-  expect((await cards(page)).find(row => row.name === linked).grabfoodUrl).toBe(LINK + "/grab");
+  expect((await cards(page)).find(row => row.name === linked).grabfoodUrl).toBe(GRAB);
   await card.getByRole("button", { name: "Edit " + linked }).click();
   await edit.getByLabel("Link GoFood", { exact: true }).fill("   "); await save(edit); await expect(edit).toBeHidden();
-  expect((await cards(page)).find(row => row.name === linked)).toMatchObject({ grabfoodUrl: LINK + "/grab", gofoodUrl: null, shopeefoodUrl: LINK + "/shopee" });
-  await page.goto("/menu"); expect(await page.content()).not.toContain("example.test/pesan"); // not shown publicly (Q-R option b)
+  expect((await cards(page)).find(row => row.name === linked)).toMatchObject({ grabfoodUrl: GRAB, gofoodUrl: null, shopeefoodUrl: SHOPEE });
+  // Public display of order links is approved (2026-10-19): allowlisted GrabFood href is in /menu HTML; the ShopeeFood link (empty allowlist) never is.
+  await page.goto("/menu"); const publicHtml = await page.content();
+  expect(publicHtml).toContain(GRAB); expect(publicHtml).not.toContain(SHOPEE);
   await cleanup(page, [plain, linked]);
 });
 
@@ -163,7 +165,7 @@ test("invalid order links show Indonesian inline errors, keep every input, and f
   const before = (await cards(page)).length; const dialog = await openAdd(page);
   await fillModal(page, { name, description: "Isi tetap", price: 5000 });
   const grab = dialog.getByLabel("Link GrabFood", { exact: true }), go = dialog.getByLabel("Link GoFood", { exact: true }), shopee = dialog.getByLabel("Link ShopeeFood", { exact: true });
-  await grab.fill("http://example.test/a"); await go.fill("javascript:alert(1)"); await shopee.fill(LINK);
+  await grab.fill("http://example.test/a"); await go.fill("javascript:alert(1)"); await shopee.fill(SHOPEE);
   await grab.blur(); await expect(grab).toHaveAttribute("aria-invalid", "true");
   await expect(dialog.getByText("Link GrabFood harus diawali https://.")).toBeVisible();
   expect(await grab.getAttribute("aria-describedby")).toContain((await grab.getAttribute("id")) + "-error");
@@ -173,8 +175,8 @@ test("invalid order links show Indonesian inline errors, keep every input, and f
   await expect(dialog.getByRole("alert").filter({ hasText: "2 isian perlu diperbaiki" })).toHaveCount(1);
   await expect(shopee).not.toHaveAttribute("aria-invalid", "true");
   await expect(dialog.getByLabel("Nama produk (wajib)")).toHaveValue(name); await expect(dialog.getByLabel("Deskripsi (opsional)")).toHaveValue("Isi tetap");
-  await expect(shopee).toHaveValue(LINK);
-  await grab.fill(LINK + "/g"); await go.fill(""); await grab.blur(); await expect(grab).not.toHaveAttribute("aria-invalid", "true");
+  await expect(shopee).toHaveValue(SHOPEE);
+  await grab.fill(GRAB + "/g"); await go.fill(""); await grab.blur(); await expect(grab).not.toHaveAttribute("aria-invalid", "true");
   expect((await cards(page)).length).toBe(before);
   await save(dialog); await expect(dialog).toBeHidden();
   await login(page, "owner"); await cleanup(page, [name]);
@@ -185,7 +187,7 @@ test("server INVALID_ORDER_URL message appears next to its field", async ({ page
   await page.route("**/api/cms/catalog", route => route.request().method() === "POST" ?
     route.fulfill({ status: 400, json: { code: "INVALID_ORDER_URL", field: "gofoodUrl", message: "Link GoFood tidak valid." } }) : route.continue());
   const dialog = await openAdd(page); await fillModal(page, { name: unique("QA server link"), price: 100 });
-  await dialog.getByLabel("Link GoFood", { exact: true }).fill(LINK); await save(dialog);
+  await dialog.getByLabel("Link GoFood", { exact: true }).fill(GO); await save(dialog);
   const go = dialog.getByLabel("Link GoFood", { exact: true });
   await expect(go).toHaveAttribute("aria-invalid", "true"); await expect(go).toBeFocused(); await expect(dialog.getByText("Link GoFood tidak valid.").first()).toBeVisible();
   await expect(dialog.getByLabel("Link GrabFood", { exact: true })).not.toHaveAttribute("aria-invalid", "true");
@@ -222,12 +224,12 @@ test("upload failures show a local message, create nothing, and keep the input",
   let writes = 0; page.on("request", request => { if (request.url().endsWith("/api/cms/catalog") && request.method() === "POST") writes++; });
   const name = unique("QA upload gagal"); const dialog = await openAdd(page); await fillModal(page, { name, description: "Tetap", price: 700 });
   await pickFile(dialog, { name: "foto.png", mimeType: "image/png", buffer: PNG }); await dialog.getByLabel("Teks alternatif gambar (wajib)").fill("Takoyaki di piring");
-  await dialog.getByLabel("Link GoFood", { exact: true }).fill(LINK);
+  await dialog.getByLabel("Link GoFood", { exact: true }).fill(GO);
   for (const [status, json, text] of cases) {
     await page.route("**/api/cms/media/upload", route => route.fulfill({ status, json }));
     await save(dialog); await expect(dialog.getByText(text).first()).toBeVisible(); await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel("Nama produk (wajib)")).toHaveValue(name); await expect(dialog.getByLabel("Teks alternatif gambar (wajib)")).toHaveValue("Takoyaki di piring");
-    await expect(dialog.getByLabel("Link GoFood", { exact: true })).toHaveValue(LINK); await expect(dialog.getByText(/^Gambar dipilih: foto.png/).first()).toBeVisible();
+    await expect(dialog.getByLabel("Link GoFood", { exact: true })).toHaveValue(GO); await expect(dialog.getByText(/^Gambar dipilih: foto.png/).first()).toBeVisible();
     await page.unroute("**/api/cms/media/upload");
   }
   expect(writes).toBe(0); expect((await cards(page)).some(row => row.name === name)).toBe(false);
@@ -250,13 +252,13 @@ test("upload then POST/PATCH payloads follow the API contract (replace, alt only
   });
   const dialog = await openAdd(page); await fillModal(page, { name, price: 500 });
   await pickFile(dialog, { name: "foto.png", mimeType: "image/png", buffer: PNG }); await dialog.getByLabel("Teks alternatif gambar (wajib)").fill("  Takoyaki baru  ");
-  await dialog.getByLabel("Link GoFood", { exact: true }).fill(LINK); await save(dialog); await expect(dialog).toBeHidden();
+  await dialog.getByLabel("Link GoFood", { exact: true }).fill(GO); await save(dialog); await expect(dialog).toBeHidden();
   expect(uploadTypes).toEqual(["image/png"]);
-  expect(bodies[0]).toMatchObject({ imageAssetId: UUID_A, imageAlt: "Takoyaki baru", gofoodUrl: LINK }); expect("grabfoodUrl" in bodies[0]).toBe(false);
+  expect(bodies[0]).toMatchObject({ imageAssetId: UUID_A, imageAlt: "Takoyaki baru", gofoodUrl: GO }); expect("grabfoodUrl" in bodies[0]).toBe(false);
   const open = async () => { await page.getByRole("button", { name: "Edit " + name, exact: true }).click(); return page.getByRole("dialog", { name: "Ubah produk" }); };
   let edit = await open();
   await expect(edit.getByText("Gambar terpasang.")).toBeVisible(); await expect(edit.locator("img")).toHaveCount(0);
-  await expect(edit.getByLabel("Teks alternatif gambar (wajib)")).toHaveValue("Takoyaki baru"); await expect(edit.getByLabel("Link GoFood", { exact: true })).toHaveValue(LINK);
+  await expect(edit.getByLabel("Teks alternatif gambar (wajib)")).toHaveValue("Takoyaki baru"); await expect(edit.getByLabel("Link GoFood", { exact: true })).toHaveValue(GO);
   await edit.getByLabel("Teks alternatif gambar (wajib)").fill("Alt diubah"); await save(edit); await expect(edit).toBeHidden();
   expect(bodies[1]).toMatchObject({ imageAlt: "Alt diubah" }); for (const key of ["imageAssetId", "grabfoodUrl", "gofoodUrl", "shopeefoodUrl"]) expect(key in bodies[1]).toBe(false);
   expect(uploadTypes.length).toBe(1);

@@ -1594,3 +1594,19 @@ Konsekuensi: invariant "hash/receipt immutable" tetap untuk semua snapshot yang 
 0016 yang dapat diverifikasi karena sudah dihapus (termasuk jejak workflow events di DB test/dev). Situs dev tidak punya konten
 terbit sampai Owner membuat dan mempublikasi ulang. Pemulihan hanya lewat backup DB (pg_dump sebelum migrasi). Kode, test, dan
 dokumen kehilangan konsep bahasa (stored-language.mjs dihapus). Spec: docs/specs/drop-locale-column.md.
+
+## ADR-040 - Link order tampil di situs publik (2026-10-19)
+
+Konteks: ADR-037 menetapkan link order GoFood/GrabFood/ShopeeFood hanya disimpan, tidak tampil di publik, dan allowlist host
+kosong sampai host resmi dikonfirmasi user. Kode sudah menampilkan link publik dengan allowlist terisi (app.grab.com, gofood.link,
+diisi 2026-10-18 dari host yang terlihat di data dev) tanpa persetujuan tercatat; tes E2E katalog menangkap penyimpangan itu.
+
+Keputusan: (1) User menyetujui link order tampil di situs publik (2026-10-19). Ini menggantikan klausa "tidak tampil di situs
+publik" pada ADR-037 dan membuka Q-R opsi (a). (2) Host yang berlaku: gofood.link (GoFood) dan app.grab.com (GrabFood), sesuai
+allowlist kode. ShopeeFood tetap kosong: link ShopeeFood tidak tampil (fail closed) sampai host resmi dikonfirmasi user.
+(3) Validasi tetap server-side: https saja, host cocok persis dengan allowlist; URL mentah tidak keluar dari server selain
+sebagai orderLinks yang lolos allowlist. (4) Tidak ada event GA4 baru dan tidak ada panggilan jaringan ke platform tanpa keputusan
+terpisah.
+
+Konsekuensi: tes E2E katalog mengharapkan href resmi tampil di /menu. Penambahan host baru atau ShopeeFood butuh konfirmasi user
+dan pembaruan ADR ini. Rollback: kosongkan allowlist (fail closed) atau hapus publicOrderLinks dari published.mjs.
