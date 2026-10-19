@@ -18,10 +18,10 @@ test("AC-28: CSP has the locked directives and no nonce, wildcard or eval in pro
   assert.match(buildCsp({ dev: true }), /'unsafe-eval'/);
 });
 
-test("AC-18: CSP is Report-Only in PR-1 with the baseline headers kept", () => {
+test("AC-18: CSP is enforced (no Report-Only) with the baseline headers kept", () => {
   const headers = buildSecurityHeaders({ NODE_ENV: "production", PUBLIC_DATABASE_TARGET: "staging" });
-  assert.ok(find(headers, "Content-Security-Policy-Report-Only"));
-  assert.equal(find(headers, "Content-Security-Policy"), undefined);
+  assert.ok(find(headers, "Content-Security-Policy"));
+  assert.equal(find(headers, "Content-Security-Policy-Report-Only"), undefined);
   assert.equal(find(headers, "X-Content-Type-Options"), "nosniff");
   assert.equal(find(headers, "X-Frame-Options"), "DENY");
   assert.ok(find(headers, "Referrer-Policy"));

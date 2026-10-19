@@ -1,5 +1,5 @@
 // Pure builders for HTTP security headers. Loaded by next.config.mjs, so no "server-only" and no Next imports.
-// PR-1 ships CSP as Report-Only; no nonce (script/style 'unsafe-inline'); no Google origins until GA4 exists.
+// CSP is enforced (PR-4; was Report-Only in PR-1); no nonce (script/style 'unsafe-inline'); no Google origins until GA4 exists.
 
 import { isIndexingOpen } from "../public/indexing.mjs";
 
@@ -42,7 +42,7 @@ export const buildSecurityHeaders = (env = process.env) => {
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-    { key: "Content-Security-Policy-Report-Only", value: buildCsp({ dev: env.NODE_ENV === "development" }) },
+    { key: "Content-Security-Policy", value: buildCsp({ dev: env.NODE_ENV === "development" }) },
   ];
   // HSTS only for the production target (always HTTPS); no includeSubDomains/preload until the final domain is decided.
   if (env.PUBLIC_DATABASE_TARGET === "production") {
