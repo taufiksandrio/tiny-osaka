@@ -43,7 +43,7 @@ const AdminPage = async () => {
     </div>
     {actor.role === "owner" && <Card className="shadow-none"><CardContent className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3"><ShieldCheck className="size-5 text-primary" aria-hidden="true" /><div><p className="font-medium">Keamanan akun</p><p className="text-sm text-muted-foreground">Kelola MFA opsional untuk akun Owner.</p></div></div>
-      <Button asChild variant="outline"><Link href="/admin/security">Keamanan akun dan MFA</Link></Button>
+      <Button asChild variant="outline"><Link href="/admin/account">Keamanan akun dan MFA</Link></Button>
     </CardContent></Card>}
     {!actor.emailVerified && <Alert><AlertTitle>Email belum diverifikasi</AlertTitle><AlertDescription>Email akun belum diverifikasi. Reset email memerlukan verifikasi kepemilikan email dan konfigurasi pengiriman.</AlertDescription></Alert>}
   </main>;
