@@ -323,7 +323,9 @@ MEDIA_STORAGE_ROOT=/data/media
 ```
 Jika `${{RAILWAY_PUBLIC_DOMAIN}}` tidak terbaca (kolom tampak kosong): ketik domain persisnya: `BETTER_AUTH_URL=https://<nama>.up.railway.app` (tanpa garis miring di akhir, tanpa path).
 
-Jangan set: `NODE_ENV`, `PORT`, `FFMPEG_PATH`, `FFPROBE_PATH` (upload video tetap nonaktif), `DATABASE_HOST_ALLOWLIST`, `MIGRATION_DATABASE_URL`, `RAILWAY_ADMIN_DATABASE_URL`, `TINY_OSAKA_*`.
+Indexing (SEO): `SITE_URL` (origin HTTPS tanpa path, hanya dibutuhkan production) dan `ALLOW_INDEXING` TIDAK diset di staging. Tanpa keduanya, staging menyajikan `Disallow: /`, `noindex,nofollow`, tanpa canonical, dan sitemap kosong (default tertutup). Di production, indexing baru terbuka bila `PUBLIC_DATABASE_TARGET=production`, `ALLOW_INDEXING=true` (persis), dan `SITE_URL` valid (mis. `https://domain-final.example`); `SITE_URL` tidak valid membuat semuanya tertutup.
+
+Jangan set: `NODE_ENV`, `PORT`, `ALLOW_INDEXING`, `FFMPEG_PATH`, `FFPROBE_PATH` (upload video tetap nonaktif), `DATABASE_HOST_ALLOWLIST`, `MIGRATION_DATABASE_URL`, `RAILWAY_ADMIN_DATABASE_URL`, `TINY_OSAKA_*`.
 
 Hasil yang diharapkan: web Variables berisi tepat 7 variabel di atas (ditambah variabel `RAILWAY_*` bawaan yang otomatis, itu normal).
 

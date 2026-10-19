@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { buildCsp, buildSecurityHeaders, isIndexingActive } from "../../src/server/security/headers.mjs";
+import { buildCsp, buildHeaderRules, buildSecurityHeaders, isIndexingActive } from "../../src/server/security/headers.mjs";
 
 const find = (headers, key) => headers.find((h) => h.key === key)?.value;
 const directive = (csp, name) => csp.split("; ").find((d) => d.startsWith(`${name} `));
@@ -42,8 +42,26 @@ test("AC-12: X-Robots-Tag noindex unless production with ALLOW_INDEXING exactly 
   assert.equal(tag({}), "noindex, nofollow");
   assert.equal(tag({ PUBLIC_DATABASE_TARGET: "production" }), "noindex, nofollow");
   assert.equal(tag({ PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "TRUE" }), "noindex, nofollow");
-  assert.equal(tag({ PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true" }), undefined);
-  assert.equal(isIndexingActive({ PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true" }), true);
+  assert.equal(tag({ PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true", SITE_URL: "https://tinyosaka.example" }), undefined);
+  assert.equal(isIndexingActive({ PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true", SITE_URL: "https://tinyosaka.example" }), true);
+});
+
+test("AC-17: production + flag but missing/invalid SITE_URL keeps X-Robots-Tag (fail closed)", () => {
+  const base = { PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true" };
+  for (const SITE_URL of [undefined, "", "not a url", "http://tinyosaka.example", "https://localhost", "https://tinyosaka.example/path"]) {
+    assert.equal(find(buildSecurityHeaders({ ...base, SITE_URL }), "X-Robots-Tag"), "noindex, nofollow", String(SITE_URL));
+  }
+});
+
+test("AC-15: /api and /admin are permanently noindex, even when indexing is open", () => {
+  const open = { PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true", SITE_URL: "https://tinyosaka.example" };
+  for (const env of [{}, { PUBLIC_DATABASE_TARGET: "staging" }, open]) {
+    const rules = buildHeaderRules(env);
+    for (const source of ["/api/:path*", "/admin/:path*"]) {
+      assert.equal(find(rules.find((r) => r.source === source).headers, "X-Robots-Tag"), "noindex, nofollow", source);
+    }
+  }
+  assert.equal(find(buildHeaderRules(open)[0].headers, "X-Robots-Tag"), undefined);
 });
 
 test("AC-29: no raw HTML injection in src/", () => {

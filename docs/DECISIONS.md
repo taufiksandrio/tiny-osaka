@@ -1567,6 +1567,8 @@ kolom/baris/fungsi tersebut (yang mengubah hash dan melanggar retensi ADR-034) m
 terpisah. Tautan rich text lama berprefiks pada data tersimpan dibiarkan (hasilnya 404). Kontrak: docs/DATA_CONTRACTS.md
 bagian "Kontrak satu bahasa". Rollback: revert kode/test/dokumen; tidak ada perubahan data atau skema.
 
+Status update (2026-10-19, amandemen ADR-038): Konteks: ADR-038 menetapkan SEO hanya bahasa Indonesia, tanpa hreflang/prefix bahasa, serta menunda sitemap dan canonical ke Phase 3. Keputusan: sitemap.xml, robots.txt, dan canonical dimajukan ke pekerjaan pre-production hardening. Syarat: hanya Indonesia, tanpa hreflang dan tanpa prefix bahasa; hanya URL tayang; URL absolut dari `SITE_URL`; aktif hanya bila target production dan flag indexing eksplisit aktif (default tertutup); staging/dev tetap noindex. Tidak berubah: `Restaurant`/`LocalBusiness` structured data tetap di luar scope; tidak ada klaim konten baru. Search Console dan GA4 tetap Phase 3. Disetujui oleh: user (Q1, 2026-10-19). Dampak ROADMAP: butir sitemap/canonical Phase 3 ditandai "dimajukan ke hardening PR-2".
+
 ## ADR-039 - Hapus kolom locale, alt_en, caption_en; reset konten uji (2026-10-18)
 
 Status: Disetujui user (2026-10-18; "kolom locale hapus saja", "jangan ada /id /eng apapun caranya"). Mengamandemen ADR-034

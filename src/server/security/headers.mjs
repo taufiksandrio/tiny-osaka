@@ -1,7 +1,9 @@
 // Pure builders for HTTP security headers. Loaded by next.config.mjs, so no "server-only" and no Next imports.
 // PR-1 ships CSP as Report-Only; no nonce (script/style 'unsafe-inline'); no Google origins until GA4 exists.
 
-export const buildCsp = ({ dev = false } = {}) => {
+import { isIndexingOpen } from "../public/indexing.mjs";
+
+export const buildCsp =({ dev = false } = {}) => {
   const scriptSrc = ["'self'", "'unsafe-inline'"];
   // The Next dev server needs eval for React refresh; never in a production build.
   if (dev) scriptSrc.push("'unsafe-eval'");
@@ -21,9 +23,17 @@ export const buildCsp = ({ dev = false } = {}) => {
   return directives.map(([name, values]) => `${name} ${values.join(" ")}`).join("; ");
 };
 
-// Indexing is active only for the production target with the flag exactly "true" (default closed).
-export const isIndexingActive = (env = process.env) =>
-  env.PUBLIC_DATABASE_TARGET === "production" && env.ALLOW_INDEXING === "true";
+// Same fail-closed rule as robots/sitemap/metadata: production + flag exactly "true" + valid https SITE_URL.
+export const isIndexingActive = (env = process.env) => isIndexingOpen(env);
+
+const NOINDEX = { key: "X-Robots-Tag", value: "noindex, nofollow" };
+
+// Route rules for next.config.mjs. /api and /admin are permanently noindex on every target (AC-15).
+export const buildHeaderRules = (env = process.env) => [
+  { source: "/:path*", headers: buildSecurityHeaders(env) },
+  { source: "/api/:path*", headers: [NOINDEX] },
+  { source: "/admin/:path*", headers: [NOINDEX] },
+];
 
 export const buildSecurityHeaders = (env = process.env) => {
   const headers = [
@@ -38,6 +48,6 @@ export const buildSecurityHeaders = (env = process.env) => {
   if (env.PUBLIC_DATABASE_TARGET === "production") {
     headers.push({ key: "Strict-Transport-Security", value: "max-age=15552000" });
   }
-  if (!isIndexingActive(env)) headers.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+  if (!isIndexingActive(env)) headers.push(NOINDEX);
   return headers;
 };

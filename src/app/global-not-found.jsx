@@ -1,9 +1,10 @@
+import { ROBOTS_NOINDEX } from "@/server/public/indexing.mjs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import "@/styles/globals.css";
 
 // Served for any unmatched URL (including any address with a language prefix). Indonesian only, with an explicit html lang.
-export const metadata = { title: "Halaman tidak ditemukan | Tiny Osaka", robots: { index: false, follow: false } };
+export const metadata = { title: "Halaman tidak ditemukan | Tiny Osaka", robots: ROBOTS_NOINDEX };
 
 const GlobalNotFound = () => (
   <html lang="id">

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { publicCatalog as readCatalog, publicPage } from "@/server/public/data.mjs";
 import { pageDefinitions, publicPagePath } from "@/server/pages/templates.mjs";
+import { getPublicRobotsMetadata, isPageLive,getCanonicalAlternates, ROBOTS_NOINDEX } from "@/server/public/indexing.mjs";
 import { formatPrice, listedProducts, featuredProducts } from "@/server/public/view-models.mjs";
 import { content } from "../content";
 import OrderingNotice from "./OrderingNotice";
@@ -30,16 +31,23 @@ const Media = ({ items = [] }) => items.map(media => <PublishedMedia key={media.
 const firstImage = (items = []) => items.find(media => media.asset.kind === "image");
 const hasBlocks = document => Boolean(document?.blocks?.length);
 
+// Only live pages get index/canonical; missing or empty-state pages stay noindex (indexing.mjs fails closed outside production).
+const liveMetadata = path => ({ robots: getPublicRobotsMetadata(), alternates: getCanonicalAlternates(path) });
+const closedMetadata = { robots: ROBOTS_NOINDEX };
+
 export const publishedMetadata = async (key, slug) => {
   if (slug) {
     const product = (await publicCatalog())?.products.find(row => row.slug === slug);
     if (!product) notFound();
-    return { title: `${product.title} | Tiny Osaka`, description: product.description, robots: { index: false, follow: false } };
+    return { title: `${product.title} | Tiny Osaka`, description: product.description, ...liveMetadata(`/menu/${product.slug}`) };
   }
   const page = await publicPage(key);
   if (key.startsWith("guide-") && !page) notFound();
+  const productCount = key === "menu" ? ((await publicCatalog())?.products?.length ?? 0) : 0;
+  const live = isPageLive(key, { page, productCount });
   return { title: page?.fields.seoTitle || page?.fields.title || `${labels[key] || "Tiny Osaka"} | Tiny Osaka`,
-    description: page?.fields.seoDescription || page?.fields.summary || labels.empty, robots: { index: false, follow: false } };
+    description: page?.fields.seoDescription || page?.fields.summary || labels.empty,
+    ...(live ? liveMetadata(publicPagePath(pageDefinitions[key])) : closedMetadata) };
 };
 
 const EmptyCard = ({ children, action }) => <Card className="empty-card"><CardContent>
