@@ -350,21 +350,31 @@ Pesan "Refusing to start: invalid or missing server configuration: <NAMA>" menye
 
 ### Langkah 17. Bootstrap Owner pertama
 
-Rencanakan email dan kata sandi Owner (kata sandi minimal 12 karakter untuk skrip ini; hindari tanda `"` dan `\`). Masuk ke `ops`:
+Rencanakan email dan kata sandi Owner (kata sandi minimal 12 karakter untuk skrip ini; hindari tanda `"` dan `\`). Periksa ejaan email dua kali; pernah terjadi salah satu huruf pada uji nyata.
+
+Cara masuk ke shell `ops`: `railway ssh --service ops --environment staging` (atau Console di dashboard, tetapi bisa lambat/lag), lalu `bash`, lalu `cd /app`. Shell ini TIDAK punya `psql`, tetapi punya `node` dan paket `pg` di `/app`, sehingga pemeriksaan DB memakai satu-baris `node -e '...'` (di dalam tanda kutip tunggal, tulis tanda kutip literal sebagai `\x27`).
+
+Mengetik kata sandi langsung di shell jarak jauh rawan salah (lag, dan input tersembunyi menyembunyikan salah ketik). Cara yang lebih aman: susun seluruh perintah di Notepad lokal, lalu tempel sekali saja, diawali `unset HISTFILE`. Setelah selesai, kosongkan Notepad tanpa menyimpan lalu jalankan `clear`. Jangan pernah menempel perintah atau kata sandi ke chat/Git.
 ```
-railway ssh --service ops --environment staging
-bash
-cd /app
-read -r -p "Email Owner: " OE
-read -r -s -p "Password Owner: " OP; echo
-TINY_OSAKA_BOOTSTRAP_OWNER_EMAIL="$OE" TINY_OSAKA_BOOTSTRAP_OWNER_PASSWORD="$OP" TINY_OSAKA_BOOTSTRAP_OWNER_NAME="Owner" npm run owner:bootstrap -- --target staging
-unset OE OP
+unset HISTFILE
+TINY_OSAKA_BOOTSTRAP_OWNER_EMAIL='<email-owner>' TINY_OSAKA_BOOTSTRAP_OWNER_PASSWORD='<kata-sandi-owner>' TINY_OSAKA_BOOTSTRAP_OWNER_NAME='Owner' npm run owner:bootstrap -- --target staging
+clear
 ```
 Hasil yang diharapkan: `First Owner created. Sign in at /admin/login, change the password and enable MFA. Email ownership is not verified.`
 
-Skrip menolak jika Owner sudah ada (tidak menimpa). Jalankan hanya sekali.
+Skrip menolak jika Owner sudah ada (tidak menimpa). Jalankan hanya sekali. Skrip mencetak SATU pesan gagal generik untuk SEMUA kegagalan, termasuk "Owner sudah ada". Jika percobaan pertama sebenarnya sudah membuat Owner (mis. dengan salah ketik email/kata sandi), percobaan ulang pasti gagal. Cek jumlah Owner:
+```
+node -e 'const{Pool}=require("pg");const p=new Pool({connectionString:process.env.RAILWAY_ADMIN_DATABASE_URL});p.query("select role, count(*)::int n from cms_auth.roles group by role").then(r=>{console.log(r.rows);p.end()})'
+```
+Hasil yang diharapkan: satu baris `role: owner` dengan `n: 1` bila Owner sudah ada; hasil kosong berarti belum ada Owner (periksa kata sandi dan migrasi). Kueri role ini boleh pada database default karena role berlaku se-cluster.
 
-> BERHENTI dan laporkan jika muncul "Owner bootstrap failed" setelah memeriksa panjang kata sandi dan bahwa migrasi (Langkah 14) sudah selesai.
+Catatan penting: `RAILWAY_ADMIN_DATABASE_URL` menunjuk ke database default `railway`, BUKAN `tiny_osaka_staging`. Untuk kueri tabel aplikasi, ganti path-nya: `const u=new URL(process.env.RAILWAY_ADMIN_DATABASE_URL);u.pathname="/tiny_osaka_staging";` lalu pakai `u.toString()` sebagai `connectionString`. Galat `42P01` (relation does not exist) berarti penggantian path ini terlupa.
+
+Pemulihan jika Owner terlanjur dibuat dengan data salah (jalankan dengan koneksi ke `tiny_osaka_staging` seperti di atas, tulis perintah di Notepad lokal):
+- Reset kata sandi Owner: hitung hash dengan `hashPassword` dari `better-auth/crypto`, lalu `UPDATE cms_auth.accounts SET password = <hash>` untuk akun kredensial milik Owner tersebut.
+- Ubah email: `UPDATE cms_auth.users SET email = '<email-benar>'` untuk pengguna Owner. Kolom `accounts.account_id` tidak menyimpan email, jadi tidak perlu diubah.
+
+> BERHENTI dan laporkan jika muncul "Owner bootstrap failed" setelah memeriksa panjang kata sandi, bahwa migrasi (Langkah 14) sudah selesai, dan bahwa Owner belum ada (cek jumlah Owner di atas).
 
 ### Langkah 18. Tutup akses operator: hapus kredensial dari `ops`, hapus `ops`
 
@@ -373,16 +383,18 @@ Dashboard -> service `ops` -> Settings -> bagian bawah (Danger) -> "Delete Servi
 
 Jika Anda masih butuh `ops` (mis. menunggu uji), minimal hapus variabel `RAILWAY_ADMIN_DATABASE_URL` dan `MIGRATION_DATABASE_URL` dari Variables-nya. `ops` dapat dibuat lagi kapan pun (Langkah 7, 11b); kredensial migrator harus diambil dari Variables staging yang Anda simpan di tempat aman (manajer kata sandi) jika kelak perlu migrasi lagi.
 
+Dashboard tidak langsung menghapus: penghapusan `ops` muncul sebagai draf ("Removed", "Apply 1 change"). Klik "Details" dulu dan pastikan itu satu-satunya perubahan, lalu klik tombol Deploy di kanvas untuk menerapkannya.
+
 Hasil yang diharapkan: kanvas staging hanya berisi `web`, `Postgres`, volume.
 
 ### Langkah 19. Uji fungsional staging
 
 1. Buka `https://<nama>.up.railway.app/admin/login`. Masuk dengan email/sandi Owner Langkah 17.
-   Hasil: masuk ke CMS tanpa galat. Pada DevTools -> Application -> Cookies, cookie sesi harus `Secure`, `HttpOnly`, `SameSite=Lax`.
-2. Ganti kata sandi sementara dan aktifkan MFA Owner (menu akun/keamanan di CMS; nama menu bisa beda).
-3. Upload media: di CMS buka katalog/halaman yang punya unggah gambar, unggah 1 gambar kecil (JPEG/PNG/WebP). Catat ID/alamat `/media/<id>` dari tampilan.
-   Hasil: gambar tampil di CMS dan pada URL `/media/<id>` bila sudah diterbitkan.
-4. Redeploy mempertahankan media: service `web` -> Deployments -> menu `...` pada deployment aktif -> Redeploy. Setelah Active, buka lagi gambar tadi.
+   Hasil: masuk ke CMS tanpa galat. Pada DevTools -> Application -> Cookies, cookie sesi harus `HttpOnly`, `Secure`, `SameSite=Lax`.
+2. Ganti kata sandi sementara dan aktifkan MFA Owner: belum tersedia (catat sebagai pekerjaan lanjutan). CMS belum punya halaman akun, jadi keduanya tidak bisa dilakukan lewat UI. Kata sandi hanya bisa diganti lewat one-liner reset (lihat Langkah 17) dari service `ops` sementara.
+3. Upload media: di CMS buka katalog/halaman yang punya unggah gambar, unggah 1 gambar kecil (JPEG/PNG/WebP). Kartu pustaka media hanya menampilkan 8 karakter pertama ID pada judul; ID UUID lengkap ada di teks kecil di bawah gambar.
+   Hasil: gambar tampil di pustaka media CMS. Route publik `/media/<id>` butuh UUID LENGKAP dan hanya melayani media yang dipakai konten TERBIT, sehingga gambar baru yang belum dipakai menghasilkan 404 di sana (normal). Untuk menguji volume, buka route admin `/api/cms/media/<UUID-lengkap>` saat masih login.
+4. Redeploy mempertahankan media: service `web` -> Deployments -> menu `...` pada deployment aktif -> Redeploy. Setelah Active, buka lagi `/api/cms/media/<UUID-lengkap>` tadi.
    Hasil: gambar masih ada dan sama. Jika hilang: volume tidak terpasang pada path `MEDIA_STORAGE_ROOT`.
 5. Simpan konten: edit satu halaman/produk uji dan simpan; perubahan langsung tampil di situs publik (aturan simpan-langsung-tayang).
 6. Login salah 5 kali untuk email uji tidak mengunci Owner? Jangan uji ke akun Owner (rate limit per email: 5 percobaan/15 menit). Lewati kecuali ada akun uji.
@@ -396,6 +408,8 @@ Kode tidak punya pencadangan otomatis; jangan mengandalkannya.
 2. Volume `web` -> tab "Backups" (atau pada kartu volume). Hal yang sama.
 3. Pencadangan DB dari `ops`: cek `which pg_dump`; bila tidak ada, jangan memasang paket di container produksi; pakai fitur Railway atau tunda sampai ada keputusan backup (spec bagian 9, backup di luar Railway).
 4. Uji restore: belum diwajibkan untuk staging, tetapi WAJIB sebelum produksi (AC-13, AC-21 di spec).
+
+Hasil nyata staging: pada plan trial Railway, backup untuk Postgres maupun volume memerlukan Pro (tidak bisa membuat backup, tidak ada jadwal, tidak ada PITR). Ini risiko staging yang diterima. Untuk produksi perlu keputusan (upgrade ke Pro, atau backup di luar Railway) ditambah uji restore sebelum go-live.
 
 ### Langkah 21. Catat hasil
 
