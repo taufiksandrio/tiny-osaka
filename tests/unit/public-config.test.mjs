@@ -17,3 +17,18 @@ test("public connections reject migrator credentials and invalid targets", () =>
   }
   assert.throws(() => getPublicDatabaseConfig({ PUBLIC_DATABASE_TARGET: "production" }));
 });
+
+test("ADR-041: GA4 config is active only with a valid id and open production indexing", async () => {
+  const { getAnalyticsConfig, isAnalyticsEnabled } = await import("../../src/server/public/config.mjs");
+  const open = { PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true", SITE_URL: "https://tinyosaka.example" };
+  assert.deepEqual({ ...getAnalyticsConfig({ ...open, GA4_MEASUREMENT_ID: " G-ABC123XYZ " }) }, { enabled: true, measurementId: "G-ABC123XYZ" });
+  for (const id of [undefined, "", "  ", "UA-123456", "g-abc123", "G-", "G-AB", "G-ABC 123", "G-ABC123;alert(1)", "G-" + "A".repeat(30)]) {
+    assert.equal(isAnalyticsEnabled({ ...open, GA4_MEASUREMENT_ID: id }), false, String(id));
+  }
+  const id = { GA4_MEASUREMENT_ID: "G-ABC123XYZ" };
+  for (const env of [{}, { PUBLIC_DATABASE_TARGET: "staging", ALLOW_INDEXING: "true", SITE_URL: open.SITE_URL }, { PUBLIC_DATABASE_TARGET: "production", SITE_URL: open.SITE_URL }, { PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true" }]) {
+    const cfg = getAnalyticsConfig({ ...env, ...id });
+    assert.equal(cfg.enabled, false);
+    assert.equal(cfg.measurementId, null);
+  }
+});

@@ -1610,3 +1610,21 @@ terpisah.
 
 Konsekuensi: tes E2E katalog mengharapkan href resmi tampil di /menu. Penambahan host baru atau ShopeeFood butuh konfirmasi user
 dan pembaruan ADR ini. Rollback: kosongkan allowlist (fail closed) atau hapus publicOrderLinks dari published.mjs.
+
+## ADR-041 - GA4 niat order keluar, consent, dan perluasan CSP (2026-10-20)
+
+Konteks: ADR-040 (4) melarang event GA4 baru dan panggilan jaringan ke platform tanpa keputusan terpisah. User menyetujui
+spec docs/specs/phase4-marketing-seo-analytics.md (PR-A) dan semua rekomendasinya pada 2026-10-20.
+
+Keputusan: (1) Satu event GA4 `click_order` (niat order keluar, bukan order selesai) dengan parameter platform, product_slug,
+placement, page_path; tanpa view_menu_item. Dilarang: purchase/order_complete, value/currency/price, URL order mentah, PII.
+(2) gtag.js langsung, tanpa GTM. (3) Banner opt-in dengan Consent Mode v2 default denied; nol request ke Google sebelum Terima;
+pilihan dapat dicabut dari footer. Google signals dan ad personalization dimatikan. (4) GA4_MEASUREMENT_ID adalah env server
+(bukan NEXT_PUBLIC_), format G-XXXX; aktif hanya di produksi dengan indexing terbuka (getAnalyticsConfig); kosong = nonaktif.
+(5) CSP diperluas minimal hanya saat GA4 aktif: script-src https://www.googletagmanager.com; connect-src
+https://*.google-analytics.com https://*.analytics.google.com; img-src https://*.google-analytics.com. Tanpa unsafe-eval produksi
+dan tanpa origin lain. (6) Retensi data GA4 2 bulan. (7) Teks /privasi disediakan/disetujui user; bukan klaim kepatuhan hukum.
+Ini menggantikan klausa (4) ADR-040 hanya untuk event `click_order`; panggilan jaringan ke platform merchant tetap dilarang.
+
+Konsekuensi: tanpa ID atau di non-produksi, perilaku dan CSP sama seperti sebelumnya. Rollback: kosongkan GA4_MEASUREMENT_ID
+(tidak ada pemuatan, CSP kembali ke baseline) atau revert PR-A.

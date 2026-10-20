@@ -76,3 +76,18 @@ test("AC-29: no raw HTML injection in src/", () => {
   walk(join(process.cwd(), "src"));
   assert.deepEqual(hits, []);
 });
+
+test("ADR-041: Google origins only when GA4 is active, minimal and without wildcard script/eval", () => {
+  assert.doesNotMatch(buildCsp(), /google/i);
+  const csp = buildCsp({ analytics: true });
+  assert.ok(directive(csp, "script-src").split(" ").includes("https://www.googletagmanager.com"));
+  assert.equal(directive(csp, "connect-src"), "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com");
+  assert.equal(directive(csp, "img-src"), "img-src 'self' data: blob: https://*.google-analytics.com");
+  assert.doesNotMatch(directive(csp, "script-src"), /\*|unsafe-eval/);
+  assert.equal(directive(csp, "frame-src"), "frame-src https://www.youtube-nocookie.com");
+  const open = { PUBLIC_DATABASE_TARGET: "production", ALLOW_INDEXING: "true", SITE_URL: "https://tinyosaka.example" };
+  const csp0 = (env) => find(buildSecurityHeaders(env), "Content-Security-Policy");
+  assert.match(csp0({ ...open, GA4_MEASUREMENT_ID: "G-ABC123XYZ" }), /googletagmanager/);
+  assert.doesNotMatch(csp0(open), /google/i);
+  assert.doesNotMatch(csp0({ PUBLIC_DATABASE_TARGET: "staging", GA4_MEASUREMENT_ID: "G-ABC123XYZ" }), /google/i);
+});

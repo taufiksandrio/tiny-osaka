@@ -9,7 +9,7 @@ import ProductOrderCard from "./ProductOrderCard";
 const firstImage = (catalog, product) => catalog.media.find(media => media.productId === product.id && media.asset.kind === "image");
 
 export const ProductCard = ({ product, image, headingLevel: Heading = "h2", priority = false, orderable = true }) => (
-  <ProductOrderCard title={product.title} orderLinks={orderable ? product.orderLinks ?? [] : []}
+  <ProductOrderCard title={product.title} productSlug={product.slug}orderLinks={orderable ? product.orderLinks ?? [] : []}
     price={<p className="product-card-price">{formatPrice(product.price)}</p>}>
     <ProductCardImage media={image} priority={priority} />
     <CardContent className="product-card-body">
