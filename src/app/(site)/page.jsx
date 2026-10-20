@@ -16,7 +16,7 @@ const HomePage = async () => {
   // Fixture mode reuses the real home layout; labelled sample cards stand in for products (no photo, price or order button).
   const fields = { eyebrow: copy.eyebrow, title: copy.hero.join("\n"), summary: copy.intro, menuTitle: copy.menuTitle, menuIntro: copy.menuIntro,
     aboutTitle: copy.aboutTitle, aboutBody: { blocks: [paragraph(copy.aboutBody), paragraph(copy.aboutNote)] },
-    primaryCtaLabel: copy.explore, secondaryCtaLabel: copy.aboutLink };
+    primaryCtaLabel: copy.explore, secondaryCtaLabel: copy.aboutLink, secondaryCtaHref: "/menu" };
   return <HomeContent fields={fields} note={copy.heroNote}
     catalogContent={<MenuCardGrid items={sampleMenu} copy={copy} headingLevel="h3" />}
     orderingContent={<OrderingNotice copy={copy} />} />;
