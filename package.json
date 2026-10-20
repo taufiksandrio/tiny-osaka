@@ -41,7 +41,7 @@
     "test:auth-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --test tests/integration/auth.test.mjs",
     "test:auth-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local scripts/run-auth-qa.mjs",
     "test:cms-pages-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-pages-qa.mjs",
-    "test:cms-catalog-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/cms-catalog.test.mjs tests/integration/cms-catalog-image.test.mjs tests/integration/cms-catalog-links.test.mjs",
+    "test:cms-catalog-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/cms-catalog.test.mjs tests/integration/cms-catalog-image.test.mjs tests/integration/cms-catalog-links.test.mjs",
     "test:cms-catalog-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-catalog-qa.mjs",
     "test:catalog-delete-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/catalog-delete.test.mjs",
     "test:catalog-cards-unit": "node --conditions=react-server --test tests/unit/catalog-product-input.test.mjs tests/unit/catalog-variants-report.test.mjs tests/unit/media-cache-headers.test.mjs tests/unit/catalog-order-links.test.mjs tests/unit/catalog-cards-ui.test.mjs",
