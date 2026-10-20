@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
+import PrivacySettingsButton from "./PrivacySettingsButton";
 
-const SiteFooter = ({ copy }) => (
+const SiteFooter = ({ copy, analyticsEnabled = false }) => (
   <footer className="site-footer">
     <div className="container footer-inner">
       <div>
@@ -13,6 +14,8 @@ const SiteFooter = ({ copy }) => (
         <Link href="/guides">{copy.nav.guides}</Link>
         <Link href="/promos">{copy.nav.promos}</Link>
         <Link href="/location">{copy.nav.location}</Link>
+        <Link href="/privasi">Kebijakan privasi</Link>
+        {analyticsEnabled && <PrivacySettingsButton />}
       </nav>
       <a className="back-top" href="#top">{copy.backTop} <span aria-hidden="true">↑</span></a>
     </div>

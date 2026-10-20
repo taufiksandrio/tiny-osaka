@@ -59,7 +59,9 @@
 .site-footer p { font-size: .8125rem; line-height: 1.7; margin-top: .75rem; max-width: 30rem; color: #e7e2d4; }
 .site-footer .footer-preview { color: #cecbbd; margin-top: .25rem; font-size: .75rem; }
 .footer-nav { display: flex; flex-direction: column; font-size: .9375rem; font-weight: 600; }
-.footer-nav a { display: inline-flex; align-items: center; min-height: 44px; }
+.footer-nav a, .footer-nav .privacy-settings-link { display: inline-flex; align-items: center; min-height: 44px; }
+.footer-nav .privacy-settings-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.footer-nav .privacy-settings-link:hover { color: #ffb6a5; }
 .footer-nav a:hover, .back-top:hover { color: #ffb6a5; }
 .back-top { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding-inline: 1rem; border: 1px solid #faf5eb55; border-radius: 9999px; font-size: .8125rem; font-weight: 700; }
 @media (max-width: 767px) {

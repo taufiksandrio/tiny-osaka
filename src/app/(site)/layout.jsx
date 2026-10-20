@@ -3,6 +3,8 @@ import { getPublicRobotsMetadata } from "@/server/public/indexing.mjs";
 import { content } from "@/features/public-site/content";
 import SiteHeader from "@/features/public-site/components/SiteHeader";
 import SiteFooter from "@/features/public-site/components/SiteFooter";
+import AnalyticsConsent from "@/features/public-site/components/AnalyticsConsent";
+import { getAnalyticsConfig } from "@/server/public/config.mjs";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "@/styles/globals.css";
 
@@ -17,6 +19,7 @@ export const generateMetadata = async () => ({
 });
 
 const SiteLayout = ({ children }) => {
+  const analytics = getAnalyticsConfig();
   const copy = usesPublishedContent() ? { ...content, footerNote: "Tiny Osaka", footerPreview: "Informasi dari konten terbit." } : content;
 
   return (
@@ -26,7 +29,8 @@ const SiteLayout = ({ children }) => {
         {!usesPublishedContent() && <div className="preview-banner">{copy.preview}</div>}
         <SiteHeader copy={copy} />
         {children}
-        <SiteFooter copy={copy} />
+        <SiteFooter copy={copy} analyticsEnabled={analytics.enabled} />
+        {analytics.enabled && <AnalyticsConsent measurementId={analytics.measurementId} />}
       </body>
     </html>
   );

@@ -1,12 +1,21 @@
 // Pure builders for HTTP security headers. Loaded by next.config.mjs, so no "server-only" and no Next imports.
-// CSP is enforced (PR-4; was Report-Only in PR-1); no nonce (script/style 'unsafe-inline'); no Google origins until GA4 exists.
+// CSP is enforced (PR-4; was Report-Only in PR-1); no nonce (script/style 'unsafe-inline').
+// Google origins (ADR-041) are added only when GA4 is active (buildCsp({ analytics: true })); never otherwise.
 
+import { isAnalyticsEnabled } from "../public/config.mjs";
 import { isIndexingOpen } from "../public/indexing.mjs";
 
-export const buildCsp =({ dev = false } = {}) => {
+export const buildCsp = ({ dev = false, analytics = false } = {}) => {
   const scriptSrc = ["'self'", "'unsafe-inline'"];
   // The Next dev server needs eval for React refresh; never in a production build.
   if (dev) scriptSrc.push("'unsafe-eval'");
+  const imgSrc = ["'self'", "data:", "blob:"];
+  const connectSrc = ["'self'"];
+  if (analytics) {
+    scriptSrc.push("https://www.googletagmanager.com");
+    imgSrc.push("https://*.google-analytics.com");
+    connectSrc.push("https://*.google-analytics.com", "https://*.analytics.google.com");
+  }
   const directives = [
     ["default-src", ["'self'"]],
     ["base-uri", ["'self'"]],
@@ -15,9 +24,9 @@ export const buildCsp =({ dev = false } = {}) => {
     ["frame-ancestors", ["'none'"]],
     ["script-src", scriptSrc],
     ["style-src", ["'self'", "'unsafe-inline'"]],
-    ["img-src", ["'self'", "data:", "blob:"]],
+    ["img-src", imgSrc],
     ["media-src", ["'self'"]],
-    ["connect-src", ["'self'"]],
+    ["connect-src", connectSrc],
     ["frame-src", ["https://www.youtube-nocookie.com"]],
   ];
   return directives.map(([name, values]) => `${name} ${values.join(" ")}`).join("; ");
@@ -42,7 +51,7 @@ export const buildSecurityHeaders = (env = process.env) => {
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-    { key: "Content-Security-Policy", value: buildCsp({ dev: env.NODE_ENV === "development" }) },
+    { key: "Content-Security-Policy", value: buildCsp({ dev: env.NODE_ENV === "development", analytics: isAnalyticsEnabled(env) }) },
   ];
   // HSTS only for the production target (always HTTPS); no includeSubDomains/preload until the final domain is decided.
   if (env.PUBLIC_DATABASE_TARGET === "production") {
