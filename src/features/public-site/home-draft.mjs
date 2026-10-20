@@ -3,8 +3,8 @@
 const paragraph = text => ({ blocks: [{ type: "paragraph", content: [{ text }] }] });
 export const homeDraft = {
   eyebrow: "TINY OSAKA · BANDUNG",
-  title: "Japanese street food, dari Bandung.",
-  summary: "Kenali Tiny Osaka, restoran Japanese street food dengan layanan khusus delivery di Bandung.",
+  title: "Bulat, panas,\nmeleleh di mulut.",
+  summary: "Takoyaki dengan potongan gurita, saus manis-gurih, mayo Jepang, dan katsuobushi yang menari.",
   body: paragraph("Tiny Osaka berfokus pada Japanese street food dengan layanan khusus delivery di Bandung. Jelajahi cerita kami dan informasi menu yang sudah diterbitkan."),
   menuTitle: "Jelajahi menu Tiny Osaka",
   menuIntro: "Kenali pilihan kami melalui katalog. Nama, deskripsi, dan harga mengikuti informasi produk yang sudah diterbitkan.",

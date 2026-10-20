@@ -4,8 +4,8 @@ import { homeDraft, fillHomeDraft } from "../../src/features/public-site/home-dr
 import { validatePageFields } from "../../src/server/pages/validation.mjs";
 test("home editorial draft completes the Indonesian template with reviewed business facts", () => {
   validatePageFields("home", homeDraft, { ready: true });
-  assert.match(homeDraft.summary, /Bandung/);
-  assert.match(homeDraft.summary, /delivery/);
+  assert.equal(homeDraft.title, "Bulat, panas,\nmeleleh di mulut.");
+  assert.equal(homeDraft.summary, "Takoyaki dengan potongan gurita, saus manis-gurih, mayo Jepang, dan katsuobushi yang menari.");
 });
 test("loading the Indonesian home draft fills blanks without overwriting authored content", () => {
   const existing = { title: "Owner title", summary: "   ", body: { blocks: [] } };
