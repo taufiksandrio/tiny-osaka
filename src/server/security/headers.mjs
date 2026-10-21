@@ -42,6 +42,8 @@ export const buildHeaderRules = (env = process.env) => [
   { source: "/:path*", headers: buildSecurityHeaders(env) },
   { source: "/api/:path*", headers: [NOINDEX] },
   { source: "/admin/:path*", headers: [NOINDEX] },
+  // OAuth discovery documents for the MCP server are machine endpoints, never search results.
+  { source: "/.well-known/:path*", headers: [NOINDEX] },
 ];
 
 export const buildSecurityHeaders = (env = process.env) => {

@@ -23,10 +23,17 @@ const getServices = () => {
       pool.on("error", () => console.error("CMS database connection failed."));
       globalThis[poolKey] = pool;
     }
-    const context = { db: drizzle(pool), authenticate: headers => getAuthService().authenticate(headers) };
-    services = { pages: createCmsPages(context), catalog: createCmsCatalog(context), media: createCmsMedia(context) };
+    const db = drizzle(pool);
+    const context = { db, authenticate: headers => getAuthService().authenticate(headers) };
+    services = { db, pages: createCmsPages(context), catalog: createCmsCatalog(context), media: createCmsMedia(context) };
   }
   return services;
+};
+// MCP: the same services bound to an actor already proven by a validated Bearer token (not a cookie session).
+// Each service still re-reads enabled membership from the database inside its transaction.
+export const createCmsServicesFor = (authenticate, db = getServices().db) => {
+  const context = { db, authenticate };
+  return { pages: createCmsPages(context), catalog: createCmsCatalog(context), media: createCmsMedia(context) };
 };
 export const getCmsPages = () => getServices().pages;
 export const getCmsCatalog = () => getServices().catalog;

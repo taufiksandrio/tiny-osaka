@@ -42,6 +42,13 @@ export const createAuthService = ({ pool, env = process.env, sendEmail } = {}) =
       WHERE cms_auth.request_limits.count<$3 OR cms_auth.request_limits.window_start <= clock_timestamp()-($2 * interval '1 second') RETURNING count`, [key, rule.window, rule.max])).rows;
     return { allowed: rows.length === 1, retryAfter: rows.length ? null : rule.window };
   };
+  // MCP OAuth tokens die with the credential: password change/reset retires every token of that user.
+  // Tolerates databases that do not have the MCP tables yet (undefined_table) and never blocks the password flow.
+  const revokeMcpTokens = async userId => {
+    if (!userId) return;
+    try { await pool.query("UPDATE cms_auth.oauth_tokens SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL", [userId]); }
+    catch (error) { if (error?.code !== "42P01") console.error("MCP token revocation failed."); }
+  };
   const deliver = async (kind, user, url) => {
     if (typeof sendEmail !== "function") throw new Error("Email delivery is not configured.");
     if (kind === "reset" && !user.emailVerified) return;
@@ -54,7 +61,7 @@ export const createAuthService = ({ pool, env = process.env, sendEmail } = {}) =
     emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 6, maxPasswordLength: 128,
       resetPasswordTokenExpiresIn: 900, revokeSessionsOnPasswordReset: true,
       sendResetPassword: typeof sendEmail === "function" ? async ({ user, token }) => deliver("reset", user, `${config.baseURL}/admin/reset-password#token=${encodeURIComponent(token)}`) : undefined,
-      onPasswordReset: async ({ user }) => audit("password_reset", user.id),
+      onPasswordReset: async ({ user }) => { await audit("password_reset", user.id); await revokeMcpTokens(user.id); },
     },
     emailVerification: { sendOnSignUp: false, autoSignInAfterVerification: false,
       sendVerificationEmail: typeof sendEmail === "function" ? async ({ user, url }) => deliver("verify", user,
@@ -164,6 +171,7 @@ export const createAuthService = ({ pool, env = process.env, sendEmail } = {}) =
         if (eventActor) await audit("login_success", eventActor.subject);
       }
       if (event) await audit(event, eventActor?.subject);
+      if (event === "password_changed") await revokeMcpTokens(eventActor?.subject);
       if (path === "/request-password-reset") return resetResponse();
       if (!headers.get("content-type")?.includes("application/json")) return new Response(response.body, { status: response.status, headers });
       const data = await response.json();
@@ -174,5 +182,6 @@ export const createAuthService = ({ pool, env = process.env, sendEmail } = {}) =
       return new Response(JSON.stringify(data), { status: response.status, headers });
     } catch { return failure(503); }
   };
-  return Object.freeze({ handle, authenticate });
+  // Narrow handles for the MCP module: counters (HMAC keys), the app-role pool and the validated origin.
+  return Object.freeze({ handle, authenticate, consume, pool, baseURL: config.baseURL });
 };

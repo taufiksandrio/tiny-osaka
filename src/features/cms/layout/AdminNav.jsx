@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Files, ShieldCheck, ArrowUpRight, UtensilsCrossed, Images } from "lucide-react";
+import { LayoutDashboard, Files, ShieldCheck, ArrowUpRight, UtensilsCrossed, Images, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 const AdminNav = ({ role, onNavigate }) => {
   const pathname = usePathname();
@@ -10,6 +10,7 @@ const AdminNav = ({ role, onNavigate }) => {
     { href: "/admin/pages", title: "Halaman website", icon: Files },
     { href: "/admin/catalog", title: "Katalog menu", icon: UtensilsCrossed },
     { href: "/admin/media", title: "Pustaka media", icon: Images },
+    ...(role === "owner" ? [{ href: "/admin/mcp", title: "Koneksi MCP", icon: Plug }] : []),
     { href: "/admin/account", title: "Akun", icon: ShieldCheck },
   ];
   return <nav aria-label="Navigasi CMS" className="grid gap-1">

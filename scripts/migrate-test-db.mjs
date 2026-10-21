@@ -37,7 +37,7 @@ const checkHistory = async (client) => {
   if (state >= 5) await verifyPageProtection(client, "tiny_osaka_test_owner");
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner", { posterRead: state >= 12 });
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner", { media: state >= 11, preDrop: state < 17, orderLinks: state >= 18 });
-  await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7 });
+  await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7, mcp: state >= 19 });
   await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13, deletion: state >= 15 });
   if (state >= 13) await verifyPublishingProtection(client, "tiny_osaka_test_owner", { identityRestrict: state >= 14 });
   return state;
@@ -64,8 +64,16 @@ try {
       if (await checkHistory(client) !== 18) throw new Error("Migration final state verification failed.");
     });
     console.log("test: applied 0017 (public_read_catalog now returns stored order links); 31 public and 9 auth tables owned by tiny_osaka_test_owner.");
-  } else if (state === 18) {
-    console.log("test: reviewed 0000-0017 already applied; no changes made.");
+    state = 18;
+  }
+  if (state === 18) {
+    // 0018 only adds the four MCP OAuth tables in cms_auth (no content or existing table is touched).
+    await applyReviewedMigration(client, files.slice(18, 19), async () => {
+      if (await checkHistory(client) !== 19) throw new Error("Migration final state verification failed.");
+    });
+    console.log("test: applied 0018 (MCP OAuth tables: oauth_clients, oauth_codes, oauth_tokens, mcp_audit); 13 auth tables owned by tiny_osaka_test_owner.");
+  } else if (state === 19) {
+    console.log("test: reviewed 0000-0018 already applied; no changes made.");
   } else {
     throw new Error("Unexpected migration state.");
   }
