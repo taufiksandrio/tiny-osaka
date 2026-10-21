@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID, randomBytes } from "node:crypto";
 import pg from "pg";
 import { connectTestOwner } from "../../scripts/lib/test-db.mjs";
-import { authTables, verifyAuthProtection } from "../../scripts/lib/auth-protection.mjs";
+import { authTablesWithMcp as authTables, verifyAuthProtection } from "../../scripts/lib/auth-protection.mjs";
 import { getPublicDatabaseConfig } from "../../src/server/public/config.mjs";
 import { provisionAccount } from "../../src/server/auth/provision.mjs";
 import { createAuthService } from "../../src/server/auth/service.mjs";
@@ -32,6 +32,9 @@ export const createAuthFixture = async () => {
       await owner.query("BEGIN");
       await owner.query(`LOCK TABLE ${authTables.map(table => "cms_auth." + table).join(",")} IN ACCESS EXCLUSIVE MODE`);
       await owner.query("ALTER TABLE cms_auth.audit DISABLE TRIGGER USER");
+      await owner.query("ALTER TABLE cms_auth.mcp_audit DISABLE TRIGGER USER");
+      await owner.query("DELETE FROM cms_auth.mcp_audit");
+      await owner.query("DELETE FROM cms_auth.oauth_clients");
       await owner.query("DELETE FROM cms_auth.audit WHERE id=ANY($1::uuid[])", [auditIds]);
       await owner.query("DELETE FROM cms_auth.request_limits WHERE key=ANY($1::text[])", [limitKeys]);
       await owner.query("DELETE FROM cms_auth.verifications WHERE value=ANY($1::text[]) OR identifier LIKE ANY($2::text[])",
@@ -41,7 +44,8 @@ export const createAuthFixture = async () => {
       await owner.query("DELETE FROM cms_auth.verifications WHERE id=ANY($1::text[])", [remaining]);
       await owner.query("DELETE FROM cms_auth.users WHERE id=ANY($1::text[])", [accounts.map(account => account.id)]);
       await owner.query("ALTER TABLE cms_auth.audit ENABLE TRIGGER USER");
-      await verifyAuthProtection(owner, "tiny_osaka_test_owner");
+      await owner.query("ALTER TABLE cms_auth.mcp_audit ENABLE TRIGGER USER");
+      await verifyAuthProtection(owner, "tiny_osaka_test_owner", { mcp: true });
       await owner.query("COMMIT");
       for (const table of authTables) assert.equal(Number((await owner.query(`SELECT count(*) FROM cms_auth.${table}`)).rows[0].count), 0, table);
     } catch (error) { await owner.query("ROLLBACK"); throw error; }

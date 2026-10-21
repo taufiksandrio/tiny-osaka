@@ -32,6 +32,8 @@ export const createCmsMedia = ({ db, authenticate, storage = createLocalStorage(
       const rows = await tx.select().from(s.mediaAssets).orderBy(desc(s.mediaAssets.createdAt), desc(s.mediaAssets.id)).limit(49).offset(offset);
       return { rows: rows.slice(0, 48).map(assetDto), nextOffset: rows.length > 48 ? offset + 48 : null, videoReady: await videoAvailable(env) };
     }),
+    // Metadata only (MCP media_get): never reads file bytes or exposes the storage key.
+    meta: (headers, id) => run(headers, async tx => assetDto(await asset(tx, id))),
     file: (headers, id, stream = false) => run(headers, async tx => { const row = await asset(tx, id); return { asset: assetDto(row), ...(stream ? await storage.delivery(row) : { bytes: await storage.read(row) }) }; }),
     upload: async (headers, body, mime, posterId = null) => {
       let received, registered = false;

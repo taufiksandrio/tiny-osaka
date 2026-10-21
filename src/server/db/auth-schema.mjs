@@ -46,3 +46,41 @@ export const audit = authSchema.table("audit", {
   id: uuid("id").defaultRandom().primaryKey(), userId: text("user_id"), event: text("event").notNull(),
   createdAt: date("created_at").notNull().defaultNow(),
 }, table => [check("auth_event", sql`${table.event} IN ('provision','login_success','login_failed','logout','session_expired','reset_requested','password_reset','password_changed','mfa_enabled','mfa_disabled','mfa_verified','email_verified','rate_limited')`)]);
+
+// MCP Owner OAuth (docs/specs/mcp-owner.md section 6). Public clients only; codes/tokens are stored as SHA-256 hashes.
+// The CMS runtime role has no grant on any of these tables. mcp_audit is append-only (INSERT only for the app role).
+export const mcpEvents = ["client_created", "client_disabled", "authorize_approved", "authorize_denied", "authorize_rejected", "code_issued", "code_replay",
+  "token_issued", "token_refreshed", "token_revoked", "reuse_detected", "tool_call", "request_denied", "rate_limited", "family_revoked"];
+export const oauthClients = authSchema.table("oauth_clients", {
+  id: uuid("id").defaultRandom().primaryKey(), clientId: text("client_id").notNull().unique(), name: text("name").notNull(),
+  redirectUris: text("redirect_uris").array().notNull(), authMethod: text("auth_method").notNull().default("none"),
+  createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
+  disabledAt: date("disabled_at"), createdAt: date("created_at").notNull().defaultNow(),
+}, table => [check("oauth_client_public_only", sql`${table.authMethod} = 'none'`),
+  check("oauth_client_name", sql`char_length(${table.name}) BETWEEN 1 AND 80`),
+  check("oauth_client_redirects", sql`cardinality(${table.redirectUris}) BETWEEN 1 AND 5`)]);
+export const oauthCodes = authSchema.table("oauth_codes", {
+  codeHash: text("code_hash").primaryKey(), clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }), familyId: uuid("family_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(), codeChallenge: text("code_challenge").notNull(), challengeMethod: text("challenge_method").notNull(),
+  scope: text("scope").notNull(), resource: text("resource").notNull(), expiresAt: date("expires_at").notNull(),
+  usedAt: date("used_at"), createdAt: date("created_at").notNull().defaultNow(),
+}, table => [index("oauth_code_expiry").on(table.expiresAt),
+  check("oauth_code_s256", sql`${table.challengeMethod} = 'S256' AND ${table.codeChallenge} ~ '^[A-Za-z0-9_-]{43}$'`),
+  check("oauth_code_ttl", sql`${table.expiresAt} <= ${table.createdAt} + interval '60 seconds'`)]);
+export const oauthTokens = authSchema.table("oauth_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(), tokenHash: text("token_hash").notNull().unique(), kind: text("kind").notNull(),
+  familyId: uuid("family_id").notNull(), clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }), scope: text("scope").notNull(), resource: text("resource").notNull(),
+  expiresAt: date("expires_at").notNull(), familyExpiresAt: date("family_expires_at").notNull(), lastUsedAt: date("last_used_at"),
+  revokedAt: date("revoked_at"), replacedBy: uuid("replaced_by"), createdAt: date("created_at").notNull().defaultNow(),
+}, table => [index("oauth_token_family").on(table.familyId), index("oauth_token_user").on(table.userId), index("oauth_token_client").on(table.clientId),
+  check("oauth_token_kind", sql`${table.kind} IN ('access','refresh')`),
+  check("oauth_token_bounds", sql`${table.expiresAt} <= ${table.familyExpiresAt} AND ${table.familyExpiresAt} <= ${table.createdAt} + interval '24 hours 1 minute'`)]);
+export const mcpAudit = authSchema.table("mcp_audit", {
+  id: uuid("id").defaultRandom().primaryKey(), at: date("at").notNull().defaultNow(), userId: text("user_id"), clientId: text("client_id"),
+  event: text("event").notNull(), tool: text("tool"), target: text("target"), outcome: text("outcome").notNull(), code: text("code"), requestId: text("request_id"),
+}, table => [index("mcp_audit_at").on(table.at),
+  check("mcp_audit_event", sql.raw(`"cms_auth"."mcp_audit"."event" IN (${mcpEvents.map(name => `'${name}'`).join(",")})`)),
+  check("mcp_audit_outcome", sql`${table.outcome} IN ('ok','denied','error')`),
+  check("mcp_audit_lengths", sql`char_length(coalesce(${table.target},'')) <= 200 AND char_length(coalesce(${table.code},'')) <= 64 AND char_length(coalesce(${table.tool},'')) <= 64`)]);

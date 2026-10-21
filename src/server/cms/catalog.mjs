@@ -32,7 +32,13 @@ export const createCmsCatalog = ({ db, authenticate }) => {
     create: (headers, input) => run(headers, {}, async (tx, actor) => ({ product: await createProduct(tx, actor, parseProductInput(input)) })),
     update: (headers, slug, input) => run(headers, {}, async (tx, actor) =>
       ({ product: await updateProduct(tx, actor, slugOf(slug), parseProductInput(input, { update: true })) })),
-    remove: (headers, slug) => run(headers, { owner: true }, async (tx, actor) => {
+    // confirmName (MCP only): compared with the stored name inside the same locked transaction, before anything is deleted.
+    remove: (headers, slug, { confirmName } = {}) => run(headers, { owner: true }, async (tx, actor) => {
+      if (confirmName !== undefined) {
+        const card = (await readCards(tx)).products.find(row => row.slug === slugOf(slug));
+        if (!card) cmsFail("NOT_FOUND", 404);
+        if (typeof confirmName !== "string" || confirmName !== card.name) cmsFail("CONFIRM_NAME_MISMATCH", 400);
+      }
       const result = await deleteProduct(tx, actor, slugOf(slug));
       return { deleted: true, slug: result.slug, name: result.name };
     }),

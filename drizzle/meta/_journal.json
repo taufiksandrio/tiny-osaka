@@ -127,6 +127,13 @@
       "when": 1792394940000,
       "tag": "0017_public_read_order_links",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792570138788,
+      "tag": "0018_mcp_oauth",
+      "breakpoints": true
     }
   ]
 }
