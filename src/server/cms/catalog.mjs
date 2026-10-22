@@ -32,6 +32,20 @@ export const createCmsCatalog = ({ db, authenticate }) => {
     create: (headers, input) => run(headers, {}, async (tx, actor) => ({ product: await createProduct(tx, actor, parseProductInput(input)) })),
     update: (headers, slug, input) => run(headers, {}, async (tx, actor) =>
       ({ product: await updateProduct(tx, actor, slugOf(slug), parseProductInput(input, { update: true })) })),
+    // Internal (MCP only, no HTTP route): partial update. Reads the live card and writes under the SAME lock and
+    // transaction, so keys absent from `fields` keep their stored value. The version used for the compare-and-set
+    // is the card read under the lock; a caller-supplied expectedVersion that differs is a PRODUCT_CONFLICT.
+    merge: (headers, slug, fields) => run(headers, {}, async (tx, actor) => {
+      const { expectedVersion, ...changes } = fields ?? {};
+      if (!Object.keys(changes).length) cmsFail("INVALID_INPUT");
+      const card = (await readCards(tx)).products.find(row => row.slug === slugOf(slug));
+      if (!card) cmsFail("NOT_FOUND", 404);
+      if (expectedVersion !== undefined && expectedVersion !== card.version) cmsFail("PRODUCT_CONFLICT", 409);
+      const merged = { name: card.name, description: card.description, price: card.price, ...changes, expectedVersion: card.version };
+      // AC-8: a new image without alt gets the merged menu name as alt.
+      if (typeof merged.imageAssetId === "string" && (merged.imageAlt === undefined || merged.imageAlt === null)) merged.imageAlt = merged.name;
+      return { product: await updateProduct(tx, actor, slug, parseProductInput(merged, { update: true })) };
+    }),
     // confirmName (MCP only): compared with the stored name inside the same locked transaction, before anything is deleted.
     remove: (headers, slug, { confirmName } = {}) => run(headers, { owner: true }, async (tx, actor) => {
       if (confirmName !== undefined) {

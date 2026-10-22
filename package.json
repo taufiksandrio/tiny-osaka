@@ -13,10 +13,11 @@
     "start:railway": "node --conditions=react-server scripts/check-railway-env.mjs && next start",
     "lint": "eslint . --max-warnings=0",
     "test:e2e": "playwright test",
-    "test:mcp-unit": "node --conditions=react-server --test tests/unit/mcp.test.mjs",
+    "test:mcp-unit": "node --conditions=react-server --test tests/unit/mcp.test.mjs tests/unit/mcp-import.test.mjs tests/unit/mcp-thumbnails.test.mjs",
     "test:mcp-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/mcp.test.mjs",
     "test:security-headers-unit": "node --test tests/unit/security-headers.test.mjs",
     "test:db-config": "node --test tests/unit/db-config.test.mjs",
+    "test:migration-plan-unit": "node --test tests/unit/dev-migration-plan.test.mjs tests/unit/test-migration-plan.test.mjs tests/unit/production-migration-plan.test.mjs",
     "test:db-connection": "node --conditions=react-server --env-file=.env.local --env-file=.env.test.local --test tests/integration/db-connection.test.mjs",
     "db:migrate:test": "node --env-file=.env.test-migrator.local scripts/migrate-test-db.mjs",
     "db:remote-sql:build": "node scripts/build-remote-migrations.mjs",
@@ -49,9 +50,10 @@
     "test:catalog-cards-unit": "node --conditions=react-server --test tests/unit/catalog-product-input.test.mjs tests/unit/catalog-variants-report.test.mjs tests/unit/media-cache-headers.test.mjs tests/unit/catalog-order-links.test.mjs tests/unit/catalog-cards-ui.test.mjs",
     "catalog:variants-report": "node --env-file=.env.cms.local scripts/catalog-variants-report.mjs",
     "test:cms-media-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test tests/integration/cms-media.test.mjs",
-    "test:cms-catalog-security-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/cms-catalog-http.test.mjs tests/integration/cms-catalog-concurrency.test.mjs",
+    "test:cms-catalog-security-db": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local --test --test-concurrency=1 tests/integration/cms-catalog-http.test.mjs tests/integration/cms-catalog-concurrency.test.mjs tests/integration/cms-catalog-merge.test.mjs",
     "security:check": "npm audit --omit=dev --audit-level=high && npm run test:auth-db && npm run test:cms-catalog-security-db && node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/security-check.mjs",
-    "test:cms-media-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-media-qa.mjs"
+    "test:cms-media-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-cms-media-qa.mjs",
+ "test:mcp-upload-e2e": "node --conditions=react-server --env-file=.env.test-migrator.local --env-file=.env.test.local --env-file=.env.cms.local scripts/run-mcp-upload-qa.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.10",

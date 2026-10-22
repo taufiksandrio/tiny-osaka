@@ -1,7 +1,8 @@
-// Staging/production migration runner (reviewed 0000-0017, Option P SQL from drizzle-remote/).
+// Staging/production migration runner (reviewed 0000-0019, Option P SQL from drizzle-remote/).
 // Manual only; never run by build/start/deploy. Dry-run by default; --apply needs the exact confirmation value.
 //   node scripts/migrate-production-db.mjs --target staging            (read-only pre-checks, prints the plan)
-//   TINY_OSAKA_CONFIRM_PRODUCTION_MIGRATION=staging-0017 node scripts/migrate-production-db.mjs --target staging --apply
+//   TINY_OSAKA_CONFIRM_PRODUCTION_MIGRATION=staging-0019 node scripts/migrate-production-db.mjs --target staging --apply
+// Starts from an empty database (applies 0000-0019) or from the previously reviewed 0000-0017 (applies 0018-0019 only).
 // Needs MIGRATION_DATABASE_URL (the *_migrator role) in the operator shell only. It never resets, repairs or deletes.
 import { readFileSync } from "node:fs";
 import { readMigrationFiles } from "drizzle-orm/migrator";
@@ -46,7 +47,7 @@ const verifyFinal = async (client, target) => {
   await verifyPageProtection(client, owner);
   await verifyMediaProtection(client, owner, { posterRead: true });
   await verifyPublicReadProtection(client, owner, { media: true, preDrop: false, orderLinks: true });
-  await verifyAuthProtection(client, owner);
+  await verifyAuthProtection(client, owner, { mcp: true, uploads: true });
   await verifyCmsProtection(client, owner, { otherDatabase: null });
   await verifyPublishingProtection(client, owner, { identityRestrict: true });
 };
@@ -69,6 +70,13 @@ const precheckRoles = async (client, target) => {
   }
 };
 
+// Before adding 0018-0019 to a database already at 0000-0017, its auth schema must still be the reviewed 9-table one.
+const verifyBase = async (client, target) => {
+  const owner = ownerOf(target);
+  await verifyCatalogProtection(client, owner, 18);
+  await verifyAuthProtection(client, owner, { mcp: false });
+};
+
 let client;
 try {
   const target = resolveTarget(process.argv.slice(2));
@@ -89,21 +97,23 @@ try {
   await precheckRoles(client, target);
   console.log(`${target}: migrator identity, app/cms roles and PUBLIC isolation verified.`);
   const { state } = await readState(client, target);
-  if (state === 18) {
+  if (state === 20) {
     await verifyFinal(client, target);
-    console.log(`${target}: reviewed 0000-0017 already applied and verified; no changes made.`);
+    console.log(`${target}: reviewed 0000-0019 already applied and verified; no changes made.`);
   } else if (!apply) {
-    console.log(`${target}: dry-run OK. Database is empty; --apply would create the drizzle metadata and apply 0000-0017 in ONE transaction.`);
+    if (state === 18) await verifyBase(client, target);
+    console.log(`${target}: dry-run OK. Database is ${state === 0 ? "empty; --apply would create the drizzle metadata and apply 0000-0019" : "at 0000-0017; --apply would apply 0018-0019"} in ONE transaction.`);
   } else {
-    await applyReviewedMigration(client, files, async () => {
-      if ((await readState(client, target)).state !== 18) throw new Error("Migration final state verification failed.");
+    if (state === 18) await verifyBase(client, target);
+    await applyReviewedMigration(client, state === 0 ? files : files.slice(18), async () => {
+      if ((await readState(client, target)).state !== 20) throw new Error("Migration final state verification failed.");
       await verifyFinal(client, target);
-    }, async () => {
+    }, state === 0 ? async () => {
       // Same objects Drizzle's migrator creates, owned by the *_owner role through SET ROLE.
       await client.query('CREATE SCHEMA "drizzle"');
       await client.query('CREATE TABLE "drizzle"."__drizzle_migrations" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)');
-    });
-    console.log(`${target}: applied 0000-0017; 31 public and 9 auth tables owned by ${ownerOf(target)}.`);
+    } : undefined);
+    console.log(`${target}: applied ${state === 0 ? "0000-0019" : "0018-0019"}; 31 public and 14 auth tables owned by ${ownerOf(target)}.`);
   }
 } catch (error) {
   console.error(error instanceof RemoteMigrationPlanError || error instanceof RemoteDatabaseGuardError

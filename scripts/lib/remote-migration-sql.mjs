@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 // The copies live in drizzle-remote/ and are regenerated/verified from drizzle/ by this transform.
 export const sourceFolder = fileURLToPath(new URL("../../drizzle", import.meta.url));
 export const remoteFolder = fileURLToPath(new URL("../../drizzle-remote", import.meta.url));
-export const EXPECTED_DISPATCH_BRANCHES = 9;
-// Staging/production stay on the reviewed 0000-0017 plan. Later migrations (0018 MCP OAuth) are excluded
-// until a separate production approval extends this limit together with production-migration-plan.mjs.
-export const REMOTE_MIGRATION_LIMIT = 18;
+export const EXPECTED_DISPATCH_BRANCHES = 11; // 9 in 0000-0017, one each in 0018 and 0019
+// Staging/production cover the reviewed 0000-0019 plan (0018 MCP OAuth, 0019 MCP uploads). Extending it again needs a separate approval
+// together with production-migration-plan.mjs.
+export const REMOTE_MIGRATION_LIMIT = 20;
 export const remoteJournal = text => { const journal = JSON.parse(text); return { ...journal, entries: journal.entries.slice(0, REMOTE_MIGRATION_LIMIT) }; };
 
 const branch = /^[ \t]*ELSIF current_user='tiny_osaka_dev_owner' THEN \w+\s*:=\s*'tiny_osaka_dev_(?:app|cms)';/;

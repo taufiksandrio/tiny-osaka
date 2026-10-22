@@ -39,6 +39,8 @@ export const reviewedMigrations = Object.freeze([
     hash: "adf41753af20b1d3db3123d7ce2a1d11b8b16defefc28a06e4c6477c50f7eaa2" }),
   Object.freeze({ tag: "0018_mcp_oauth", when: 1792570138788,
     hash: "4a330f9ecbf8e30fbd02cb2dc0fbbb092d804282d95a48d8977ef9bbf2ab5ad1" }),
+  Object.freeze({ tag: "0019_mcp_uploads", when: 1792575079972,
+    hash: "d90b422ecce15b5d578d85b008c42df1edf9851837b670b6c88f0ecbb700329e" }),
 ]);
 export const foundationTables = Object.freeze(["catalog_revisions", "categories", "category_entries", "category_translations",
   "product_entries", "product_translations", "products"].sort());
@@ -54,11 +56,11 @@ export const deletionTables = Object.freeze(["catalog_deletion_log"]);
 export const tablesForState = length => [...allTables.filter(name => length >= 13 || !["publication_jobs", "publication_events"].includes(name)),
   ...(length >= 15 ? deletionTables : [])].sort();
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new TestMigrationPlanError("Refusing test migration: files, history or objects differ from the reviewed 0000-0018 plan."); };
+const refuse = () => { throw new TestMigrationPlanError("Refusing test migration: files, history or objects differ from the reviewed 0000-0019 plan."); };
 
 export const validateTestMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 19 || !Array.isArray(files) || files.length !== 19) refuse();
+    journal.entries?.length !== 20 || !Array.isArray(files) || files.length !== 20) refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];
@@ -71,7 +73,7 @@ export const validateTestMigrationFiles = (journal, files) => {
 // Only reviewed catalog/media states (including the forward intermediate) are allowed.
 // Empty/uninitialized DBs need a separately approved bootstrap operation.
 export const validateTestMigrationState = ({ history, objects, relations, metadataOwner }) => {
-  if (!Array.isArray(history) || ![12, 13, 14, 15, 16, 17, 18, 19].includes(history.length) ||
+  if (!Array.isArray(history) || ![12, 13, 14, 15, 16, 17, 18, 19, 20].includes(history.length) ||
     !Array.isArray(objects) || !Array.isArray(relations) || metadataOwner !== "tiny_osaka_test_owner") refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== reviewedMigrations[idx].hash || Number(row.created_at) !== reviewedMigrations[idx].when) refuse();

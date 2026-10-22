@@ -8,7 +8,9 @@ export const FAMILY_TTL_MS = 24 * 60 * 60 * 1000;
 export const CODE_TTL_MS = 60 * 1000;
 export const SCOPES = Object.freeze(["mcp:read", "mcp:write"]);
 
-const PREFIX = Object.freeze({ access: "tomcp_at_", refresh: "tomcp_rt_", code: "tomcp_ac_" });
+const PREFIX = Object.freeze({ access: "tomcp_at_", refresh: "tomcp_rt_", code: "tomcp_ac_",
+  // Single-use photo upload credentials (agent URL and user page); stored only as hashes.
+  uploadAgent: "tomcp_ug_", uploadUser: "tomcp_uu_" });
 const SHAPE = Object.freeze(Object.fromEntries(Object.entries(PREFIX).map(([kind, prefix]) => [kind, new RegExp(`^${prefix}[A-Za-z0-9_-]{43}$`)])));
 
 export const generateSecret = kind => PREFIX[kind] + randomBytes(32).toString("base64url");

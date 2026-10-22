@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgSchema, text, timestamp, boolean, integer, uuid, index, check, unique } from "drizzle-orm/pg-core";
+import { pgSchema, text, timestamp, boolean, integer, bigint, uuid, index, check, unique } from "drizzle-orm/pg-core";
 
 export const authSchema = pgSchema("cms_auth");
 const date = name => timestamp(name, { withTimezone: true });
@@ -50,7 +50,8 @@ export const audit = authSchema.table("audit", {
 // MCP Owner OAuth (docs/specs/mcp-owner.md section 6). Public clients only; codes/tokens are stored as SHA-256 hashes.
 // The CMS runtime role has no grant on any of these tables. mcp_audit is append-only (INSERT only for the app role).
 export const mcpEvents = ["client_created", "client_disabled", "authorize_approved", "authorize_denied", "authorize_rejected", "code_issued", "code_replay",
-  "token_issued", "token_refreshed", "token_revoked", "reuse_detected", "tool_call", "request_denied", "rate_limited", "family_revoked"];
+  "token_issued", "token_refreshed", "token_revoked", "reuse_detected", "tool_call", "request_denied", "rate_limited", "family_revoked",
+  "upload_requested", "upload_completed", "upload_rejected"];
 export const oauthClients = authSchema.table("oauth_clients", {
   id: uuid("id").defaultRandom().primaryKey(), clientId: text("client_id").notNull().unique(), name: text("name").notNull(),
   redirectUris: text("redirect_uris").array().notNull(), authMethod: text("auth_method").notNull().default("none"),
@@ -84,3 +85,19 @@ export const mcpAudit = authSchema.table("mcp_audit", {
   check("mcp_audit_event", sql.raw(`"cms_auth"."mcp_audit"."event" IN (${mcpEvents.map(name => `'${name}'`).join(",")})`)),
   check("mcp_audit_outcome", sql`${table.outcome} IN ('ok','denied','error')`),
   check("mcp_audit_lengths", sql`char_length(coalesce(${table.target},'')) <= 200 AND char_length(coalesce(${table.code},'')) <= 64 AND char_length(coalesce(${table.tool},'')) <= 64`)]);
+
+// MCP photo uploads (docs/specs/mcp-owner-v2.md Q-5). One row = one upload request with two single-use paths (agent URL 5 min, user page
+// 15 min). Only SHA-256 hashes of the 256-bit tokens are stored. The app role may INSERT and UPDATE only the outcome columns.
+export const mcpUploads = authSchema.table("mcp_uploads", {
+  id: uuid("id").defaultRandom().primaryKey(), userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  clientId: text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  agentTokenHash: text("agent_token_hash").notNull().unique(), userTokenHash: text("user_token_hash").notNull().unique(),
+  target: text("target"), mimeDeclared: text("mime_declared"), byteSizeDeclared: bigint("byte_size_declared", { mode: "number" }),
+  assetId: uuid("asset_id"), status: text("status").notNull().default("pending"), expiresAt: date("expires_at").notNull(),
+  agentUsedAt: date("agent_used_at"), userUsedAt: date("user_used_at"), createdAt: date("created_at").notNull().defaultNow(), failureCode: text("failure_code"),
+}, table => [index("mcp_uploads_user").on(table.userId, table.createdAt),
+  check("mcp_upload_one_path", sql`${table.agentUsedAt} IS NULL OR ${table.userUsedAt} IS NULL`),
+  check("mcp_upload_status", sql`${table.status} IN ('pending','done','expired','rejected')`),
+  check("mcp_upload_mime", sql`${table.mimeDeclared} IS NULL OR ${table.mimeDeclared} IN ('image/jpeg','image/png','image/webp')`),
+  check("mcp_upload_size", sql`${table.byteSizeDeclared} IS NULL OR ${table.byteSizeDeclared} BETWEEN 1 AND 10000000`),
+  check("mcp_upload_target", sql`char_length(coalesce(${table.target},'')) <= 200`)]);

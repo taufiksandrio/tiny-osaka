@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID, randomBytes } from "node:crypto";
 import pg from "pg";
 import { connectTestOwner } from "../../scripts/lib/test-db.mjs";
-import { authTablesWithMcp as authTables, verifyAuthProtection } from "../../scripts/lib/auth-protection.mjs";
+import { authTablesWithMcp, hasUploadsTable, verifyAuthProtection } from "../../scripts/lib/auth-protection.mjs";
 import { getPublicDatabaseConfig } from "../../src/server/public/config.mjs";
 import { provisionAccount } from "../../src/server/auth/provision.mjs";
 import { createAuthService } from "../../src/server/auth/service.mjs";
@@ -10,6 +10,8 @@ import { createAuthService } from "../../src/server/auth/service.mjs";
 export const createAuthFixture = async () => {
   const owner = await connectTestOwner();
   await owner.query("SELECT pg_advisory_lock(76210988)");
+  // mcp_uploads exists only after migration 0019; the fixture works before and after it.
+  const authTables = await hasUploadsTable(owner) ? authTablesWithMcp : authTablesWithMcp.filter(name => name !== "mcp_uploads");
   for (const table of authTables) assert.equal(Number((await owner.query(`SELECT count(*) FROM cms_auth.${table}`)).rows[0].count), 0, table);
   const accounts = [], emails = [], password = "QA-only-" + randomBytes(24).toString("hex");
   const pool = new pg.Pool(getPublicDatabaseConfig({ ...process.env, PUBLIC_DATABASE_TARGET: "test" }));

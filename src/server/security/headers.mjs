@@ -37,6 +37,8 @@ export const isIndexingActive = (env = process.env) => isIndexingOpen(env);
 
 const NOINDEX = { key: "X-Robots-Tag", value: "noindex, nofollow" };
 
+const UPLOAD_PRIVACY = [NOINDEX, { key: "Cache-Control", value: "no-store" }, { key: "Referrer-Policy", value: "no-referrer" }];
+
 // Route rules for next.config.mjs. /api and /admin are permanently noindex on every target (AC-15).
 export const buildHeaderRules = (env = process.env) => [
   { source: "/:path*", headers: buildSecurityHeaders(env) },
@@ -44,6 +46,9 @@ export const buildHeaderRules = (env = process.env) => [
   { source: "/admin/:path*", headers: [NOINDEX] },
   // OAuth discovery documents for the MCP server are machine endpoints, never search results.
   { source: "/.well-known/:path*", headers: [NOINDEX] },
+  // Photo upload URLs carry a single-use secret: never cached, never sent as a Referer, never indexed (Q-5 AC-29).
+  { source: "/api/mcp/upload/:token*", headers: UPLOAD_PRIVACY },
+  { source: "/admin/mcp/upload/:token*", headers: UPLOAD_PRIVACY },
 ];
 
 export const buildSecurityHeaders = (env = process.env) => {
