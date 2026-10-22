@@ -7,6 +7,10 @@ export const MCP_RULES = Object.freeze({
   revoke: Object.freeze({ window: 60, max: 20 }),
   call: Object.freeze({ window: 60, max: 60 }),
   write: Object.freeze({ window: 60, max: 20 }),
+  // Upload requests per Owner (AC-30) and wrong/unknown upload token attempts per source.
+  upload: Object.freeze({ window: 60, max: 10 }),
+  uploadToken: Object.freeze({ window: 60, max: 20 }),
+  uploadTokenAll: Object.freeze({ window: 60, max: 200 }),
 });
 
 export const createLimits = ({ consume, audit }) => {

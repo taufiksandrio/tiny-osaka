@@ -5,7 +5,7 @@ export class RemoteMigrationPlanError extends Error {}
 export const remoteTargetNames = Object.freeze(["staging", "production"]);
 export const ownerOf = target => `tiny_osaka_${target}_owner`;
 // Operator must type this exact value (target + last migration number) to apply.
-export const confirmationFor = target => `${target}-0017`;
+export const confirmationFor = target => `${target}-0019`;
 export const CONFIRM_ENV = "TINY_OSAKA_CONFIRM_PRODUCTION_MIGRATION";
 
 // Pinned hashes of drizzle-remote/*.sql (Option P: dev/test files plus staging/production owner branches).
@@ -29,14 +29,16 @@ export const remoteMigrations = Object.freeze([
   ["0015_catalog_order_links", 1792216380000, "64c694563b15638beb782fbdeb0b979884372eef6e4660f5bc3ec2e54c9fa403"],
   ["0016_drop_language_columns", 1792308540559, "0706689a7a60841ccd51c2bec550755bacd35bd0c22463d76ba9c48f81eb1255"],
   ["0017_public_read_order_links", 1792394940000, "adf41753af20b1d3db3123d7ce2a1d11b8b16defefc28a06e4c6477c50f7eaa2"],
+  ["0018_mcp_oauth", 1792570138788, "bfe28b583eed085f25fccfe7f8577f596367b3a9ba37a8dd12124f7ff219ca0f"],
+  ["0019_mcp_uploads", 1792575079972, "a7f5c4e58dcf4b44dbdd2150f19b0bcab0f03c9e5043a055e3f67fc7b4723075"],
 ].map(([tag, when, hash]) => Object.freeze({ tag, when, hash })));
 
 const metadataNames = ["__drizzle_migrations", "__drizzle_migrations_id_seq", "__drizzle_migrations_pkey"];
-const refuse = () => { throw new RemoteMigrationPlanError("Refusing migration: files, history or objects differ from the reviewed 0000-0017 remote plan."); };
+const refuse = () => { throw new RemoteMigrationPlanError("Refusing migration: files, history or objects differ from the reviewed 0000-0019 remote plan."); };
 
 export const validateRemoteMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    journal.entries?.length !== 18 || !Array.isArray(files) || files.length !== 18) refuse();
+    journal.entries?.length !== 20 || !Array.isArray(files) || files.length !== 20) refuse();
   for (const [idx, expected] of remoteMigrations.entries()) {
     const entry = journal.entries[idx], file = files[idx];
     if (!entry || !file || entry.idx !== idx || entry.version !== "7" || entry.tag !== expected.tag ||
@@ -45,8 +47,10 @@ export const validateRemoteMigrationFiles = (journal, files) => {
   }
 };
 
-// Returns 0 for a completely empty database (first apply) or 18 for the fully applied reviewed plan.
-// Anything in between or any unexpected object is refused: this runner never repairs, resets or deletes.
+// Returns 0 for a completely empty database (apply 0000-0019), 18 for a database at the previously reviewed
+// 0000-0017 (apply 0018-0019 on top) or 20 for the fully applied reviewed plan. 0018 and 0019 only touch the
+// cms_auth schema, so the public table set is identical for 18 and 20.
+// Anything else (including 19) or any unexpected object is refused: this runner never repairs, resets or deletes.
 export const validateRemoteMigrationState = ({ target, history, objects, relations, schemas, metadataOwner }) => {
   const owner = ownerOf(target);
   if (!Array.isArray(objects) || !Array.isArray(relations) || !Array.isArray(schemas)) refuse();
@@ -55,13 +59,13 @@ export const validateRemoteMigrationState = ({ target, history, objects, relatio
     if (objects.length || relations.length || schemas.length) refuse();
     return 0;
   }
-  if (!Array.isArray(history) || history.length !== 18 || metadataOwner !== owner) refuse();
+  if (!Array.isArray(history) || ![18, 20].includes(history.length) || metadataOwner !== owner) refuse();
   for (const [idx, row] of history.entries()) {
     if (row.hash !== remoteMigrations[idx].hash || Number(row.created_at) !== remoteMigrations[idx].when) refuse();
   }
-  if (JSON.stringify(objects.map(row => row.name)) !== JSON.stringify(tablesForState(18)) ||
+  if (JSON.stringify(objects.map(row => row.name)) !== JSON.stringify(tablesForState(history.length)) ||
     objects.some(row => row.owner !== owner || row.kind !== "r") ||
     JSON.stringify(relations.map(row => row.name)) !== JSON.stringify(metadataNames) ||
     relations.some((row, idx) => row.owner !== owner || row.kind !== ["r", "S", "i"][idx])) refuse();
-  return 18;
+  return history.length;
 };

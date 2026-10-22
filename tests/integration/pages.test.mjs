@@ -411,8 +411,8 @@ test("all twenty-four tables remain empty with exact protection definitions and 
     for (const table of contentTables) assert.equal((await client.query(`SELECT count(*)::integer AS total FROM public.${table}`)).rows[0].total, 0);
     await verifyCatalogProtection(client, "tiny_osaka_test_owner");
     await verifyPageProtection(client, "tiny_osaka_test_owner");
-    // Tepat 18: migrasi 0001..0017 (0017 = public_read_catalog memuat link order) sudah diterapkan di DB test lokal.
-    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 18);
+    // Tepat 20: migrasi 0001..0019 (0018 = mcp_oauth, 0019 = mcp_uploads) sudah diterapkan di DB test lokal.
+    assert.equal(Number((await client.query("SELECT count(*) FROM drizzle.__drizzle_migrations")).rows[0].count), 20);
   } finally { await client.end(); }
 });
 

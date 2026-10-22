@@ -12,16 +12,16 @@ const AdminHeader = ({ actor, onOpenNav, navTriggerRef }) => {
   const section = pathname.startsWith("/admin/media") ? "Pustaka media" : pathname.startsWith("/admin/catalog") ? "Katalog menu" : pathname.startsWith("/admin/pages") ? "Halaman website" : pathname.startsWith("/admin/account") ? "Akun" : "Dashboard";
   return <header className="sticky top-0 z-30 flex min-h-18 items-center justify-between gap-3 border-b border-border bg-card/95 px-4 backdrop-blur sm:px-8">
     <div className="flex min-w-0 items-center gap-3">
-      <Button ref={navTriggerRef} variant="outline" size="icon" className="lg:hidden" aria-label="Buka navigasi" onClick={onOpenNav}><Menu aria-hidden="true" /></Button>
+      <Button ref={navTriggerRef} variant="outline" size="icon" className="size-11 lg:hidden" aria-label="Buka navigasi" onClick={onOpenNav}><Menu aria-hidden="true" /></Button>
       <Breadcrumb><BreadcrumbList>
-        <BreadcrumbItem className="hidden sm:block"><BreadcrumbLink asChild><Link href="/admin">CMS</Link></BreadcrumbLink></BreadcrumbItem>
+        <BreadcrumbItem className="hidden sm:block"><BreadcrumbLink asChild><Link href="/admin" className="inline-flex min-h-11 min-w-11 items-center justify-center">CMS</Link></BreadcrumbLink></BreadcrumbItem>
         <BreadcrumbSeparator className="hidden sm:block" />
         <BreadcrumbItem><BreadcrumbPage>{section}</BreadcrumbPage></BreadcrumbItem>
       </BreadcrumbList></Breadcrumb>
     </div>
     <div className="flex shrink-0 items-center gap-2 sm:gap-3">
       <DropdownMenu modal={false}><DropdownMenuTrigger asChild>
-        <Button variant="ghost" aria-label={`Menu akun ${actor.name}`} className="gap-2 px-2">
+        <Button variant="ghost" aria-label={`Menu akun ${actor.name}`} className="min-h-11 min-w-11 gap-2 px-2">
           <span className="flex size-8 items-center justify-center rounded-full bg-secondary"><UserRound className="size-4" aria-hidden="true" /></span>
           <span className="hidden max-w-36 truncate sm:block">{actor.name}</span>
         </Button>

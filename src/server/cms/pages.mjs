@@ -1,5 +1,5 @@
 import { saveBatch } from "./batch.mjs";
-import { currentPageRoot, readCurrentPage, saveCurrentPage } from "./current-pages.mjs";
+import { currentPageRoot, readCurrentPage, saveCurrentPage, mergeCurrentPage } from "./current-pages.mjs";
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
@@ -39,6 +39,9 @@ export const createCmsPages = ({ db, authenticate }) => {
     }),
     current: (headers, pageKey) => run(headers, (tx, actor) => readCurrentPage(tx, pageKey, createCmsPages({ db: tx, authenticate: async () => actor }))),
     saveCurrent: (headers, input) => run(headers, (tx, actor) => saveCurrentPage(tx, actor, input, createCmsPages({ db: tx, authenticate: async () => actor }))),
+    // Internal (MCP only): partial merge; expected revision/version are read under the page lock.
+    merge: (headers, pageKey, fields, mediaOperations, expected = {}) => run(headers, (tx, actor) =>
+      mergeCurrentPage(tx, actor, { pageKey, fields, mediaOperations, ...expected }, createCmsPages({ db: tx, authenticate: async () => actor }))),
     batch: (headers, input) => run(headers, (tx, actor) => saveBatch(tx, actor, input)),
     list: headers => run(headers, async tx => {
       const publications = await tx.select().from(s.pagePublications);

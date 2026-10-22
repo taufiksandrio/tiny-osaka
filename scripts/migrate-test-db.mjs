@@ -37,7 +37,7 @@ const checkHistory = async (client) => {
   if (state >= 5) await verifyPageProtection(client, "tiny_osaka_test_owner");
   if (state >= 6) await verifyMediaProtection(client, "tiny_osaka_test_owner", { posterRead: state >= 12 });
   if (state >= 7) await verifyPublicReadProtection(client, "tiny_osaka_test_owner", { media: state >= 11, preDrop: state < 17, orderLinks: state >= 18 });
-  await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7, mcp: state >= 19 });
+  await verifyAuthProtection(client, "tiny_osaka_test_owner", { absent: state === 7, mcp: state >= 19, uploads: state >= 20 });
   await verifyCmsProtection(client, "tiny_osaka_test_owner", { catalog: state >= 10, media: state >= 11, publishing: state >= 13, deletion: state >= 15 });
   if (state >= 13) await verifyPublishingProtection(client, "tiny_osaka_test_owner", { identityRestrict: state >= 14 });
   return state;
@@ -72,8 +72,16 @@ try {
       if (await checkHistory(client) !== 19) throw new Error("Migration final state verification failed.");
     });
     console.log("test: applied 0018 (MCP OAuth tables: oauth_clients, oauth_codes, oauth_tokens, mcp_audit); 13 auth tables owned by tiny_osaka_test_owner.");
-  } else if (state === 19) {
-    console.log("test: reviewed 0000-0018 already applied; no changes made.");
+    state = 19;
+  }
+  if (state === 19) {
+    // 0019 only adds cms_auth.mcp_uploads and widens the mcp_audit event list (no content or existing table data is touched).
+    await applyReviewedMigration(client, files.slice(19, 20), async () => {
+      if (await checkHistory(client) !== 20) throw new Error("Migration final state verification failed.");
+    });
+    console.log("test: applied 0019 (MCP photo uploads: mcp_uploads, upload_* audit events); 14 auth tables owned by tiny_osaka_test_owner.");
+  } else if (state === 20) {
+    console.log("test: reviewed 0000-0019 already applied; no changes made.");
   } else {
     throw new Error("Unexpected migration state.");
   }

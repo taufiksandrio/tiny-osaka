@@ -56,9 +56,10 @@ const refuse = () => { throw new DevMigrationPlanError("Refusing dev migration: 
 
 export const validateDevMigrationFiles = (journal, files) => {
   if (journal?.version !== "7" || journal.dialect !== "postgresql" ||
-    ![18, 19].includes(journal.entries?.length) || !Array.isArray(files) || files.length !== journal.entries.length) refuse();
-  // 0018 (MCP OAuth tables) is test-only until dev is separately approved; this runner never applies it.
-  if (journal.entries.length === 19 && journal.entries[18].tag !== "0018_mcp_oauth") refuse();
+    ![18, 19, 20].includes(journal.entries?.length) || !Array.isArray(files) || files.length !== journal.entries.length) refuse();
+  // 0018 (MCP OAuth tables) and 0019 (MCP uploads) are test-only until dev is separately approved; this runner never applies them.
+  if (journal.entries.length >= 19 && journal.entries[18].tag !== "0018_mcp_oauth") refuse();
+  if (journal.entries.length === 20 && journal.entries[19].tag !== "0019_mcp_uploads") refuse();
   for (const [idx, expected] of reviewedMigrations.entries()) {
     const entry = journal.entries[idx];
     const file = files[idx];

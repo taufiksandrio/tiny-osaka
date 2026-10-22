@@ -6,7 +6,8 @@ import { wwwAuthenticate } from "./auth.mjs";
 import { newRequestId } from "./audit.mjs";
 import { hasScope } from "./tokens.mjs";
 import { limitedResponse } from "./limits.mjs";
-import { tools, listTools, parseToolInput, describeFailure } from "./tools.mjs";
+import { tools, listTools, parseToolInput, describeFailure, imagesOf } from "./tools.mjs";
+import { createThumbnails } from "./thumbnails.mjs";
 
 // Stateless Streamable HTTP endpoint (POST only; JSON responses). GET/DELETE answer 405 because no sessions or server-initiated
 // streams exist. Order: Origin -> method -> Bearer + current Owner membership -> rate limit -> body -> tool.
@@ -38,9 +39,10 @@ const withTimeout = (promise, ms) => {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("timeout"), { timeout: true })), ms); })]).finally(() => clearTimeout(timer));
 };
-const result = (value, isError = false) => ({ content: [{ type: "text", text: JSON.stringify(value) }], ...(isError ? { isError: true } : {}) });
+const result = (value, isError = false) => ({ content: [{ type: "text", text: JSON.stringify(value) },
+  ...imagesOf(value).map(({ data, mimeType }) => ({ type: "image", data, mimeType }))], ...(isError ? { isError: true } : {}) });
 
-export const createMcpHandler = ({ baseURL, bearer, limits, audit, cmsFor, refreshPublic = () => {} }) => {
+export const createMcpHandler = ({ baseURL, bearer, limits, audit, cmsFor, uploads, imports, thumbnails = createThumbnails(), refreshPublic = () => {} }) => {
   const callTool = async (actor, params, requestId) => {
     const name = params?.name;
     const base = { userId: actor.subject, clientId: actor.clientId, event: "tool_call", tool: typeof name === "string" ? name : "unknown", requestId };
@@ -56,7 +58,7 @@ export const createMcpHandler = ({ baseURL, bearer, limits, audit, cmsFor, refre
     let input;
     try {
       input = parseToolInput(name, params.arguments);
-      const output = await withTimeout(definition.run(cmsFor(actor), new Headers(), input), CALL_TIMEOUT_MS);
+      const output = await withTimeout(definition.run(cmsFor(actor), new Headers(), input, { actor, uploads, imports, thumbnails }), CALL_TIMEOUT_MS);
       if (definition.refresh) { try { refreshPublic(); } catch { console.error("Public cache refresh failed."); } }
       await audit.safe({ ...base, target: definition.target(input, output), outcome: "ok" });
       return result(output);
@@ -97,6 +99,11 @@ export const createMcpHandler = ({ baseURL, bearer, limits, audit, cmsFor, refre
       if (parsed.body.method === "tools/call" && typeof parsed.body.params?.name === "string" && Object.hasOwn(tools, parsed.body.params.name) && tools[parsed.body.params.name].write) {
         const writes = await limits.hit("write", "user:" + actor.subject, { userId: actor.subject, clientId: actor.clientId });
         if (!writes.allowed) return limitedResponse(writes.retryAfter);
+      }
+      if (parsed.body.method === "tools/call" && ["media_upload_request", "media_import_url"].includes(parsed.body.params?.name)) {
+        // AC-30: upload requests are limited per Owner (429 + Retry-After), on top of the general write limit.
+        const uploadsLimit = await limits.hit("upload", "user:" + actor.subject, { userId: actor.subject, clientId: actor.clientId });
+        if (!uploadsLimit.allowed) return limitedResponse(uploadsLimit.retryAfter);
       }
       const server = buildServer(actor, requestId);
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });

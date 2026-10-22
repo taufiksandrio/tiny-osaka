@@ -69,6 +69,7 @@ Semua AC bisa dites. Galat memakai kode CMS yang ada (`describeFailure`); tidak 
 - AC-15: Pemasangan foto halaman lewat `mediaOperations` (`mediaSave`/`mediaRemove`) tetap didukung; bila `alt` tidak diberikan, alt = judul halaman (`fields.title` hasil merge). Bila judul kosong -> `INVALID_INPUT` dengan field yang jelas, tidak mengarang alt.
 - AC-16: Halaman yang belum pernah dibuat (versi 0, revisi null) bisa diisi lewat `page_update` tanpa langkah `page_get`.
 - AC-17: Keputusan alias (Q-C): `page_save` v1 dipertahankan atau dihapus sesuai jawaban user; apa pun hasilnya, `tools/list` konsisten dengan skema.
+  - Catatan implementasi: `page_save` (alias) kini merge parsial seperti `page_update` (perubahan dari v1 yang mengganti seluruh isi); kunci di luar templat ditolak `INVALID_CONTENT` (kode validasi halaman yang ada).
 
 ### Q-4: Deskripsi tool
 - AC-18: Deskripsi setiap tool memuat tiga bagian jelas: "Wajib", "Otomatis/opsional", dan "Contoh singkat" (data uji, bukan data Tiny Osaka). Tes memastikan setiap tool punya ketiga bagian dan menyebut nama field yang sesuai skema.
@@ -96,6 +97,7 @@ Semua AC bisa dites. Galat memakai kode CMS yang ada (`describeFailure`); tidak 
 - AC-36: Redirect maks 3; setiap hop divalidasi ulang penuh (skema, port, DNS, IP). Redirect ke `http:`, IP private, atau lebih dari 3 hop ditolak.
 - AC-37: Timeout total 15 detik; aliran dipotong tegas pada 10.000.000 byte (Content-Length yang melebihi ditolak lebih awal, dan pemotongan tetap berlaku bila header bohong); tanpa kompresi (`Accept-Encoding: identity`); Content-Type harus `image/*` dan isi divalidasi `sharp`/kebijakan media yang ada; hanya JPG/PNG/WebP diterima.
 - AC-38: Tautan berbagi Google Drive dan Dropbox diubah ke tautan unduhan langsung hanya untuk pola host yang dikenali (pola persisnya diverifikasi BE saat implementasi, tidak ditebak di spec); hasil ubahan tetap melewati AC-33..37. Halaman HTML (mis. peringatan Drive) ditolak sebagai bukan gambar.
+  - Catatan implementasi: pola resmi tidak dapat diverifikasi (tanpa akses dokumentasi saat build), sehingga konversi DINONAKTIFKAN: URL pada host berbagi Drive/Dropbox ditolak `SHARE_LINK_UNSUPPORTED` dan tidak diubah. Aktifkan kembali hanya setelah pola diverifikasi dari dokumentasi resmi.
 - AC-39: Hasil impor lewat `createCmsMedia.upload` yang sama (AC-23), mengembalikan `assetDto` (+ thumbnail bila diminta). Audit `media_imported` hanya mencatat host (bukan path/query/URL penuh); URL penuh tidak masuk log, galat, atau DB.
 - AC-40: Rate limit sama dengan AC-30 (dihitung bersama); maks 1 impor aktif per Owner dan global kecil (mis. 2) untuk melindungi VPS.
 - AC-41: Fitur dapat dimatikan lewat satu variabel lingkungan server-only (default MATI di produksi sampai disetujui), tanpa memengaruhi tool lain.

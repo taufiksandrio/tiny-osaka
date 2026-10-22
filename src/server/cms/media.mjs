@@ -10,6 +10,7 @@ import { cmsFail, exactInput } from "./request-policy.mjs";
 
 export const assetDto = row => ({ id: row.id, kind: row.kind, mime: row.mime, width: row.width, height: row.height,
   byteSize: row.byteSize, durationMs: row.durationMs, posterId: row.posterId, externalId: row.externalId });
+const datedDto = row => ({ ...assetDto(row), createdAt: new Date(row.createdAt).toISOString() });
 export const createCmsMedia = ({ db, authenticate, storage = createLocalStorage(), env = process.env }) => {
   const run = async (headers, callback) => {
     const actor = await authenticate(headers);
@@ -34,6 +35,13 @@ export const createCmsMedia = ({ db, authenticate, storage = createLocalStorage(
     }),
     // Metadata only (MCP media_get): never reads file bytes or exposes the storage key.
     meta: (headers, id) => run(headers, async tx => assetDto(await asset(tx, id))),
+    // MCP projections (v2 Q-7): assetDto plus createdAt; assetDto itself and the HTTP routes are unchanged.
+    metaDated: (headers, id) => run(headers, async tx => datedDto(await asset(tx, id))),
+    listDated: (headers, { offset = 0 } = {}) => run(headers, async tx => {
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) cmsFail("INVALID_INPUT");
+      const rows = await tx.select().from(s.mediaAssets).orderBy(desc(s.mediaAssets.createdAt), desc(s.mediaAssets.id)).limit(49).offset(offset);
+      return { rows: rows.slice(0, 48).map(datedDto), nextOffset: rows.length > 48 ? offset + 48 : null, videoReady: await videoAvailable(env) };
+    }),
     file: (headers, id, stream = false) => run(headers, async tx => { const row = await asset(tx, id); return { asset: assetDto(row), ...(stream ? await storage.delivery(row) : { bytes: await storage.read(row) }) }; }),
     upload: async (headers, body, mime, posterId = null) => {
       let received, registered = false;

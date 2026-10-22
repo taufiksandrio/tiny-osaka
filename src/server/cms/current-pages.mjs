@@ -1,7 +1,8 @@
 import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 import * as s from "../db/schema.mjs";
-import { getPageDefinition } from "../pages/templates.mjs";
+import { isDeepStrictEqual } from "node:util";
+import { getPageDefinition, pageTemplateFields } from "../pages/templates.mjs";
 import { createPageDraft, clonePageDraft, loadPageGraph } from "../pages/drafts.mjs";
 import { hashPageContent } from "../pages/content-hash.mjs";
 import { validPageUuid, validatePageReadiness } from "../pages/validation.mjs";
@@ -28,6 +29,41 @@ export const readCurrentPage = async (tx, pageKey, api) => {
 // Only called after current enabled membership is checked in the CMS transaction.
 // These immutable records preserve the existing public-reader integrity contract;
 // they are not user-facing drafts, approvals or an impersonated Owner identity.
+const plain = value => value && typeof value === "object" && !Array.isArray(value);
+
+// MCP page_update: partial merge under the same locks as saveCurrentPage. expectedRevisionId/expectedVersion come from the
+// page read under the lock; a caller-supplied value (page_save alias) that differs is a REVISION_CONFLICT.
+// A save that changes nothing returns the current page without creating a revision.
+export const mergeCurrentPage = async (tx, actor, input, api) => {
+  const { pageKey, fields = {}, mediaOperations = [], expectedRevisionId, expectedVersion } = input ?? {};
+  if (!["owner", "staff"].includes(actor.role)) cmsFail("FORBIDDEN", 403);
+  const definition = getPageDefinition(pageKey);
+  if (!definition) cmsFail("NOT_FOUND", 404);
+  if (!plain(fields) || !Array.isArray(mediaOperations) || mediaOperations.length > 24 ||
+    mediaOperations.some(row => !plain(row) || !["mediaSave", "mediaRemove"].includes(row.action) || (row.data !== undefined && !plain(row.data)))) cmsFail("INVALID_INPUT");
+  const allowed = Object.keys(pageTemplateFields[definition.template]);
+  const unknown = Object.keys(fields).find(key => !allowed.includes(key));
+  if (unknown) cmsFail("INVALID_CONTENT", 400, { field: unknown });
+  await publishingLock(tx);
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(76210985,hashtext(${pageKey}))`);
+  const current = await readCurrentPage(tx, pageKey, api);
+  if ((expectedRevisionId !== undefined && expectedRevisionId !== current.id) ||
+    (expectedVersion !== undefined && expectedVersion !== current.version)) cmsFail("REVISION_CONFLICT", 409);
+  const merged = { ...current.fields, ...fields };
+  if (current.id && !mediaOperations.length && isDeepStrictEqual(merged, current.fields)) return current;
+  const title = typeof merged.title === "string" ? merged.title.trim() : "";
+  const operations = mediaOperations.map(row => {
+    if (row.action === "mediaRemove") return { action: "mediaRemove", data: row.data ?? {} };
+    const data = { referenceId: null, captionId: "", sortOrder: 0, ...row.data };
+    if (data.altId === undefined || (typeof data.altId === "string" && !data.altId.trim())) {
+      if (!title) cmsFail("INVALID_INPUT", 400, { field: "altId" });
+      data.altId = title;
+    }
+    return { action: "mediaSave", data };
+  });
+  return saveCurrentPage(tx, actor, { pageKey, expectedRevisionId: current.id, expectedVersion: current.version, fields: merged, mediaOperations: operations }, api);
+};
+
 export const saveCurrentPage = async (tx, actor, input, api) => {
   exactInput(input, ["pageKey", "expectedRevisionId", "expectedVersion", "fields", "mediaOperations"]);
   if (!["owner", "staff"].includes(actor.role)) cmsFail("FORBIDDEN", 403);
