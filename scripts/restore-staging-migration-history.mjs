@@ -25,10 +25,11 @@ import {
 } from "./lib/restore-migration-history-plan.mjs";
 
 const apply = process.argv.includes("--apply");
-const listRelations = (client, schema) => client.query(`
+// Public objects use the default kinds (no indexes, as before). The drizzle metadata check also counts the primary-key index ('i').
+const listRelations = (client, schema, kinds = "'r','p','v','m','f','S'") => client.query(`
   SELECT c.relname AS name, c.relkind AS kind, pg_get_userbyid(c.relowner) AS owner
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-  WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m','f','S') ORDER BY c.relname`, [schema]).then(result => result.rows);
+  WHERE n.nspname = $1 AND c.relkind IN (${kinds}) ORDER BY c.relname`, [schema]).then(result => result.rows);
 const listSchemas = client => client.query("SELECT nspname AS name FROM pg_namespace WHERE nspname IN ('drizzle','cms_auth') ORDER BY nspname").then(result => result.rows);
 
 // Same read-only role/isolation pre-check as the official runner (created by scripts/provision-railway-db.mjs).
@@ -75,7 +76,7 @@ const verifyWritten = async (client, target) => {
   const { rows: [metadata] } = await client.query("SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='drizzle'");
   const history = (await client.query("SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id")).rows;
   const state = validateRemoteMigrationState({
-    target, history, objects: await listRelations(client, "public"), relations: await listRelations(client, "drizzle"),
+    target, history, objects: await listRelations(client, "public"), relations: await listRelations(client, "drizzle", "'r','S','i'"),
     schemas: await listSchemas(client), metadataOwner: metadata?.owner,
   });
   if (state !== RESTORED_HISTORY_LENGTH) throw new RestorePlanError("Refusing history restore: written history did not verify as 0000-0017. Transaction rolled back.");
